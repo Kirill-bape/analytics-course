@@ -1,0 +1,78 @@
+{
+  "goal": "Джуниор аналитик данных к началу января",
+  "startDate": "2026-09-29",
+  "goalDate": "2027-01-04",
+  "pace": "1–1,5 часа в день, 6 дней в неделю",
+  "weeks": [
+    {
+      "start": "2026-09-29", "end": "2026-10-04",
+      "title": "Основы SQL, часть 1",
+      "items": ["sql-basics/01-select", "sql-basics/02-where", "sql-basics/03-order", "sql-basics/04-calc"]
+    },
+    {
+      "start": "2026-10-05", "end": "2026-10-11",
+      "title": "Основы SQL, часть 2",
+      "items": ["sql-basics/05-null", "sql-basics/06-aggregates", "sql-basics/07-dates"]
+    },
+    {
+      "start": "2026-10-12", "end": "2026-10-18",
+      "title": "Excel и таблицы",
+      "items": ["excel"]
+    },
+    {
+      "start": "2026-10-19", "end": "2026-10-25",
+      "title": "Продвинутый SQL: группировки и JOIN",
+      "items": ["sql-advanced/01-group-by", "sql-advanced/02-having", "sql-advanced/03-join"]
+    },
+    {
+      "start": "2026-10-26", "end": "2026-11-01",
+      "title": "Продвинутый SQL: сложные JOIN и подзапросы",
+      "items": ["sql-advanced/04-multi-join", "sql-advanced/05-cte"]
+    },
+    {
+      "start": "2026-11-02", "end": "2026-11-08",
+      "title": "Продвинутый SQL: оконные функции",
+      "items": ["sql-advanced/06-window-rank", "sql-advanced/07-window-agg"]
+    },
+    {
+      "start": "2026-11-09", "end": "2026-11-15",
+      "title": "Основы статистики",
+      "items": ["statistics"]
+    },
+    {
+      "start": "2026-11-16", "end": "2026-11-22",
+      "title": "Python и pandas, часть 1",
+      "items": ["python/01-basics", "python/02-control", "python/03-pandas-intro", "python/04-pandas-filter"]
+    },
+    {
+      "start": "2026-11-23", "end": "2026-11-29",
+      "title": "Python и pandas, часть 2",
+      "items": ["python/05-pandas-groupby", "python/06-pandas-merge", "python/07-cleaning"]
+    },
+    {
+      "start": "2026-11-30", "end": "2026-12-06",
+      "title": "Визуализация и дашборды",
+      "items": ["visualization", "dashboards"]
+    },
+    {
+      "start": "2026-12-07", "end": "2026-12-13",
+      "title": "A/B-тесты",
+      "items": ["ab-tests"]
+    },
+    {
+      "start": "2026-12-14", "end": "2026-12-20",
+      "title": "Итоговый проект: анализ",
+      "items": ["final-project/01-questions", "final-project/02-analysis"]
+    },
+    {
+      "start": "2026-12-21", "end": "2026-12-27",
+      "title": "Итоговый проект: оформление и резюме",
+      "items": ["final-project/03-presentation", "final-project/04-career"]
+    },
+    {
+      "start": "2026-12-28", "end": "2027-01-03",
+      "title": "Запас: повторение и подготовка к собеседованиям",
+      "items": []
+    }
+  ]
+}

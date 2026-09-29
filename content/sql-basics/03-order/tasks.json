@@ -1,0 +1,80 @@
+{
+  "tasks": [
+    {
+      "id": "top5-expensive",
+      "title": "Пятёрка самых дорогих",
+      "difficulty": 1,
+      "prompt": "Выведи **5 самых дорогих** товаров: столбцы `product_name` и `price`, от самого дорогого к более дешёвым.",
+      "solution": "SELECT product_name, price\nFROM products\nORDER BY price DESC\nLIMIT 5;",
+      "orderMatters": true,
+      "hints": [
+        "Сначала отсортируй товары по цене, потом возьми первые 5 строк.",
+        "От дорогих к дешёвым — это сортировка по убыванию: `ORDER BY price DESC`. В конце — `LIMIT 5`."
+      ],
+      "selfTest": {
+        "wrong": ["SELECT product_name, price FROM products ORDER BY price LIMIT 5", "SELECT product_name, price FROM products ORDER BY price DESC", "SELECT product_name, price FROM products LIMIT 5"]
+      }
+    },
+    {
+      "id": "cities",
+      "title": "Где живут клиенты",
+      "difficulty": 2,
+      "prompt": "Выведи список городов клиентов **без повторов**, отсортированный **по алфавиту**. Один столбец — `city`.",
+      "solution": "SELECT DISTINCT city\nFROM customers\nORDER BY city;",
+      "orderMatters": true,
+      "hints": [
+        "Убрать повторы помогает `DISTINCT` — он пишется сразу после `SELECT`.",
+        "По алфавиту — это обычная сортировка по возрастанию: `ORDER BY city`."
+      ],
+      "selfTest": {
+        "correct": ["SELECT DISTINCT city FROM customers ORDER BY city ASC"],
+        "wrong": ["SELECT city FROM customers ORDER BY city", "SELECT DISTINCT city FROM customers ORDER BY city DESC"]
+      }
+    },
+    {
+      "id": "category-brand",
+      "title": "Бренды по категориям",
+      "difficulty": 2,
+      "prompt": "Выведи **уникальные** пары «категория — бренд» (столбцы `category`, `brand`). Отсортируй по категории, а внутри категории — по бренду (оба по алфавиту).",
+      "solution": "SELECT DISTINCT category, brand\nFROM products\nORDER BY category, brand;",
+      "orderMatters": true,
+      "hints": [
+        "`DISTINCT` работает сразу для всей строки: `SELECT DISTINCT category, brand`.",
+        "Сортировка по двум столбцам записывается через запятую: `ORDER BY category, brand`."
+      ],
+      "selfTest": {
+        "wrong": ["SELECT category, brand FROM products ORDER BY category, brand", "SELECT DISTINCT category, brand FROM products ORDER BY brand, category"]
+      }
+    },
+    {
+      "id": "biggest-delivered",
+      "title": "Рекордные заказы",
+      "difficulty": 3,
+      "prompt": "Найди **10 самых крупных** по сумме **доставленных** (`delivered`) заказов. Выведи `order_id`, `customer_id`, `amount` — от самого крупного. Если суммы равны, выше тот, у кого меньше `order_id`.",
+      "solution": "SELECT order_id, customer_id, amount\nFROM orders\nWHERE status = 'delivered'\nORDER BY amount DESC, order_id\nLIMIT 10;",
+      "orderMatters": true,
+      "hints": [
+        "Порядок частей запроса: `SELECT` → `FROM` → `WHERE` → `ORDER BY` → `LIMIT`.",
+        "Сначала отфильтруй доставленные заказы, затем отсортируй по двум столбцам: `ORDER BY amount DESC, order_id`."
+      ],
+      "selfTest": {
+        "wrong": ["SELECT order_id, customer_id, amount FROM orders ORDER BY amount DESC, order_id LIMIT 10", "SELECT order_id, customer_id, amount FROM orders WHERE status = 'delivered' ORDER BY amount LIMIT 10"]
+      }
+    },
+    {
+      "id": "cheapest-books",
+      "title": "Недорогое чтение",
+      "difficulty": 3,
+      "prompt": "Выведи **3 самые дешёвые книги** (категория `'Книги'`): столбцы `product_name`, `brand`, `price` — от самой дешёвой.",
+      "solution": "SELECT product_name, brand, price\nFROM products\nWHERE category = 'Книги'\nORDER BY price\nLIMIT 3;",
+      "orderMatters": true,
+      "hints": [
+        "Нужны три шага: отфильтровать книги, отсортировать по цене, взять первые 3.",
+        "`WHERE category = 'Книги' ORDER BY price LIMIT 3`"
+      ],
+      "selfTest": {
+        "wrong": ["SELECT product_name, brand, price FROM products ORDER BY price LIMIT 3", "SELECT product_name, brand, price FROM products WHERE category = 'Книги' ORDER BY price DESC LIMIT 3"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "title": "Путь аналитика",
+  "modules": [
+    {
+      "id": "sql-basics",
+      "title": "Основы SQL",
+      "icon": "🗄️",
+      "description": "Учимся доставать данные из базы: выбирать, фильтровать, сортировать и считать итоги.",
+      "topics": [
+        { "id": "01-select", "title": "Первый запрос: SELECT и FROM" },
+        { "id": "02-where", "title": "Фильтрация строк: WHERE" },
+        { "id": "03-order", "title": "Сортировка, ТОП-N и уникальные значения" },
+        { "id": "04-calc", "title": "Вычисления и CASE" },
+        { "id": "05-null", "title": "Пустые значения: NULL" },
+        { "id": "06-aggregates", "title": "Агрегатные функции: считаем итоги" },
+        { "id": "07-dates", "title": "Работа с датами" }
+      ]
+    },
+    {
+      "id": "excel",
+      "title": "Excel и таблицы",
+      "icon": "📊",
+      "description": "Формулы, ВПР, сводные таблицы и очистка данных — то, что пригодится с первого дня работы.",
+      "topics": [
+        { "id": "01-basics", "title": "Таблицы, сортировка и фильтры" },
+        { "id": "02-formulas", "title": "Формулы и функции" },
+        { "id": "03-lookup", "title": "ВПР и ПРОСМОТРX" },
+        { "id": "04-pivot", "title": "Сводные таблицы" },
+        { "id": "05-cleaning", "title": "Очистка данных" }
+      ]
+    },
+    {
+      "id": "sql-advanced",
+      "title": "Продвинутый SQL",
+      "icon": "🧩",
+      "description": "Группировки, объединение таблиц (JOIN), подзапросы и оконные функции.",
+      "topics": [
+        { "id": "01-group-by", "title": "Группировка: GROUP BY" },
+        { "id": "02-having", "title": "Фильтрация групп: HAVING" },
+        { "id": "03-join", "title": "Объединение таблиц: INNER и LEFT JOIN" },
+        { "id": "04-multi-join", "title": "Несколько JOIN и типичные ловушки" },
+        { "id": "05-cte", "title": "Подзапросы и CTE (WITH)" },
+        { "id": "06-window-rank", "title": "Оконные функции: ранжирование" },
+        { "id": "07-window-agg", "title": "Оконные функции: накопительные итоги, LAG и LEAD" }
+      ]
+    },
+    {
+      "id": "statistics",
+      "title": "Основы статистики",
+      "icon": "📐",
+      "description": "Среднее и медиана, разброс, распределения, корреляция и выборки — без страшных формул.",
+      "topics": [
+        { "id": "01-center", "title": "Среднее, медиана, мода" },
+        { "id": "02-spread", "title": "Разброс и квантили" },
+        { "id": "03-distributions", "title": "Распределения и выбросы" },
+        { "id": "04-correlation", "title": "Корреляция" },
+        { "id": "05-sampling", "title": "Выборки и доверительные интервалы" }
+      ]
+    },
+    {
+      "id": "python",
+      "title": "Python и pandas",
+      "icon": "🐍",
+      "description": "Основы Python и главная библиотека аналитика — pandas.",
+      "topics": [
+        { "id": "01-basics", "title": "Основы Python" },
+        { "id": "02-control", "title": "Условия, циклы и функции" },
+        { "id": "03-pandas-intro", "title": "pandas: первый DataFrame" },
+        { "id": "04-pandas-filter", "title": "Фильтрация и сортировка" },
+        { "id": "05-pandas-groupby", "title": "Группировки в pandas" },
+        { "id": "06-pandas-merge", "title": "Объединение таблиц" },
+        { "id": "07-cleaning", "title": "Очистка данных" }
+      ]
+    },
+    {
+      "id": "visualization",
+      "title": "Визуализация данных",
+      "icon": "📈",
+      "description": "Какой график выбрать и как рассказать историю с помощью данных.",
+      "topics": [
+        { "id": "01-chart-choice", "title": "Какой график выбрать" },
+        { "id": "02-python-charts", "title": "Графики в Python" },
+        { "id": "03-good-charts", "title": "Правила хорошего графика" }
+      ]
+    },
+    {
+      "id": "dashboards",
+      "title": "Дашборды",
+      "icon": "🖥️",
+      "description": "Метрики, KPI и проектирование дашбордов в бесплатном BI-инструменте.",
+      "topics": [
+        { "id": "01-metrics", "title": "Метрики и KPI" },
+        { "id": "02-design", "title": "Проектирование дашборда" },
+        { "id": "03-bi-tool", "title": "Дашборд в BI-инструменте" }
+      ]
+    },
+    {
+      "id": "ab-tests",
+      "title": "A/B-тесты",
+      "icon": "🧪",
+      "description": "Как проверить, что изменение действительно работает, а не показалось.",
+      "topics": [
+        { "id": "01-intro", "title": "Что такое A/B-тест" },
+        { "id": "02-significance", "title": "Статистическая значимость и p-value" },
+        { "id": "03-practice", "title": "Проверка гипотез на практике" },
+        { "id": "04-pitfalls", "title": "Размер выборки и ловушки" }
+      ]
+    },
+    {
+      "id": "final-project",
+      "title": "Итоговый проект",
+      "icon": "🏆",
+      "description": "Полноценное исследование для портфолио и подготовка к собеседованиям.",
+      "topics": [
+        { "id": "01-questions", "title": "Выбор данных и вопросов" },
+        { "id": "02-analysis", "title": "Анализ" },
+        { "id": "03-presentation", "title": "Оформление и презентация" },
+        { "id": "04-career", "title": "Резюме, GitHub и собеседование" }
+      ]
+    }
+  ]
+}

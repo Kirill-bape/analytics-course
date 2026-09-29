@@ -1,0 +1,82 @@
+{
+  "tasks": [
+    {
+      "id": "profit",
+      "title": "Прибыль с одной штуки",
+      "difficulty": 1,
+      "prompt": "Для каждого товара выведи `product_name`, `price`, `cost_price` и прибыль с одной штуки — разницу между ценой и себестоимостью. Назови этот столбец `profit`.",
+      "solution": "SELECT product_name, price, cost_price,\n       price - cost_price AS profit\nFROM products;",
+      "checkColumnNames": true,
+      "hints": [
+        "Прибыль = цена − себестоимость. Это выражение пишется прямо в `SELECT`.",
+        "`price - cost_price AS profit`"
+      ],
+      "selfTest": {
+        "wrong": ["SELECT product_name, price, cost_price, cost_price - price AS profit FROM products", "SELECT product_name, price, cost_price, price - cost_price FROM products"]
+      }
+    },
+    {
+      "id": "book-margin",
+      "title": "Маржинальность книг",
+      "difficulty": 2,
+      "prompt": "Для товаров категории `'Книги'` выведи `product_name` и маржинальность в процентах: `(цена − себестоимость) / цена × 100`, **округлённую до 1 знака** после запятой. Назови столбец `margin_pct`.",
+      "solution": "SELECT product_name,\n       ROUND((price - cost_price) / price * 100, 1) AS margin_pct\nFROM products\nWHERE category = 'Книги';",
+      "checkColumnNames": true,
+      "hints": [
+        "Сначала напиши формулу без округления и проверь, что числа похожи на проценты (от 0 до 100). Не забудь скобки вокруг `price - cost_price`.",
+        "Оберни формулу в `ROUND(…, 1)` и дай имя через `AS margin_pct`."
+      ],
+      "selfTest": {
+        "correct": ["SELECT product_name, ROUND(100 * (price - cost_price) / price, 1) AS margin_pct FROM products WHERE category = 'Книги'"],
+        "wrong": ["SELECT product_name, (price - cost_price) / price * 100 AS margin_pct FROM products WHERE category = 'Книги'", "SELECT product_name, ROUND(price - cost_price / price * 100, 1) AS margin_pct FROM products WHERE category = 'Книги'"]
+      }
+    },
+    {
+      "id": "price-segment",
+      "title": "Ценовые сегменты",
+      "difficulty": 2,
+      "prompt": [
+        "Разложи товары по ценовым сегментам. Выведи `product_name`, `price` и столбец `segment`:",
+        "",
+        "- `'бюджетный'` — цена меньше 3 000 ₽;",
+        "- `'средний'` — от 3 000 ₽ до 20 000 ₽ (не включая 20 000);",
+        "- `'премиум'` — 20 000 ₽ и дороже."
+      ],
+      "solution": "SELECT product_name, price,\n       CASE\n           WHEN price < 3000 THEN 'бюджетный'\n           WHEN price < 20000 THEN 'средний'\n           ELSE 'премиум'\n       END AS segment\nFROM products;",
+      "checkColumnNames": true,
+      "hints": [
+        "Используй `CASE WHEN … THEN … ELSE … END`. Условия проверяются сверху вниз.",
+        "Если первое условие `price < 3000`, то во втором достаточно написать `price < 20000` — дешёвые товары уже «забрал» первый `WHEN`.",
+        "Не забудь `END` и имя столбца: `END AS segment`."
+      ],
+      "selfTest": {
+        "correct": ["SELECT product_name, price, CASE WHEN price >= 20000 THEN 'премиум' WHEN price >= 3000 THEN 'средний' ELSE 'бюджетный' END AS segment FROM products"],
+        "wrong": ["SELECT product_name, price, CASE WHEN price < 3000 THEN 'бюджетный' WHEN price < 20000 THEN 'средний' END AS segment FROM products","SELECT product_name, price, CASE WHEN price < 20000 THEN 'средний' WHEN price < 3000 THEN 'бюджетный' ELSE 'премиум' END AS segment FROM products"]
+      }
+    },
+    {
+      "id": "black-friday",
+      "title": "Проверяем скидки Чёрной пятницы",
+      "difficulty": 3,
+      "prompt": [
+        "Промокод `BLACKFRIDAY` должен был давать скидку 15%. Проверим, так ли это.",
+        "",
+        "Для заказов с этим промокодом выведи:",
+        "",
+        "- `order_id`;",
+        "- `full_price` — сумма заказа **до** скидки (в таблице `amount` — сумма уже после скидки, `discount` — сама скидка);",
+        "- `discount_pct` — скидка в процентах от суммы до скидки, **округлённая до 1 знака**."
+      ],
+      "solution": "SELECT order_id,\n       amount + discount AS full_price,\n       ROUND(discount / (amount + discount) * 100, 1) AS discount_pct\nFROM orders\nWHERE promo_code = 'BLACKFRIDAY';",
+      "checkColumnNames": true,
+      "hints": [
+        "Сумма до скидки = сумма после скидки + скидка: `amount + discount`.",
+        "Процент скидки = скидка / сумма до скидки × 100. Сумму до скидки в знаменателе возьми в скобки.",
+        "`ROUND(discount / (amount + discount) * 100, 1) AS discount_pct`"
+      ],
+      "selfTest": {
+        "wrong": ["SELECT order_id, amount + discount AS full_price, ROUND(discount / amount * 100, 1) AS discount_pct FROM orders WHERE promo_code = 'BLACKFRIDAY'", "SELECT order_id, amount AS full_price, ROUND(discount / (amount + discount) * 100, 1) AS discount_pct FROM orders WHERE promo_code = 'BLACKFRIDAY'"]
+      }
+    }
+  ]
+}

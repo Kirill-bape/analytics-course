@@ -1,0 +1,8 @@
+node_modules/
+dist/
+# Личный прогресс — не храним в истории кода
+progress.json
+progress.json.tmp
+# Секреты (API-ключи) — никогда не публикуем
+.env
+.env.*

@@ -1,0 +1,105 @@
+{
+  "tasks": [
+    {
+      "id": "kazan",
+      "title": "Клиенты из Казани",
+      "difficulty": 1,
+      "prompt": "Выведи **все столбцы** для клиентов из города Казань.",
+      "solution": "SELECT *\nFROM customers\nWHERE city = 'Казань';",
+      "hints": [
+        "Условие отбора пишется после `FROM` через слово `WHERE`.",
+        "Текст в условии берут в одинарные кавычки: `WHERE city = 'Казань'`."
+      ],
+      "mistakes": [
+        { "pattern": "\"Казань\"", "message": "Текст пишут в **одинарных** кавычках: `'Казань'`." }
+      ],
+      "selfTest": {
+        "correct": ["SELECT * FROM customers WHERE city IN ('Казань')"],
+        "wrong": ["SELECT * FROM customers WHERE city = 'казань'", "SELECT * FROM customers"]
+      }
+    },
+    {
+      "id": "expensive-electronics",
+      "title": "Дорогая электроника",
+      "difficulty": 2,
+      "prompt": "Найди товары из категории **«Электроника»** с ценой **больше 30 000 ₽**. Выведи столбцы `product_name` и `price`.",
+      "solution": "SELECT product_name, price\nFROM products\nWHERE category = 'Электроника' AND price > 30000;",
+      "hints": [
+        "Здесь два условия, и оба должны выполняться. Какое слово их соединяет?",
+        "`WHERE category = 'Электроника' AND price ...`. Число пишется без пробелов и без кавычек: `30000`."
+      ],
+      "mistakes": [
+        { "pattern": "30\\s+000", "message": "Числа в SQL пишутся без пробелов: `30000`, а не `30 000`." }
+      ],
+      "selfTest": {
+        "wrong": ["SELECT product_name, price FROM products WHERE category = 'Электроника' OR price > 30000", "SELECT product_name, price FROM products WHERE price > 30000"]
+      }
+    },
+    {
+      "id": "cash-problems",
+      "title": "Проблемные заказы за наличные",
+      "difficulty": 2,
+      "prompt": [
+        "Руководитель подозревает, что с оплатой наличными чаще бывают проблемы.",
+        "",
+        "Выведи заказы, оплаченные **наличными** (`payment_method = 'cash'`), которые были **отменены** (`cancelled`) **или возвращены** (`returned`). Столбцы: `order_id`, `status`, `amount`."
+      ],
+      "solution": "SELECT order_id, status, amount\nFROM orders\nWHERE payment_method = 'cash'\n  AND status IN ('cancelled', 'returned');",
+      "hints": [
+        "Условий три: способ оплаты, и один из двух статусов. Помнишь ловушку с `AND` и `OR` из урока?",
+        "Два статуса удобно записать через `IN ('cancelled', 'returned')` или взять часть с `OR` в скобки."
+      ],
+      "mistakes": [
+        {
+          "pattern": "\\bOR\\b",
+          "unless": "\\(\\s*status|\\(\\s*\\w+\\s*=",
+          "message": "В условии есть `OR` без скобок. `AND` выполняется раньше `OR`, поэтому база понимает условие не так, как задумано. Возьми часть с `OR` в скобки."
+        }
+      ],
+      "selfTest": {
+        "correct": ["SELECT order_id, status, amount FROM orders WHERE payment_method = 'cash' AND (status = 'cancelled' OR status = 'returned')"],
+        "wrong": ["SELECT order_id, status, amount FROM orders WHERE payment_method = 'cash' AND status = 'cancelled' OR status = 'returned'", "SELECT order_id, status, amount FROM orders WHERE payment_method = 'cash' AND status = 'cancelled'"]
+      }
+    },
+    {
+      "id": "sets",
+      "title": "Всё, что продаётся наборами",
+      "difficulty": 3,
+      "prompt": [
+        "Маркетолог готовит подборку «Выгодные наборы». Найди все товары, в названии которых встречается слово **«набор»**.",
+        "",
+        "Внимание: слово может стоять в начале названия («Набор ножей…») или в середине («Носки набор 5 пар») — то есть с большой или маленькой буквы. Выведи `product_name` и `category`."
+      ],
+      "solution": "SELECT product_name, category\nFROM products\nWHERE product_name ILIKE '%набор%';",
+      "hints": [
+        "Для поиска по части текста используется `LIKE` с символом `%`.",
+        "`LIKE` различает регистр букв, поэтому `'%набор%'` не найдёт «Набор…». Есть оператор, который регистр не различает, — какой?",
+        "`WHERE product_name ILIKE '%набор%'`"
+      ],
+      "selfTest": {
+        "correct": ["SELECT product_name, category FROM products WHERE LOWER(product_name) LIKE '%набор%'", "SELECT product_name, category FROM products WHERE product_name LIKE '%набор%' OR product_name LIKE '%Набор%'"],
+        "wrong": ["SELECT product_name, category FROM products WHERE product_name LIKE '%набор%'", "SELECT product_name, category FROM products WHERE product_name LIKE 'Набор%'"]
+      }
+    },
+    {
+      "id": "sbp-june",
+      "title": "Средние заказы через СБП",
+      "difficulty": 3,
+      "prompt": [
+        "Выведи **доставленные** заказы (`delivered`), оплаченные **через СБП** (`sbp`), сделанные **с 1 июня 2026 года** (включительно), на сумму **от 5 000 до 10 000 ₽ включительно**.",
+        "",
+        "Столбцы: `order_id`, `order_date`, `amount`."
+      ],
+      "solution": "SELECT order_id, order_date, amount\nFROM orders\nWHERE status = 'delivered'\n  AND payment_method = 'sbp'\n  AND order_date >= '2026-06-01'\n  AND amount BETWEEN 5000 AND 10000;",
+      "hints": [
+        "Здесь четыре условия, и все должны выполняться одновременно — соедини их через `AND`.",
+        "Дату пиши в кавычках в формате `'ГГГГ-ММ-ДД'`: `order_date >= '2026-06-01'`.",
+        "Для суммы подойдёт `amount BETWEEN 5000 AND 10000` — границы входят."
+      ],
+      "selfTest": {
+        "correct": ["SELECT order_id, order_date, amount FROM orders WHERE status = 'delivered' AND payment_method = 'sbp' AND order_date >= '2026-06-01' AND amount >= 5000 AND amount <= 10000"],
+        "wrong": ["SELECT order_id, order_date, amount FROM orders WHERE status = 'delivered' AND payment_method = 'sbp' AND order_date > '2026-06-01' AND amount BETWEEN 5000 AND 10000", "SELECT order_id, order_date, amount FROM orders WHERE payment_method = 'sbp' AND order_date >= '2026-06-01' AND amount BETWEEN 5000 AND 10000"]
+      }
+    }
+  ]
+}

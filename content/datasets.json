@@ -1,0 +1,64 @@
+{
+  "tables": [
+    {
+      "name": "customers",
+      "file": "shop/customers.csv",
+      "title": "Клиенты",
+      "description": "Все зарегистрированные клиенты магазина. Часть клиентов зарегистрировалась, но ещё ничего не купила.",
+      "columns": [
+        { "name": "customer_id", "type": "INTEGER", "description": "Уникальный номер клиента" },
+        { "name": "full_name", "type": "VARCHAR", "description": "Имя и фамилия" },
+        { "name": "gender", "type": "VARCHAR", "description": "Пол: 'female' или 'male'" },
+        { "name": "birth_date", "type": "DATE", "description": "Дата рождения. Бывает пустой (NULL) — клиент не указал" },
+        { "name": "city", "type": "VARCHAR", "description": "Город. Бывает пустым (NULL)" },
+        { "name": "registration_date", "type": "DATE", "description": "Дата регистрации (с 2024-01-01)" },
+        { "name": "acquisition_channel", "type": "VARCHAR", "description": "Откуда пришёл: 'organic' (поиск), 'ads' (реклама), 'social' (соцсети), 'referral' (по приглашению друга), 'bloggers' (блогеры)" }
+      ]
+    },
+    {
+      "name": "products",
+      "file": "shop/products.csv",
+      "title": "Товары",
+      "description": "Каталог товаров с текущими ценами.",
+      "columns": [
+        { "name": "product_id", "type": "INTEGER", "description": "Уникальный номер товара" },
+        { "name": "product_name", "type": "VARCHAR", "description": "Название товара" },
+        { "name": "category", "type": "VARCHAR", "description": "Категория: 'Электроника', 'Бытовая техника', 'Одежда и обувь', 'Дом и кухня', 'Красота и здоровье', 'Книги', 'Спорт и отдых', 'Детские товары'" },
+        { "name": "brand", "type": "VARCHAR", "description": "Бренд (для книг — издательство)" },
+        { "name": "price", "type": "DECIMAL(12,2)", "description": "Текущая цена продажи, ₽" },
+        { "name": "cost_price", "type": "DECIMAL(12,2)", "description": "Себестоимость — сколько товар стоит магазину, ₽" },
+        { "name": "rating", "type": "DECIMAL(3,1)", "description": "Средняя оценка покупателей от 1 до 5. NULL — отзывов ещё нет" }
+      ]
+    },
+    {
+      "name": "orders",
+      "file": "shop/orders.csv",
+      "title": "Заказы",
+      "description": "Заказы с 2025-01-01 по 2026-06-30. Одна строка — один заказ.",
+      "columns": [
+        { "name": "order_id", "type": "INTEGER", "description": "Уникальный номер заказа" },
+        { "name": "customer_id", "type": "INTEGER", "description": "Кто заказал (номер из customers)" },
+        { "name": "order_date", "type": "DATE", "description": "Дата заказа" },
+        { "name": "status", "type": "VARCHAR", "description": "'delivered' — доставлен, 'cancelled' — отменён, 'returned' — возвращён, 'shipped' — в пути, 'processing' — в обработке" },
+        { "name": "payment_method", "type": "VARCHAR", "description": "Оплата: 'card' — картой, 'sbp' — через СБП, 'cash' — наличными при получении" },
+        { "name": "promo_code", "type": "VARCHAR", "description": "Применённый промокод. NULL — без промокода" },
+        { "name": "discount", "type": "DECIMAL(12,2)", "description": "Скидка по промокоду, ₽ (0 — скидки не было)" },
+        { "name": "amount", "type": "DECIMAL(12,2)", "description": "Сумма заказа после скидки, ₽" },
+        { "name": "delivery_date", "type": "DATE", "description": "Дата доставки. NULL — заказ отменён или ещё не доставлен" }
+      ]
+    },
+    {
+      "name": "order_items",
+      "file": "shop/order_items.csv",
+      "title": "Позиции заказов",
+      "description": "Что лежало в каждом заказе. Одна строка — один товар в заказе.",
+      "columns": [
+        { "name": "item_id", "type": "INTEGER", "description": "Уникальный номер позиции" },
+        { "name": "order_id", "type": "INTEGER", "description": "Номер заказа (из orders)" },
+        { "name": "product_id", "type": "INTEGER", "description": "Номер товара (из products)" },
+        { "name": "quantity", "type": "INTEGER", "description": "Количество штук" },
+        { "name": "price", "type": "DECIMAL(12,2)", "description": "Цена за штуку на момент покупки, ₽ (может отличаться от текущей цены в products)" }
+      ]
+    }
+  ]
+}

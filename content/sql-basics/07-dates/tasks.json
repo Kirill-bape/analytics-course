@@ -1,0 +1,96 @@
+{
+  "tasks": [
+    {
+      "id": "march-orders",
+      "title": "Заказы за март",
+      "difficulty": 1,
+      "prompt": "Сколько заказов было сделано в **марте 2026 года**? Посчитай все заказы, независимо от статуса.",
+      "solution": "SELECT COUNT(*) AS orders_cnt\nFROM orders\nWHERE order_date >= '2026-03-01'\n  AND order_date < '2026-04-01';",
+      "hints": [
+        "Нужны два условия на дату: начало периода и конец периода.",
+        "`WHERE order_date >= '2026-03-01' AND order_date < '2026-04-01'` и `COUNT(*)`."
+      ],
+      "selfTest": {
+        "correct": [
+          "SELECT COUNT(*) FROM orders WHERE order_date BETWEEN '2026-03-01' AND '2026-03-31'",
+          "SELECT COUNT(*) FROM orders WHERE EXTRACT(YEAR FROM order_date) = 2026 AND EXTRACT(MONTH FROM order_date) = 3"
+        ],
+        "wrong": ["SELECT COUNT(*) FROM orders WHERE EXTRACT(MONTH FROM order_date) = 3", "SELECT COUNT(*) FROM orders WHERE order_date >= '2026-03-01' AND order_date <= '2026-04-01'"]
+      }
+    },
+    {
+      "id": "december-revenue",
+      "title": "Новогодняя выручка",
+      "difficulty": 2,
+      "prompt": "Посчитай **выручку** (сумму `amount` доставленных заказов) за **декабрь 2025 года**.",
+      "solution": "SELECT SUM(amount) AS revenue\nFROM orders\nWHERE status = 'delivered'\n  AND order_date >= '2025-12-01'\n  AND order_date < '2026-01-01';",
+      "hints": [
+        "Это задача на выручку из прошлой темы плюс фильтр по периоду.",
+        "Условий три: статус `delivered` и две границы периода. Декабрь заканчивается перед `'2026-01-01'`."
+      ],
+      "selfTest": {
+        "correct": ["SELECT SUM(amount) FROM orders WHERE status = 'delivered' AND order_date BETWEEN '2025-12-01' AND '2025-12-31'"],
+        "wrong": ["SELECT SUM(amount) FROM orders WHERE order_date >= '2025-12-01' AND order_date < '2026-01-01'", "SELECT SUM(amount) FROM orders WHERE status = 'delivered' AND order_date >= '2025-12-01'"]
+      }
+    },
+    {
+      "id": "avg-delivery",
+      "title": "Скорость доставки",
+      "difficulty": 2,
+      "prompt": "Сколько дней **в среднем** занимает доставка? Посчитай среднюю разницу между `delivery_date` и `order_date` для **доставленных** заказов (`status = 'delivered'`), **округли до 2 знаков**.",
+      "solution": "SELECT ROUND(AVG(delivery_date - order_date), 2) AS avg_delivery_days\nFROM orders\nWHERE status = 'delivered';",
+      "hints": [
+        "Разница двух дат — это количество дней: `delivery_date - order_date`.",
+        "Выражение можно передать прямо в функцию: `AVG(delivery_date - order_date)`. Не забудь `ROUND(…, 2)` и фильтр по статусу."
+      ],
+      "selfTest": {
+        "wrong": ["SELECT ROUND(AVG(delivery_date - order_date), 2) FROM orders", "SELECT ROUND(AVG(order_date - delivery_date), 2) FROM orders WHERE status = 'delivered'"]
+      }
+    },
+    {
+      "id": "weekend-2025",
+      "title": "Покупки на выходных",
+      "difficulty": 3,
+      "prompt": "Сколько заказов было сделано **в субботу или воскресенье** за **2025 год**?",
+      "solution": "SELECT COUNT(*) AS weekend_orders\nFROM orders\nWHERE EXTRACT(YEAR FROM order_date) = 2025\n  AND EXTRACT(DOW FROM order_date) IN (0, 6);",
+      "hints": [
+        "День недели достаётся через `EXTRACT(DOW FROM order_date)`: 0 — воскресенье, 6 — суббота.",
+        "Условие на год: `EXTRACT(YEAR FROM order_date) = 2025`. Два дня недели удобно записать через `IN (0, 6)`."
+      ],
+      "selfTest": {
+        "correct": [
+          "SELECT COUNT(*) FROM orders WHERE order_date >= '2025-01-01' AND order_date < '2026-01-01' AND EXTRACT(ISODOW FROM order_date) >= 6",
+          "SELECT COUNT(*) FROM orders WHERE EXTRACT(YEAR FROM order_date) = 2025 AND (EXTRACT(DOW FROM order_date) = 0 OR EXTRACT(DOW FROM order_date) = 6)"
+        ],
+        "wrong": [
+          "SELECT COUNT(*) FROM orders WHERE EXTRACT(YEAR FROM order_date) = 2025 AND EXTRACT(DOW FROM order_date) IN (6, 7)",
+          "SELECT COUNT(*) FROM orders WHERE EXTRACT(YEAR FROM order_date) = 2025 AND EXTRACT(DOW FROM order_date) = 0 OR EXTRACT(DOW FROM order_date) = 6"
+        ]
+      }
+    },
+    {
+      "id": "slow-delivery",
+      "title": "Долгие доставки",
+      "difficulty": 3,
+      "prompt": [
+        "Найди доставленные заказы **2026 года**, доставка которых заняла **больше 8 дней**.",
+        "",
+        "Выведи `order_id`, `order_date` и `delivery_days` (число дней доставки). Отсортируй от самых долгих; при равенстве — по `order_id`."
+      ],
+      "solution": "SELECT order_id, order_date,\n       delivery_date - order_date AS delivery_days\nFROM orders\nWHERE status = 'delivered'\n  AND order_date >= '2026-01-01'\n  AND delivery_date - order_date > 8\nORDER BY delivery_days DESC, order_id;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Число дней доставки — это `delivery_date - order_date`. Его нужно и вывести, и использовать в условии.",
+        "В `WHERE` повтори выражение целиком: `delivery_date - order_date > 8`.",
+        "Сортировка по двум столбцам: `ORDER BY delivery_days DESC, order_id`."
+      ],
+      "selfTest": {
+        "wrong": [
+          "SELECT order_id, order_date, delivery_date - order_date AS delivery_days FROM orders WHERE status = 'delivered' AND order_date >= '2026-01-01' AND delivery_date - order_date >= 8 ORDER BY delivery_days DESC, order_id",
+          "SELECT order_id, order_date, delivery_date - order_date AS delivery_days FROM orders WHERE status = 'delivered' AND delivery_date - order_date > 8 ORDER BY delivery_days DESC, order_id"
+        ]
+      }
+    }
+  ]
+}

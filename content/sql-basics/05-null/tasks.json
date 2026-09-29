@@ -1,0 +1,108 @@
+{
+  "tasks": [
+    {
+      "id": "no-city",
+      "title": "Клиенты без города",
+      "difficulty": 1,
+      "prompt": "Найди клиентов, у которых **не указан город**. Выведи `full_name` и `registration_date`.",
+      "solution": "SELECT full_name, registration_date\nFROM customers\nWHERE city IS NULL;",
+      "hints": [
+        "Сравнение `= NULL` не работает — для пустых значений есть специальный оператор.",
+        "`WHERE city IS NULL`"
+      ],
+      "mistakes": [
+        { "pattern": "=\\s*NULL", "message": "Сравнение `= NULL` никогда не бывает верным. Для проверки на пустоту используй `IS NULL`." }
+      ],
+      "selfTest": {
+        "wrong": ["SELECT full_name, registration_date FROM customers WHERE city = NULL", "SELECT full_name, registration_date FROM customers WHERE city IS NOT NULL"]
+      }
+    },
+    {
+      "id": "promo-orders",
+      "title": "Заказы с промокодом",
+      "difficulty": 2,
+      "prompt": "Выведи заказы, сделанные **с 1 марта 2026 года** (включительно), в которых **использовался промокод**. Столбцы: `order_id`, `promo_code`, `discount`.",
+      "solution": "SELECT order_id, promo_code, discount\nFROM orders\nWHERE order_date >= '2026-03-01'\n  AND promo_code IS NOT NULL;",
+      "hints": [
+        "«Промокод использовался» — значит, столбец `promo_code` не пустой.",
+        "`WHERE order_date >= '2026-03-01' AND promo_code IS NOT NULL`"
+      ],
+      "mistakes": [
+        { "pattern": "(<>|!=)\\s*NULL", "message": "Сравнение `<> NULL` тоже не работает — используй `IS NOT NULL`." }
+      ],
+      "selfTest": {
+        "correct": ["SELECT order_id, promo_code, discount FROM orders WHERE order_date >= '2026-03-01' AND discount > 0"],
+        "wrong": ["SELECT order_id, promo_code, discount FROM orders WHERE order_date >= '2026-03-01' AND promo_code <> NULL", "SELECT order_id, promo_code, discount FROM orders WHERE promo_code IS NOT NULL"]
+      }
+    },
+    {
+      "id": "sport-rating",
+      "title": "Рейтинг для отчёта",
+      "difficulty": 2,
+      "prompt": "Для отчёта по категории `'Спорт и отдых'` выведи `product_name` и рейтинг, где вместо пустого значения стоит **0**. Назови столбец с рейтингом `rating_fixed`.",
+      "solution": "SELECT product_name,\n       COALESCE(rating, 0) AS rating_fixed\nFROM products\nWHERE category = 'Спорт и отдых';",
+      "checkColumnNames": true,
+      "hints": [
+        "Заменить пустое значение на другое помогает функция `COALESCE`.",
+        "`COALESCE(rating, 0) AS rating_fixed`"
+      ],
+      "selfTest": {
+        "correct": ["SELECT product_name, CASE WHEN rating IS NULL THEN 0 ELSE rating END AS rating_fixed FROM products WHERE category = 'Спорт и отдых'"],
+        "wrong": ["SELECT product_name, rating AS rating_fixed FROM products WHERE category = 'Спорт и отдых'"]
+      }
+    },
+    {
+      "id": "in-progress",
+      "title": "Заказы в пути",
+      "difficulty": 3,
+      "prompt": [
+        "Служба доставки просит список заказов, которые **ещё не доставлены, но и не отменены**.",
+        "",
+        "Иначе говоря: у заказа нет даты доставки (`delivery_date` пустая), и статус — не `cancelled`. Выведи `order_id`, `order_date`, `status`, отсортируй по `order_id`."
+      ],
+      "solution": "SELECT order_id, order_date, status\nFROM orders\nWHERE delivery_date IS NULL\n  AND status <> 'cancelled'\nORDER BY order_id;",
+      "orderMatters": true,
+      "hints": [
+        "Два условия, оба должны выполняться: дата доставки пустая И статус не «отменён».",
+        "`WHERE delivery_date IS NULL AND status <> 'cancelled'`, в конце — `ORDER BY order_id`."
+      ],
+      "selfTest": {
+        "correct": ["SELECT order_id, order_date, status FROM orders WHERE delivery_date IS NULL AND status IN ('shipped', 'processing') ORDER BY order_id"],
+        "wrong": ["SELECT order_id, order_date, status FROM orders WHERE delivery_date IS NULL ORDER BY order_id", "SELECT order_id, order_date, status FROM orders WHERE status <> 'cancelled' ORDER BY order_id"]
+      }
+    },
+    {
+      "id": "not-blackfriday",
+      "title": "Декабрь без Чёрной пятницы",
+      "difficulty": 3,
+      "prompt": [
+        "Выведи все заказы **декабря 2025 года**, в которых **не** использовался промокод `BLACKFRIDAY` — в том числе заказы вообще без промокода.",
+        "",
+        "Столбцы: `order_id`, `order_date`, `promo_code`. Декабрь 2025 — это даты с `'2025-12-01'` по `'2025-12-31'` включительно."
+      ],
+      "solution": "SELECT order_id, order_date, promo_code\nFROM orders\nWHERE order_date BETWEEN '2025-12-01' AND '2025-12-31'\n  AND (promo_code <> 'BLACKFRIDAY' OR promo_code IS NULL);",
+      "hints": [
+        "Вспомни ловушку из урока: условие `promo_code <> 'BLACKFRIDAY'` отбросит заказы, где промокода нет вовсе.",
+        "Нужно явно добавить пустые значения: `promo_code <> 'BLACKFRIDAY' OR promo_code IS NULL`.",
+        "Раз в условии есть и `AND`, и `OR` — не забудь скобки вокруг части с `OR`."
+      ],
+      "mistakes": [
+        {
+          "pattern": "(<>|!=)\\s*'BLACKFRIDAY'",
+          "unless": "IS\\s+NULL|COALESCE|DISTINCT",
+          "message": "Условие `<> 'BLACKFRIDAY'` отбрасывает заказы, где промокода нет (`NULL`), — а они тоже нужны."
+        }
+      ],
+      "selfTest": {
+        "correct": [
+          "SELECT order_id, order_date, promo_code FROM orders WHERE order_date >= '2025-12-01' AND order_date < '2026-01-01' AND COALESCE(promo_code, '') <> 'BLACKFRIDAY'",
+          "SELECT order_id, order_date, promo_code FROM orders WHERE order_date BETWEEN '2025-12-01' AND '2025-12-31' AND promo_code IS DISTINCT FROM 'BLACKFRIDAY'"
+        ],
+        "wrong": [
+          "SELECT order_id, order_date, promo_code FROM orders WHERE order_date BETWEEN '2025-12-01' AND '2025-12-31' AND promo_code <> 'BLACKFRIDAY'",
+          "SELECT order_id, order_date, promo_code FROM orders WHERE order_date BETWEEN '2025-12-01' AND '2025-12-31' AND promo_code <> 'BLACKFRIDAY' OR promo_code IS NULL"
+        ]
+      }
+    }
+  ]
+}

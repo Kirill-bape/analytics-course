@@ -1,0 +1,64 @@
+{
+  "tasks": [
+    {
+      "id": "all-products",
+      "title": "Весь каталог",
+      "difficulty": 1,
+      "prompt": "Выведи **все столбцы** таблицы `products` — весь каталог товаров.",
+      "solution": "SELECT * FROM products;",
+      "hints": [
+        "Чтобы выбрать все столбцы, используется звёздочка `*`.",
+        "Шаблон запроса: `SELECT * FROM название_таблицы;`"
+      ],
+      "selfTest": {
+        "correct": ["select * from products"],
+        "wrong": ["SELECT product_name FROM products", "SELECT * FROM products LIMIT 10", "SELECT * FROM product"]
+      }
+    },
+    {
+      "id": "names-prices",
+      "title": "Название и цена",
+      "difficulty": 1,
+      "prompt": "Выведи для всех товаров только два столбца: название `product_name` и цену `price` — именно в таком порядке.",
+      "solution": "SELECT product_name, price FROM products;",
+      "hints": [
+        "Нужные столбцы перечисляются после `SELECT` через запятую.",
+        "Шаблон: `SELECT столбец1, столбец2 FROM products;`"
+      ],
+      "selfTest": {
+        "wrong": ["SELECT price, product_name FROM products", "SELECT product_name price FROM products", "SELECT * FROM products", "SELECT product_name, prise FROM products"]
+      }
+    },
+    {
+      "id": "first-customers",
+      "title": "Первые клиенты",
+      "difficulty": 2,
+      "prompt": "Выведи имя `full_name`, город `city` и дату регистрации `registration_date` **первых 10 клиентов** из таблицы `customers`.",
+      "solution": "SELECT full_name, city, registration_date\nFROM customers\nLIMIT 10;",
+      "hints": [
+        "Сначала перечисли три столбца после `SELECT`, потом укажи таблицу после `FROM`.",
+        "Чтобы взять только первые строки, в конце запроса добавь `LIMIT` и число."
+      ],
+      "selfTest": {
+        "correct": ["SELECT full_name, city, registration_date, FROM customers LIMIT 10"],
+        "wrong": ["SELECT full_name, city, registration_date FROM customers", "SELECT full_name, city, registration_date FROM customers LIMIT 5"]
+      }
+    },
+    {
+      "id": "aliases",
+      "title": "Понятные названия",
+      "difficulty": 2,
+      "prompt": "Выведи из таблицы `orders` номер заказа (`order_id`) и сумму заказа (`amount`) — **первые 5 строк**. В результате столбцы должны называться `id` и `total`.",
+      "solution": "SELECT order_id AS id, amount AS total\nFROM orders\nLIMIT 5;",
+      "checkColumnNames": true,
+      "hints": [
+        "Новое имя столбцу даётся словом `AS` сразу после названия столбца.",
+        "Например: `SELECT order_id AS id, ...`. Не забудь про `LIMIT`."
+      ],
+      "selfTest": {
+        "correct": ["SELECT order_id id, amount total FROM orders LIMIT 5"],
+        "wrong": ["SELECT order_id, amount FROM orders LIMIT 5", "SELECT order_id AS id, amount AS sum FROM orders LIMIT 5"]
+      }
+    }
+  ]
+}

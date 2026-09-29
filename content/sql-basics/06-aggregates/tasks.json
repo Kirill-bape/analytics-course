@@ -1,0 +1,88 @@
+{
+  "tasks": [
+    {
+      "id": "customers-count",
+      "title": "Сколько у нас клиентов",
+      "difficulty": 1,
+      "prompt": "Посчитай, сколько **всего клиентов** в таблице `customers`. Результат — одно число.",
+      "solution": "SELECT COUNT(*) AS customers_cnt\nFROM customers;",
+      "hints": [
+        "Количество строк считает функция `COUNT`.",
+        "`SELECT COUNT(*) FROM customers;`"
+      ],
+      "selfTest": {
+        "correct": ["SELECT COUNT(customer_id) FROM customers", "SELECT COUNT(DISTINCT customer_id) FROM customers"],
+        "wrong": ["SELECT COUNT(city) FROM customers", "SELECT COUNT(DISTINCT city) FROM customers"]
+      }
+    },
+    {
+      "id": "revenue",
+      "title": "Выручка магазина",
+      "difficulty": 2,
+      "prompt": "Посчитай **выручку** — сумму `amount` по всем **доставленным** заказам (`status = 'delivered'`).",
+      "solution": "SELECT SUM(amount) AS revenue\nFROM orders\nWHERE status = 'delivered';",
+      "hints": [
+        "Сумму значений считает `SUM`.",
+        "Не все заказы приносят деньги: отфильтруй доставленные через `WHERE status = 'delivered'`."
+      ],
+      "selfTest": {
+        "wrong": ["SELECT SUM(amount) FROM orders", "SELECT SUM(amount + discount) FROM orders WHERE status = 'delivered'"]
+      }
+    },
+    {
+      "id": "avg-check",
+      "title": "Средний чек",
+      "difficulty": 2,
+      "prompt": "Посчитай **средний чек** — среднюю сумму доставленного заказа, **округлённую до 2 знаков** после запятой.",
+      "solution": "SELECT ROUND(AVG(amount), 2) AS avg_check\nFROM orders\nWHERE status = 'delivered';",
+      "hints": [
+        "Среднее считает функция `AVG`, округление — `ROUND(значение, 2)`.",
+        "Функции можно вкладывать друг в друга: `ROUND(AVG(amount), 2)`."
+      ],
+      "selfTest": {
+        "correct": ["SELECT ROUND(SUM(amount) / COUNT(*), 2) FROM orders WHERE status = 'delivered'"],
+        "wrong": ["SELECT AVG(amount) FROM orders WHERE status = 'delivered'", "SELECT ROUND(AVG(amount), 2) FROM orders"]
+      }
+    },
+    {
+      "id": "sbp-summary",
+      "title": "Сводка по оплатам через СБП",
+      "difficulty": 3,
+      "prompt": [
+        "Собери в **одну строку** сводку по доставленным заказам, оплаченным через СБП (`payment_method = 'sbp'`):",
+        "",
+        "- `orders_cnt` — количество заказов;",
+        "- `buyers_cnt` — количество **разных** покупателей;",
+        "- `min_amount` и `max_amount` — минимальная и максимальная сумма заказа."
+      ],
+      "solution": "SELECT COUNT(*) AS orders_cnt,\n       COUNT(DISTINCT customer_id) AS buyers_cnt,\n       MIN(amount) AS min_amount,\n       MAX(amount) AS max_amount\nFROM orders\nWHERE status = 'delivered'\n  AND payment_method = 'sbp';",
+      "checkColumnNames": true,
+      "hints": [
+        "В одном `SELECT` можно написать несколько агрегатных функций через запятую.",
+        "Количество разных покупателей — `COUNT(DISTINCT customer_id)`. Каждому столбцу дай имя через `AS`."
+      ],
+      "selfTest": {
+        "wrong": ["SELECT COUNT(*) AS orders_cnt, COUNT(customer_id) AS buyers_cnt, MIN(amount) AS min_amount, MAX(amount) AS max_amount FROM orders WHERE status = 'delivered' AND payment_method = 'sbp'"]
+      }
+    },
+    {
+      "id": "cancel-rate",
+      "title": "Доля отмен",
+      "difficulty": 3,
+      "prompt": "Какой **процент** заказов отменён? Посчитай долю заказов со статусом `cancelled` от **всех** заказов, в процентах, **округлённую до 1 знака**.",
+      "solution": "SELECT ROUND(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) AS cancel_rate_pct\nFROM orders;",
+      "hints": [
+        "Нужно два числа: сколько отменённых заказов и сколько заказов всего. Оба можно посчитать в одном запросе.",
+        "Количество отменённых без `WHERE`: `SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END)`.",
+        "Раздели его на `COUNT(*)`, умножь на 100 и округли: `ROUND(… * 100.0 / COUNT(*), 1)`."
+      ],
+      "selfTest": {
+        "correct": [
+          "SELECT ROUND(AVG(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) * 100, 1) FROM orders",
+          "SELECT ROUND(COUNT(*) FILTER (WHERE status = 'cancelled') * 100.0 / COUNT(*), 1) FROM orders"
+        ],
+        "wrong": ["SELECT COUNT(*) FROM orders WHERE status = 'cancelled'", "SELECT ROUND(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) / COUNT(*), 1) FROM orders"]
+      }
+    }
+  ]
+}
