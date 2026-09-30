@@ -4,8 +4,9 @@
 import { useMemo } from 'react';
 import { marked, type Token, type Tokens, type TokensList } from 'marked';
 import { SqlExample } from './SqlExample';
+import { PythonExample } from './PythonExample';
 
-type Segment = { kind: 'html'; html: string } | { kind: 'sql'; code: string };
+type Segment = { kind: 'html'; html: string } | { kind: 'sql' | 'python'; code: string };
 
 export function mdInline(text: string): string {
   return marked.parseInline(text, { async: false });
@@ -27,9 +28,10 @@ export function Markdown({ source, runnable = false }: { source: string; runnabl
       buffer = [];
     };
     for (const t of tokens) {
-      if (runnable && t.type === 'code' && (t as Tokens.Code).lang === 'sql') {
+      const lang = t.type === 'code' ? (t as Tokens.Code).lang : '';
+      if (runnable && (lang === 'sql' || lang === 'python')) {
         flush();
-        out.push({ kind: 'sql', code: (t as Tokens.Code).text });
+        out.push({ kind: lang, code: (t as Tokens.Code).text });
       } else {
         buffer.push(t);
       }
@@ -41,7 +43,13 @@ export function Markdown({ source, runnable = false }: { source: string; runnabl
   return (
     <div className="markdown">
       {segments.map((s, i) =>
-        s.kind === 'html' ? <div key={i} dangerouslySetInnerHTML={{ __html: s.html }} /> : <SqlExample key={i} code={s.code} />,
+        s.kind === 'html' ? (
+          <div key={i} dangerouslySetInnerHTML={{ __html: s.html }} />
+        ) : s.kind === 'sql' ? (
+          <SqlExample key={i} code={s.code} />
+        ) : (
+          <PythonExample key={i} code={s.code} />
+        ),
       )}
     </div>
   );

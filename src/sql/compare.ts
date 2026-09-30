@@ -131,10 +131,70 @@ function limitNumber(sql: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
-function missingFeatures(userCode: string, solution: string, orderMatters: boolean): string[] {
-  const u = codeOnly(userCode);
-  const s = codeOnly(solution);
-  return FEATURES.filter(
+export type Lang = 'sql' | 'python';
+
+const PY_FEATURES: Feature[] = [
+  { name: 'filter', re: /\[[^\]]*(==|!=|>=|<=|>|<|\.isin\(|\.str\.|\.isna\(|\.notna\()/, alt: /\.query\(|\.loc\[/, text: 'нужно отобрать строки по условию — `df[df["столбец"] == значение]`' },
+  { name: 'groupby', re: /\.groupby\(/, alt: /\.pivot_table\(|\.value_counts\(/, text: 'нужно сгруппировать данные — `.groupby("столбец")`' },
+  { name: 'merge', re: /\.merge\(/, alt: /\.join\(/, text: 'нужно объединить таблицы — `.merge(...)`' },
+  { name: 'sort', re: /\.sort_values\(/, alt: /\.nlargest\(|\.nsmallest\(/, text: 'важен порядок строк — нужна сортировка `.sort_values(...)`', onlyIfOrder: true },
+  { name: 'desc', re: /ascending\s*=\s*False/, alt: /\.nlargest\(/, text: 'нужна сортировка по убыванию — `ascending=False`', onlyIfOrder: true },
+  { name: 'head', re: /\.head\(/, alt: /\.nlargest\(|\.nsmallest\(|\.iloc\[/, text: 'нужны только первые строки — `.head(N)`' },
+  { name: 'unique', re: /\.drop_duplicates\(|\.unique\(|\.nunique\(/, text: 'нужны значения без повторов — `.drop_duplicates()` или `.nunique()`' },
+  { name: 'fillna', re: /\.fillna\(/, text: 'пустые значения нужно чем-то заменить — `.fillna(...)`' },
+  { name: 'dropna', re: /\.dropna\(|\.notna\(|\.isna\(/, text: 'важны пустые значения (NaN) — пригодятся `.isna()` / `.dropna()`' },
+  { name: 'round', re: /\.round\(|\bround\(/, text: 'значения нужно округлить — `.round(знаков)`' },
+];
+
+interface Vocab {
+  extraCols: string;
+  fewerCols: string;
+  aggHint: string;
+  dupHint: string;
+  tooMany: string;
+  tooFew: string;
+  rename: string;
+  order: string;
+  colOrder: string;
+  round: (k: number) => string;
+  roundLess: string;
+  tooBig: string;
+}
+const VOCAB: Record<Lang, Vocab> = {
+  sql: {
+    extraCols: 'Выведи только те столбцы, которые перечислены в задании. `SELECT *` выводит все столбцы таблицы — здесь это лишнее.',
+    fewerCols: 'Перечитай задание: какие данные просят показать? Каждый нужный столбец перечисли после `SELECT` через запятую.',
+    aggHint: 'Должна получиться **одна строка** с итогом. Чтобы свернуть много строк в одно число, используют агрегатные функции: `COUNT`, `SUM`, `AVG`, `MIN`, `MAX`.',
+    dupHint: 'В твоём результате есть **повторяющиеся** строки. Убрать повторы помогает `DISTINCT`.',
+    tooMany: 'Проверь условия отбора: все ли условия из задания учтены? Если в условии есть `OR`, не забыты ли скобки? Если нужны только первые N строк — есть ли `LIMIT`?',
+    tooFew: 'Похоже, условие отбора слишком строгое. Проверь: `>` или `>=`? `AND` или `OR`? Совпадает ли написание значений с данными (регистр букв)? Не стоит ли лишний `LIMIT`?',
+    rename: 'Задать имя столбцу можно через `AS`: `price - cost_price AS profit`.',
+    order: 'Проверь `ORDER BY`: по какому столбцу сортировать и в какую сторону (`ASC` — по возрастанию, `DESC` — по убыванию). Если в задании сказано, как сортировать при равных значениях, добавь второй столбец через запятую.',
+    colOrder: 'Столбцы выводятся в том порядке, в котором перечислены после `SELECT`.',
+    round: (k) => `Используй \`ROUND(значение, ${k})\`.`,
+    roundLess: 'Проверь второй аргумент в `ROUND` (сколько знаков после запятой оставить).',
+    tooBig: 'Возможно, в расчёт попали лишние строки: все ли условия из задания учтены в `WHERE`?',
+  },
+  python: {
+    extraCols: 'Оставь только те столбцы, которые нужны в задании: `df[["столбец1", "столбец2"]]`.',
+    fewerCols: 'Перечитай задание: какие столбцы нужны в результате? Выбрать несколько столбцов можно так: `df[["столбец1", "столбец2"]]`.',
+    aggHint: 'Должно получиться **одно значение** (итог). Посчитать его помогают `.sum()`, `.mean()`, `.count()`, `len(df)`.',
+    dupHint: 'В твоём результате есть **повторяющиеся** строки. Убрать повторы помогает `.drop_duplicates()`.',
+    tooMany: 'Проверь фильтр: все ли условия учтены? В pandas условия объединяют через `&` (и) и `|` (или), каждое условие — в скобках. Если нужны только первые N строк — есть ли `.head(N)`?',
+    tooFew: 'Похоже, фильтр слишком строгий. Проверь: `>` или `>=`? `&` или `|`? Совпадает ли написание значений с данными (регистр букв)?',
+    rename: 'Переименовать столбцы можно через `.rename(columns={"старое": "новое"})` или сразу в `.agg(новое=("столбец", "sum"))`.',
+    order: 'Проверь `.sort_values(...)`: по какому столбцу сортировать и в какую сторону (`ascending=False` — по убыванию). Для сортировки по двум столбцам передай список: `.sort_values(["a", "b"])`.',
+    colOrder: 'Порядок столбцов задаётся списком: `df[["a", "b", "c"]]`.',
+    round: (k) => `Используй \`.round(${k})\`.`,
+    roundLess: 'Проверь, до скольких знаков округлять (число в `.round(...)`).',
+    tooBig: 'Возможно, в расчёт попали лишние строки: все ли условия фильтра учтены?',
+  },
+};
+
+function missingFeatures(userCode: string, solution: string, orderMatters: boolean, lang: Lang): string[] {
+  const u = lang === 'sql' ? codeOnly(userCode) : userCode;
+  const s = lang === 'sql' ? codeOnly(solution) : solution;
+  return (lang === 'sql' ? FEATURES : PY_FEATURES).filter(
     (f) => f.re.test(s) && !f.re.test(u) && !(f.alt && f.alt.test(u)) && (!f.onlyIfOrder || orderMatters),
   ).map((f) => f.text);
 }
@@ -164,9 +224,11 @@ export function compareResults(
   opts: CheckOptions,
   userCode: string,
   solution: string,
+  lang: Lang = 'sql',
 ): CheckOutcome {
+  const V = VOCAB[lang];
   const orderMatters = Boolean(opts.orderMatters);
-  const hints = missingFeatures(userCode, solution, orderMatters);
+  const hints = missingFeatures(userCode, solution, orderMatters, lang);
   const hintLine = hints.length ? [`💡 Подсказка: в этом задании ${hints[0]}.`] : [];
 
   const U = user.rows;
@@ -196,8 +258,8 @@ export function compareResults(
     if (!details.length) {
       details.push(
         uc > ec
-          ? 'Выведи только те столбцы, которые перечислены в задании. `SELECT *` выводит все столбцы таблицы — здесь это лишнее.'
-          : 'Перечитай задание: какие данные просят показать? Каждый нужный столбец перечисли после `SELECT` через запятую.',
+          ? V.extraCols
+          : V.fewerCols,
       );
     }
     return {
@@ -215,8 +277,8 @@ export function compareResults(
     const userInsideExpected = U.length > 0 && U.every((r) => eKeys.has(rowKey(r)));
     const expectedInsideUser = E.every((r) => uKeys.has(rowKey(r)));
 
-    const uLimit = limitNumber(userCode);
-    const sLimit = limitNumber(solution);
+    const uLimit = lang === 'sql' ? limitNumber(userCode) : null;
+    const sLimit = lang === 'sql' ? limitNumber(solution) : null;
     if (uLimit !== null && sLimit !== null && uLimit !== sLimit && U.length === uLimit) {
       details.push('Проверь число в `LIMIT` — сколько строк просят в задании?');
     } else if (U.length === 0) {
@@ -224,17 +286,20 @@ export function compareResults(
         'Запрос не вернул ни одной строки. Частая причина — значение написано не так, как в данных: регистр букв важен (`\'Москва\'` ≠ `\'москва\'`), лишний пробел, другая форма слова. Или условие невыполнимо, например `price > 100 AND price < 50`.',
       );
     } else if (E.length === 1 && U.length > 1) {
-      details.push('Должна получиться **одна строка** с итогом. Чтобы свернуть много строк в одно число, используют агрегатные функции: `COUNT`, `SUM`, `AVG`, `MIN`, `MAX`.');
+      details.push(V.aggHint);
     } else if (U.length > E.length) {
       if (expectedInsideUser) details.push('Все нужные строки у тебя есть, но есть и лишние.');
-      if (/\bdistinct\b/i.test(codeOnly(solution)) && !/\bdistinct\b/i.test(codeOnly(userCode)) && new Set(U.map(rowKey)).size < U.length) {
-        details.push('В твоём результате есть **повторяющиеся** строки. Убрать повторы помогает `DISTINCT`.');
+      const dedupe = lang === 'sql' ? /\bdistinct\b/i : /drop_duplicates|unique\(/;
+      const sol = lang === 'sql' ? codeOnly(solution) : solution;
+      const usr = lang === 'sql' ? codeOnly(userCode) : userCode;
+      if (dedupe.test(sol) && !dedupe.test(usr) && new Set(U.map(rowKey)).size < U.length) {
+        details.push(V.dupHint);
       } else {
-        details.push('Проверь условия отбора: все ли условия из задания учтены? Если в условии есть `OR`, не забыты ли скобки? Если нужны только первые N строк — есть ли `LIMIT`?');
+        details.push(V.tooMany);
       }
     } else {
       if (userInsideExpected) details.push('Все строки, которые у тебя есть, правильные — но некоторых не хватает.');
-      details.push('Похоже, условие отбора слишком строгое. Проверь: `>` или `>=`? `AND` или `OR`? Совпадает ли написание значений с данными (регистр букв)? Не стоит ли лишний `LIMIT`?');
+      details.push(V.tooFew);
     }
     return {
       ok: false,
@@ -255,7 +320,7 @@ export function compareResults(
           title: 'Данные верные! Осталось правильно назвать столбцы.',
           details: [
             `Столбцы должны называться: ${expected.columns.map((c) => `\`${c}\``).join(', ')}. Сейчас: ${user.columns.map((c) => `\`${c}\``).join(', ')}.`,
-            'Задать имя столбцу можно через `AS`: `price - cost_price AS profit`.',
+            V.rename,
           ],
         };
       }
@@ -269,7 +334,7 @@ export function compareResults(
       ok: false,
       title: 'Данные правильные, но порядок строк другой.',
       details: [
-        'Проверь `ORDER BY`: по какому столбцу сортировать и в какую сторону (`ASC` — по возрастанию, `DESC` — по убыванию). Если в задании сказано, как сортировать при равных значениях, добавь второй столбец через запятую.',
+        V.order,
       ],
     };
   }
@@ -287,7 +352,7 @@ export function compareResults(
       return {
         ok: false,
         title: 'Все данные есть, но столбцы идут в другом порядке.',
-        details: [`Нужный порядок столбцов: ${expected.columns.map((c) => `\`${c}\``).join(', ')}. Столбцы выводятся в том порядке, в котором перечислены после \`SELECT\`.`],
+        details: [`Нужный порядок столбцов: ${expected.columns.map((c) => `\`${c}\``).join(', ')}. ${V.colOrder}`],
       };
     }
   }
@@ -313,9 +378,9 @@ export function compareResults(
     const eqAfter = (a: Cell[], b: Cell[], k: number) =>
       a.every((v, j) => (v === null ? b[j] === null : typeof b[j] === 'number' && cellEq(roundTo(v as number, k), b[j])));
     if (uDec > eDec && eqAfter(uCol, eCol, eDec)) {
-      details.push(`Почти! Значения в столбце \`${user.columns[i]}\` совпадают, если округлить их до ${eDec} ${plural(eDec, 'знака', 'знаков', 'знаков')} после запятой. Используй \`ROUND(значение, ${eDec})\`.`);
+      details.push(`Почти! Значения в столбце \`${user.columns[i]}\` совпадают, если округлить их до ${eDec} ${plural(eDec, 'знака', 'знаков', 'знаков')} после запятой. ${V.round(eDec)}`);
     } else if (eDec > uDec && eqAfter(eCol, uCol, uDec)) {
-      details.push(`Значения в столбце \`${user.columns[i]}\` округлены сильнее, чем нужно. Проверь второй аргумент в \`ROUND\` (сколько знаков после запятой оставить).`);
+      details.push(`Значения в столбце \`${user.columns[i]}\` округлены сильнее, чем нужно. ${V.roundLess}`);
     }
   }
 
@@ -327,7 +392,7 @@ export function compareResults(
         details.push(`Твой ответ: **${u}**. Он ${u > e ? 'больше' : 'меньше'} правильного.`);
         details.push(
           u > e
-            ? 'Возможно, в расчёт попали лишние строки: все ли условия из задания учтены в `WHERE`?'
+            ? V.tooBig
             : 'Возможно, в расчёт попало меньше строк, чем нужно, или выбрана не та функция/столбец.',
         );
       } else {

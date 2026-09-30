@@ -6,14 +6,43 @@
       "title": "Клиенты",
       "description": "Все зарегистрированные клиенты магазина. Часть клиентов зарегистрировалась, но ещё ничего не купила.",
       "columns": [
-        { "name": "customer_id", "type": "INTEGER", "description": "Уникальный номер клиента" },
-        { "name": "full_name", "type": "VARCHAR", "description": "Имя и фамилия" },
-        { "name": "gender", "type": "VARCHAR", "description": "Пол: 'female' или 'male'" },
-        { "name": "birth_date", "type": "DATE", "description": "Дата рождения. Бывает пустой (NULL) — клиент не указал" },
-        { "name": "city", "type": "VARCHAR", "description": "Город. Бывает пустым (NULL)" },
-        { "name": "registration_date", "type": "DATE", "description": "Дата регистрации (с 2024-01-01)" },
-        { "name": "acquisition_channel", "type": "VARCHAR", "description": "Откуда пришёл: 'organic' (поиск), 'ads' (реклама), 'social' (соцсети), 'referral' (по приглашению друга), 'bloggers' (блогеры)" }
-      ]
+        {
+          "name": "customer_id",
+          "type": "INTEGER",
+          "description": "Уникальный номер клиента"
+        },
+        {
+          "name": "full_name",
+          "type": "VARCHAR",
+          "description": "Имя и фамилия"
+        },
+        {
+          "name": "gender",
+          "type": "VARCHAR",
+          "description": "Пол: 'female' или 'male'"
+        },
+        {
+          "name": "birth_date",
+          "type": "DATE",
+          "description": "Дата рождения. Бывает пустой (NULL) — клиент не указал"
+        },
+        {
+          "name": "city",
+          "type": "VARCHAR",
+          "description": "Город. Бывает пустым (NULL)"
+        },
+        {
+          "name": "registration_date",
+          "type": "DATE",
+          "description": "Дата регистрации (с 2024-01-01)"
+        },
+        {
+          "name": "acquisition_channel",
+          "type": "VARCHAR",
+          "description": "Откуда пришёл: 'organic' (поиск), 'ads' (реклама), 'social' (соцсети), 'referral' (по приглашению друга), 'bloggers' (блогеры)"
+        }
+      ],
+      "group": "shop"
     },
     {
       "name": "products",
@@ -21,14 +50,43 @@
       "title": "Товары",
       "description": "Каталог товаров с текущими ценами.",
       "columns": [
-        { "name": "product_id", "type": "INTEGER", "description": "Уникальный номер товара" },
-        { "name": "product_name", "type": "VARCHAR", "description": "Название товара" },
-        { "name": "category", "type": "VARCHAR", "description": "Категория: 'Электроника', 'Бытовая техника', 'Одежда и обувь', 'Дом и кухня', 'Красота и здоровье', 'Книги', 'Спорт и отдых', 'Детские товары'" },
-        { "name": "brand", "type": "VARCHAR", "description": "Бренд (для книг — издательство)" },
-        { "name": "price", "type": "DECIMAL(12,2)", "description": "Текущая цена продажи, ₽" },
-        { "name": "cost_price", "type": "DECIMAL(12,2)", "description": "Себестоимость — сколько товар стоит магазину, ₽" },
-        { "name": "rating", "type": "DECIMAL(3,1)", "description": "Средняя оценка покупателей от 1 до 5. NULL — отзывов ещё нет" }
-      ]
+        {
+          "name": "product_id",
+          "type": "INTEGER",
+          "description": "Уникальный номер товара"
+        },
+        {
+          "name": "product_name",
+          "type": "VARCHAR",
+          "description": "Название товара"
+        },
+        {
+          "name": "category",
+          "type": "VARCHAR",
+          "description": "Категория: 'Электроника', 'Бытовая техника', 'Одежда и обувь', 'Дом и кухня', 'Красота и здоровье', 'Книги', 'Спорт и отдых', 'Детские товары'"
+        },
+        {
+          "name": "brand",
+          "type": "VARCHAR",
+          "description": "Бренд (для книг — издательство)"
+        },
+        {
+          "name": "price",
+          "type": "DECIMAL(12,2)",
+          "description": "Текущая цена продажи, ₽"
+        },
+        {
+          "name": "cost_price",
+          "type": "DECIMAL(12,2)",
+          "description": "Себестоимость — сколько товар стоит магазину, ₽"
+        },
+        {
+          "name": "rating",
+          "type": "DECIMAL(3,1)",
+          "description": "Средняя оценка покупателей от 1 до 5. NULL — отзывов ещё нет"
+        }
+      ],
+      "group": "shop"
     },
     {
       "name": "orders",
@@ -36,16 +94,53 @@
       "title": "Заказы",
       "description": "Заказы с 2025-01-01 по 2026-06-30. Одна строка — один заказ.",
       "columns": [
-        { "name": "order_id", "type": "INTEGER", "description": "Уникальный номер заказа" },
-        { "name": "customer_id", "type": "INTEGER", "description": "Кто заказал (номер из customers)" },
-        { "name": "order_date", "type": "DATE", "description": "Дата заказа" },
-        { "name": "status", "type": "VARCHAR", "description": "'delivered' — доставлен, 'cancelled' — отменён, 'returned' — возвращён, 'shipped' — в пути, 'processing' — в обработке" },
-        { "name": "payment_method", "type": "VARCHAR", "description": "Оплата: 'card' — картой, 'sbp' — через СБП, 'cash' — наличными при получении" },
-        { "name": "promo_code", "type": "VARCHAR", "description": "Применённый промокод. NULL — без промокода" },
-        { "name": "discount", "type": "DECIMAL(12,2)", "description": "Скидка по промокоду, ₽ (0 — скидки не было)" },
-        { "name": "amount", "type": "DECIMAL(12,2)", "description": "Сумма заказа после скидки, ₽" },
-        { "name": "delivery_date", "type": "DATE", "description": "Дата доставки. NULL — заказ отменён или ещё не доставлен" }
-      ]
+        {
+          "name": "order_id",
+          "type": "INTEGER",
+          "description": "Уникальный номер заказа"
+        },
+        {
+          "name": "customer_id",
+          "type": "INTEGER",
+          "description": "Кто заказал (номер из customers)"
+        },
+        {
+          "name": "order_date",
+          "type": "DATE",
+          "description": "Дата заказа"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR",
+          "description": "'delivered' — доставлен, 'cancelled' — отменён, 'returned' — возвращён, 'shipped' — в пути, 'processing' — в обработке"
+        },
+        {
+          "name": "payment_method",
+          "type": "VARCHAR",
+          "description": "Оплата: 'card' — картой, 'sbp' — через СБП, 'cash' — наличными при получении"
+        },
+        {
+          "name": "promo_code",
+          "type": "VARCHAR",
+          "description": "Применённый промокод. NULL — без промокода"
+        },
+        {
+          "name": "discount",
+          "type": "DECIMAL(12,2)",
+          "description": "Скидка по промокоду, ₽ (0 — скидки не было)"
+        },
+        {
+          "name": "amount",
+          "type": "DECIMAL(12,2)",
+          "description": "Сумма заказа после скидки, ₽"
+        },
+        {
+          "name": "delivery_date",
+          "type": "DATE",
+          "description": "Дата доставки. NULL — заказ отменён или ещё не доставлен"
+        }
+      ],
+      "group": "shop"
     },
     {
       "name": "order_items",
@@ -53,12 +148,228 @@
       "title": "Позиции заказов",
       "description": "Что лежало в каждом заказе. Одна строка — один товар в заказе.",
       "columns": [
-        { "name": "item_id", "type": "INTEGER", "description": "Уникальный номер позиции" },
-        { "name": "order_id", "type": "INTEGER", "description": "Номер заказа (из orders)" },
-        { "name": "product_id", "type": "INTEGER", "description": "Номер товара (из products)" },
-        { "name": "quantity", "type": "INTEGER", "description": "Количество штук" },
-        { "name": "price", "type": "DECIMAL(12,2)", "description": "Цена за штуку на момент покупки, ₽ (может отличаться от текущей цены в products)" }
+        {
+          "name": "item_id",
+          "type": "INTEGER",
+          "description": "Уникальный номер позиции"
+        },
+        {
+          "name": "order_id",
+          "type": "INTEGER",
+          "description": "Номер заказа (из orders)"
+        },
+        {
+          "name": "product_id",
+          "type": "INTEGER",
+          "description": "Номер товара (из products)"
+        },
+        {
+          "name": "quantity",
+          "type": "INTEGER",
+          "description": "Количество штук"
+        },
+        {
+          "name": "price",
+          "type": "DECIMAL(12,2)",
+          "description": "Цена за штуку на момент покупки, ₽ (может отличаться от текущей цены в products)"
+        }
+      ],
+      "group": "shop"
+    },
+    {
+      "name": "production_lines",
+      "group": "factory",
+      "file": "factory/production_lines.csv",
+      "title": "Производственные линии",
+      "description": "Линии завода бытовой техники: в каком цехе стоят, когда запущены и сколько могут выпустить за смену.",
+      "columns": [
+        {
+          "name": "line_id",
+          "type": "INTEGER",
+          "description": "Номер линии"
+        },
+        {
+          "name": "line_name",
+          "type": "VARCHAR",
+          "description": "Название линии"
+        },
+        {
+          "name": "workshop",
+          "type": "VARCHAR",
+          "description": "Цех: 'Сборка', 'Упаковка', 'Покраска'"
+        },
+        {
+          "name": "launch_year",
+          "type": "INTEGER",
+          "description": "Год запуска линии (старые линии чаще ломаются)"
+        },
+        {
+          "name": "capacity_per_shift",
+          "type": "INTEGER",
+          "description": "Мощность: сколько изделий линия может выпустить за смену"
+        }
       ]
+    },
+    {
+      "name": "operators",
+      "group": "factory",
+      "file": "factory/operators.csv",
+      "title": "Операторы",
+      "description": "Операторы линий. Каждый оператор закреплён за своей линией.",
+      "columns": [
+        {
+          "name": "operator_id",
+          "type": "INTEGER",
+          "description": "Номер оператора"
+        },
+        {
+          "name": "full_name",
+          "type": "VARCHAR",
+          "description": "Имя и фамилия"
+        },
+        {
+          "name": "workshop",
+          "type": "VARCHAR",
+          "description": "Цех"
+        },
+        {
+          "name": "line_id",
+          "type": "INTEGER",
+          "description": "Линия, за которой закреплён оператор (из production_lines)"
+        },
+        {
+          "name": "experience_years",
+          "type": "INTEGER",
+          "description": "Стаж работы, лет (0–1 — новичок)"
+        },
+        {
+          "name": "hire_date",
+          "type": "DATE",
+          "description": "Дата приёма на работу"
+        }
+      ]
+    },
+    {
+      "name": "production",
+      "group": "factory",
+      "file": "factory/production.csv",
+      "title": "Выпуск продукции",
+      "description": "Итоги каждой смены на каждой линии с 2025-07-01 по 2026-06-30. Одна строка — одна смена одной линии.",
+      "columns": [
+        {
+          "name": "record_id",
+          "type": "INTEGER",
+          "description": "Номер записи"
+        },
+        {
+          "name": "prod_date",
+          "type": "DATE",
+          "description": "Дата смены"
+        },
+        {
+          "name": "line_id",
+          "type": "INTEGER",
+          "description": "Линия (из production_lines)"
+        },
+        {
+          "name": "shift",
+          "type": "VARCHAR",
+          "description": "Смена: 'день' или 'ночь'"
+        },
+        {
+          "name": "operator_id",
+          "type": "INTEGER",
+          "description": "Оператор смены (из operators)"
+        },
+        {
+          "name": "product",
+          "type": "VARCHAR",
+          "description": "Что выпускала линия"
+        },
+        {
+          "name": "planned_units",
+          "type": "INTEGER",
+          "description": "План на смену, шт."
+        },
+        {
+          "name": "produced_units",
+          "type": "INTEGER",
+          "description": "Выпущено фактически, шт."
+        },
+        {
+          "name": "defect_units",
+          "type": "INTEGER",
+          "description": "Из них брак, шт."
+        },
+        {
+          "name": "downtime_min",
+          "type": "INTEGER",
+          "description": "Простой линии за смену, минут. NULL — датчик не передал данные"
+        }
+      ]
+    },
+    {
+      "name": "ab_users",
+      "group": "ab",
+      "file": "ab/ab_users.csv",
+      "title": "Участники A/B-тестов",
+      "description": "Пользователи двух экспериментов магазина: 'checkout_v2' (новая страница оформления заказа) и 'banner_color' (цвет кнопки на баннере). Группа A — старая версия, B — новая.",
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "INTEGER",
+          "description": "Номер пользователя"
+        },
+        {
+          "name": "experiment",
+          "type": "VARCHAR",
+          "description": "Эксперимент: 'checkout_v2' или 'banner_color'"
+        },
+        {
+          "name": "group_name",
+          "type": "VARCHAR",
+          "description": "Группа: 'A' (контрольная, старая версия) или 'B' (тестовая, новая версия)"
+        },
+        {
+          "name": "entry_date",
+          "type": "DATE",
+          "description": "Дата попадания в эксперимент"
+        },
+        {
+          "name": "device",
+          "type": "VARCHAR",
+          "description": "Устройство: 'mobile', 'desktop', 'tablet'"
+        },
+        {
+          "name": "sessions",
+          "type": "INTEGER",
+          "description": "Сколько раз заходил на сайт за время теста"
+        },
+        {
+          "name": "converted",
+          "type": "INTEGER",
+          "description": "1 — сделал покупку, 0 — не сделал"
+        },
+        {
+          "name": "revenue",
+          "type": "DECIMAL(12,2)",
+          "description": "Сумма покупок, ₽ (0, если не купил)"
+        }
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "id": "shop",
+      "title": "Интернет-магазин"
+    },
+    {
+      "id": "factory",
+      "title": "Производство"
+    },
+    {
+      "id": "ab",
+      "title": "A/B-тесты"
     }
   ]
 }

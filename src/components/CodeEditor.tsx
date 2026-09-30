@@ -6,6 +6,7 @@ import { EditorView, keymap, placeholder as placeholderExt } from '@codemirror/v
 import { EditorState, Prec } from '@codemirror/state';
 import { basicSetup } from 'codemirror';
 import { sql, PostgreSQL } from '@codemirror/lang-sql';
+import { python } from '@codemirror/lang-python';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import { tables } from '../content';
@@ -24,6 +25,7 @@ interface Props {
   placeholder?: string;
   apiRef?: React.RefObject<EditorApi | null>;
   compact?: boolean;
+  language?: 'sql' | 'python';
 }
 
 const schema = Object.fromEntries(tables.map((t) => [t.name, t.columns.map((c) => c.name)]));
@@ -54,7 +56,7 @@ const theme = EditorView.theme({
   '.cm-matchingBracket': { backgroundColor: 'var(--code-selection)', outline: 'none' },
 });
 
-export function CodeEditor({ value, onChange, onRun, onCheck, readOnly, placeholder, apiRef, compact }: Props) {
+export function CodeEditor({ value, onChange, onRun, onCheck, readOnly, placeholder, apiRef, compact, language = 'sql' }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const callbacks = useRef({ onChange, onRun, onCheck });
@@ -73,7 +75,8 @@ export function CodeEditor({ value, onChange, onRun, onCheck, readOnly, placehol
             ]),
           ),
           basicSetup,
-          sql({ dialect: PostgreSQL, schema, upperCaseKeywords: true }),
+          language === 'python' ? python() : sql({ dialect: PostgreSQL, schema, upperCaseKeywords: true }),
+          language === 'python' ? EditorState.tabSize.of(4) : [],
           syntaxHighlighting(highlight),
           theme,
           EditorView.lineWrapping,

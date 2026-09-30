@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import { CodeEditor } from './CodeEditor';
 import { ResultTable } from './ResultTable';
+import { Chart, chartFromComment } from './Chart';
 import { ErrorBox } from './ErrorBox';
 import { getDbStatus, runQuery, subscribeDb, type QueryResult } from '../sql/engine';
 import { explainError, type ExplainedError } from '../sql/errors';
@@ -52,6 +53,7 @@ export function SqlExample({ code }: { code: string }) {
         )}
       </div>
       {error && <ErrorBox error={error} />}
+      {result && chartFromComment(value) && <Chart spec={chartFromComment(value)!} columns={result.columns} rows={result.rows} />}
       {result && <ResultTable result={result} maxRows={20} />}
     </div>
   );

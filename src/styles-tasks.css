@@ -1,0 +1,420 @@
+/* ============================================================
+   Цвета графиков (проверенная палитра, светлая и тёмная тема)
+   ============================================================ */
+:root {
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --chart-grid: #e1e0d9;
+  --chart-axis: #c3c2b7;
+  --chart-muted: #898781;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --chart-grid: #2c2c2a;
+    --chart-axis: #383835;
+  }
+}
+
+/* ============================================================
+   Общие элементы заданий
+   ============================================================ */
+.badge-type {
+  background: transparent;
+}
+.task-help {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.explanation {
+  margin-top: 12px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.solution-answer {
+  margin-top: 10px;
+  font-size: 0.95rem;
+}
+
+/* Тест */
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 6px;
+}
+.quiz-option {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  background: var(--surface);
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.quiz-option:hover {
+  border-color: var(--accent);
+}
+.quiz-option input {
+  margin-top: 4px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+.quiz-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.quiz-option.correct {
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+.quiz-option.wrong {
+  border-color: var(--warn);
+}
+.quiz-text {
+  flex: 1;
+  min-width: 0;
+}
+.quiz-explain {
+  margin-top: 6px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.quiz-explain p {
+  margin: 0;
+}
+
+/* Ответ-число */
+.number-answer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.number-input {
+  font: inherit;
+  font-size: 1.05rem;
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  width: 220px;
+  max-width: 100%;
+}
+.number-input:focus {
+  outline: 2px solid var(--accent-soft);
+  border-color: var(--accent);
+}
+.number-unit {
+  color: var(--text-muted);
+}
+
+/* Чек-лист */
+.checklist {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.checklist label {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.checklist input {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  accent-color: var(--success);
+  flex-shrink: 0;
+}
+.checklist li.done label {
+  background: var(--success-soft);
+  border-color: transparent;
+}
+
+/* ============================================================
+   Электронная таблица
+   ============================================================ */
+.sheet {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.sheet-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.sheet-addr {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  min-width: 44px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+.sheet-fx {
+  font-style: italic;
+  color: var(--text-muted);
+  font-family: Georgia, serif;
+}
+.sheet-bar input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+.sheet-bar input:focus {
+  outline: 2px solid var(--accent-soft);
+  border-color: var(--accent);
+}
+.sheet-scroll {
+  overflow: auto;
+  max-height: 440px;
+  -webkit-overflow-scrolling: touch;
+}
+.sheet-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.87rem;
+  user-select: none;
+}
+.sheet-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.78rem;
+  padding: 4px;
+  border: 1px solid var(--border);
+  z-index: 1;
+}
+.sheet-table tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+.sheet-table th.active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.sheet-corner {
+  z-index: 2 !important;
+  left: 0;
+}
+.sheet-cell {
+  border: 1px solid var(--border);
+  padding: 5px 7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  height: 32px;
+  cursor: cell;
+  touch-action: manipulation;
+}
+.sheet-cell.number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.sheet-cell.header {
+  font-weight: 700;
+  background: var(--surface-2);
+}
+.sheet-cell.free {
+  background: var(--surface);
+}
+.sheet-cell.locked:not(.header) {
+  background: color-mix(in srgb, var(--surface-2) 55%, var(--surface));
+}
+.sheet-cell.formula {
+  color: var(--accent-text);
+}
+.sheet-cell.error {
+  color: var(--error);
+  font-weight: 600;
+}
+.sheet-cell.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border-top: 1px solid var(--border);
+}
+.sheet-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.sheet-hint.error {
+  color: var(--error);
+}
+.sheet-solution {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 2;
+}
+
+/* ============================================================
+   Вывод Python
+   ============================================================ */
+.py-output {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.py-stdout pre {
+  margin: 0;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 0.87rem;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.py-output .result {
+  margin-top: 0;
+}
+.py-figure {
+  max-width: 100%;
+  height: auto;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  align-self: flex-start;
+}
+
+/* ============================================================
+   Графики
+   ============================================================ */
+.chart {
+  position: relative;
+  margin-top: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  overflow: hidden;
+}
+.chart svg {
+  display: block;
+  overflow: visible;
+}
+.chart-grid {
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+}
+.chart-axis {
+  stroke: var(--chart-axis);
+  stroke-width: 1;
+}
+.chart-crosshair {
+  stroke: var(--chart-axis);
+  stroke-width: 1;
+}
+.chart-tick {
+  fill: var(--chart-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.chart-label {
+  fill: var(--text-muted);
+  font-size: 12px;
+}
+.chart-hit {
+  fill: transparent;
+}
+.chart-hit.hover {
+  fill: var(--surface-2);
+}
+.chart-dot {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.chart-legend i,
+.chart-tooltip i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+.chart-tooltip {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+.chart-empty {
+  margin-top: 10px;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+/* Схема данных по группам */
+.schema-group h3 {
+  margin: 18px 0 6px;
+  font-size: 1rem;
+}
+.dev-select {
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}

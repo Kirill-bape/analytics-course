@@ -9,9 +9,12 @@
     "dev": "vite",
     "check": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
-    "generate-data": "node scripts/generate-data.mjs"
+    "generate-data": "node scripts/generate-data.mjs",
+    "setup-python": "node scripts/fetch-pyodide.mjs",
+    "postinstall": "node scripts/fetch-pyodide.mjs"
   },
   "dependencies": {
+    "@codemirror/lang-python": "^6.2.1",
     "@codemirror/lang-sql": "^6.10.0",
     "@codemirror/language": "^6.12.4",
     "@codemirror/state": "^6.7.6",
@@ -20,7 +23,9 @@
     "@lezer/highlight": "^1.2.5",
     "apache-arrow": "^17.0.0",
     "codemirror": "^6.0.2",
+    "hyperformula": "^3.4.0",
     "marked": "^18.0.14",
+    "pyodide": "^314.0.7",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

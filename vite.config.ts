@@ -49,5 +49,6 @@ export default defineConfig({
   plugins: [react(), progressApi()],
   server: { port: 3000, host: '127.0.0.1' },
   preview: { port: 3000, host: '127.0.0.1' },
-  optimizeDeps: { exclude: ['@duckdb/duckdb-wasm'] },
+  optimizeDeps: { exclude: ['@duckdb/duckdb-wasm', 'pyodide'] },
+  worker: { format: 'es' },
 });

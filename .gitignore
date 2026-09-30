@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# Python для офлайн-режима — скачивается командой npm run setup-python
+public/pyodide/
 # Личный прогресс — не храним в истории кода
 progress.json
 progress.json.tmp

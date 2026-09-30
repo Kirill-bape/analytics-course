@@ -4,8 +4,9 @@ import { href } from '../router';
 import { useProgress } from '../progress';
 import { topicStats } from '../stats';
 import { Markdown } from '../components/Markdown';
-import { TaskCard } from '../components/TaskCard';
+import { TaskCard } from '../components/tasks/TaskCard';
 import { plural } from '../sql/compare';
+import { ensurePython } from '../python/engine';
 
 export function TopicPage({ moduleId, topicId }: { moduleId: string; topicId: string }) {
   const topic = findTopic(moduleId, topicId);
@@ -15,6 +16,13 @@ export function TopicPage({ moduleId, topicId }: { moduleId: string; topicId: st
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [moduleId, topicId]);
+
+  // В темах с Python заранее запускаем Python, чтобы не ждать при первом запуске
+  useEffect(() => {
+    if (topic?.ready && (topic.tasks.some((t) => t.type === 'python') || topic.lesson.includes('```python'))) {
+      ensurePython().catch(() => undefined);
+    }
+  }, [topic]);
 
   if (!topic || !module) {
     return (

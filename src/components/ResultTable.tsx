@@ -1,15 +1,15 @@
 import { formatCell, type QueryResult } from '../sql/engine';
 import { plural } from '../sql/compare';
 
-export function ResultTable({ result, maxRows = 200 }: { result: QueryResult; maxRows?: number }) {
+export function ResultTable({ result, maxRows = 200, total }: { result: QueryResult; maxRows?: number; total?: number }) {
   const shown = result.rows.slice(0, maxRows);
-  const n = result.rows.length;
+  const n = total ?? result.rows.length;
   return (
     <div className="result">
       <div className="result-meta">
         {n} {plural(n, 'строка', 'строки', 'строк')} · {result.columns.length}{' '}
         {plural(result.columns.length, 'столбец', 'столбца', 'столбцов')} · {result.ms} мс
-        {n > maxRows && <span className="muted"> — показаны первые {maxRows}</span>}
+        {n > shown.length && <span className="muted"> — показаны первые {shown.length}</span>}
       </div>
       {n === 0 ? (
         <div className="result-empty">Запрос выполнен, но не вернул ни одной строки.</div>

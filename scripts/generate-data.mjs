@@ -539,6 +539,149 @@ writeCsv('orders.csv', ['order_id', 'customer_id', 'order_date', 'status', 'paym
 writeCsv('order_items.csv', ['item_id', 'order_id', 'product_id', 'quantity', 'price'],
   orderItems.map((i) => ({ ...i, price: i.price.toFixed(2) })));
 
+// ===========================================================================
+// ПРОИЗВОДСТВО: завод бытовой техники (свой генератор случайных чисел,
+// чтобы данные магазина не менялись)
+// ===========================================================================
+{
+  const r = mulberry32(777);
+  const rInt = (min, max) => min + Math.floor(r() * (max - min + 1));
+  const rNorm = (mean, sd) => mean + sd * Math.sqrt(-2 * Math.log(1 - r())) * Math.cos(2 * Math.PI * r());
+  const rPick = (arr) => arr[Math.floor(r() * arr.length)];
+  const OUT_F = join(ROOT, 'public', 'data', 'factory');
+  mkdirSync(OUT_F, { recursive: true });
+
+  const lines = [
+    { line_id: 1, line_name: 'Линия А1', workshop: 'Сборка', launch_year: 2019, capacity_per_shift: 420, product: 'Чайник электрический', wear: 1.0 },
+    { line_id: 2, line_name: 'Линия А2', workshop: 'Сборка', launch_year: 2023, capacity_per_shift: 480, product: 'Чайник электрический', wear: 0.7 },
+    { line_id: 3, line_name: 'Линия Б1', workshop: 'Сборка', launch_year: 2016, capacity_per_shift: 300, product: 'Блендер погружной', wear: 1.6 },
+    { line_id: 4, line_name: 'Линия Б2', workshop: 'Сборка', launch_year: 2024, capacity_per_shift: 360, product: 'Блендер погружной', wear: 0.6 },
+    { line_id: 5, line_name: 'Линия В1', workshop: 'Упаковка', launch_year: 2018, capacity_per_shift: 900, product: 'Упаковка комплектов', wear: 1.1 },
+    { line_id: 6, line_name: 'Линия Г1', workshop: 'Покраска', launch_year: 2021, capacity_per_shift: 520, product: 'Корпуса утюгов', wear: 0.9 },
+  ];
+
+  const FIRST = ['Алексей', 'Сергей', 'Ирина', 'Олег', 'Наталья', 'Дмитрий', 'Елена', 'Виктор', 'Андрей', 'Татьяна',
+    'Павел', 'Светлана', 'Игорь', 'Марина', 'Роман', 'Юлия', 'Николай', 'Ольга', 'Максим', 'Анна', 'Артём', 'Галина', 'Денис', 'Людмила'];
+  const LAST_M = ['Кузнецов', 'Соколов', 'Морозов', 'Волков', 'Лебедев', 'Козлов', 'Новиков', 'Павлов', 'Семёнов', 'Голубев', 'Виноградов', 'Богданов'];
+  const operators = [];
+  for (let i = 1; i <= 24; i++) {
+    const first = FIRST[i - 1];
+    const female = /[ая]$/.test(first);
+    const last = rPick(LAST_M) + (female ? 'а' : '');
+    const line = lines[(i - 1) % lines.length];
+    const exp = i % 5 === 0 ? rInt(0, 1) : rInt(1, 22); // среди операторов есть новички
+    const hire = fmt(day('2026-06-30') - Math.round(exp * 365 + rInt(0, 300)));
+    operators.push({ operator_id: i, full_name: `${first} ${last}`, workshop: line.workshop, line_id: line.line_id, experience_years: exp, hire_date: hire });
+  }
+
+  const production = [];
+  let recordId = 1;
+  const START = day('2025-07-01');
+  const END = day('2026-06-30');
+  for (let d = START; d <= END; d++) {
+    const s = fmt(d);
+    const wd = weekdayOf(d);
+    if (s >= '2026-01-01' && s <= '2026-01-08') continue; // новогодние каникулы
+    for (const line of lines) {
+      for (const shift of ['день', 'ночь']) {
+        if (wd === 0 && shift === 'ночь') continue; // в воскресенье ночной смены нет
+        if (wd === 0 && line.workshop !== 'Упаковка' && r() < 0.5) continue;
+        const ops = operators.filter((o) => o.line_id === line.line_id);
+        const op = ops[(Math.floor((d - START) / 7) + (shift === 'ночь' ? 1 : 0)) % ops.length];
+        const planned = line.capacity_per_shift - (s.slice(5, 7) === '08' ? 40 : 0);
+        // Простои: старые линии ломаются чаще, в феврале 2026 авария на линии Б1
+        let downtime = Math.max(0, Math.round(rNorm(18 * line.wear, 12 * line.wear)));
+        if (r() < 0.02 * line.wear) downtime += rInt(90, 300);
+        if (line.line_id === 3 && s >= '2026-02-09' && s <= '2026-02-13') downtime += rInt(240, 420);
+        downtime = Math.min(downtime, 480);
+        const available = 1 - downtime / 480;
+        const skill = Math.min(1, 0.9 + op.experience_years * 0.01);
+        const produced = Math.max(0, Math.round(planned * available * skill * (0.95 + r() * 0.08) * (shift === 'ночь' ? 0.96 : 1)));
+        const defectRate = Math.max(0, rNorm(0.018 * line.wear * (op.experience_years < 2 ? 2.2 : 1) * (shift === 'ночь' ? 1.25 : 1), 0.006));
+        const defects = Math.min(produced, Math.round(produced * defectRate));
+        production.push({
+          record_id: recordId++,
+          prod_date: s,
+          line_id: line.line_id,
+          shift,
+          operator_id: op.operator_id,
+          product: line.product,
+          planned_units: planned,
+          produced_units: produced,
+          defect_units: defects,
+          downtime_min: r() < 0.015 ? null : downtime, // датчик иногда не передаёт данные
+        });
+      }
+    }
+  }
+
+  writeCsv2(OUT_F, 'production_lines.csv', ['line_id', 'line_name', 'workshop', 'launch_year', 'capacity_per_shift'], lines);
+  writeCsv2(OUT_F, 'operators.csv', ['operator_id', 'full_name', 'workshop', 'line_id', 'experience_years', 'hire_date'], operators);
+  writeCsv2(OUT_F, 'production.csv', ['record_id', 'prod_date', 'line_id', 'shift', 'operator_id', 'product', 'planned_units', 'produced_units', 'defect_units', 'downtime_min'], production);
+  console.log(`Производство: ${lines.length} линий, ${operators.length} операторов, ${production.length} смен`);
+}
+
+// ===========================================================================
+// A/B-ТЕСТЫ: два эксперимента интернет-магазина
+// ===========================================================================
+{
+  const r = mulberry32(4242);
+  const rNorm = (mean, sd) => mean + sd * Math.sqrt(-2 * Math.log(1 - r())) * Math.cos(2 * Math.PI * r());
+  const rW = (pairs) => {
+    const total = pairs.reduce((s, [, w]) => s + w, 0);
+    let x = r() * total;
+    for (const [v, w] of pairs) {
+      x -= w;
+      if (x < 0) return v;
+    }
+    return pairs[pairs.length - 1][0];
+  };
+  const OUT_AB = join(ROOT, 'public', 'data', 'ab');
+  mkdirSync(OUT_AB, { recursive: true });
+
+  const experiments = [
+    // Новая страница оформления заказа: эффект есть
+    { name: 'checkout_v2', start: '2026-05-04', days: 28, perGroup: 8000, conv: { A: 0.1, B: 0.113 }, avgCheck: { A: 3600, B: 3650 } },
+    // Цвет кнопки на баннере: эффекта нет
+    { name: 'banner_color', start: '2026-06-01', days: 14, perGroup: 3000, conv: { A: 0.05, B: 0.051 }, avgCheck: { A: 2900, B: 2900 } },
+  ];
+  const users = [];
+  let userId = 500001;
+  for (const e of experiments) {
+    for (const group of ['A', 'B']) {
+      for (let i = 0; i < e.perGroup; i++) {
+        const device = rW([['mobile', 62], ['desktop', 31], ['tablet', 7]]);
+        const deviceK = device === 'mobile' ? 0.85 : device === 'desktop' ? 1.3 : 1.0;
+        const converted = r() < e.conv[group] * deviceK ? 1 : 0;
+        const revenue = converted ? Math.round(Math.exp(rNorm(Math.log(e.avgCheck[group]) - 0.18, 0.6))) : 0;
+        users.push({
+          user_id: userId++,
+          experiment: e.name,
+          group_name: group,
+          entry_date: fmt(day(e.start) + Math.floor(r() * e.days)),
+          device,
+          sessions: Math.max(1, Math.round(Math.exp(rNorm(0.7, 0.6)))),
+          converted,
+          revenue: revenue.toFixed(2),
+        });
+      }
+    }
+  }
+  // Перемешиваем, чтобы группы не шли подряд
+  for (let i = users.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    [users[i], users[j]] = [users[j], users[i]];
+  }
+  writeCsv2(OUT_AB, 'ab_users.csv', ['user_id', 'experiment', 'group_name', 'entry_date', 'device', 'sessions', 'converted', 'revenue'], users);
+  console.log(`A/B-тесты: ${users.length} пользователей в ${experiments.length} экспериментах`);
+}
+
+function writeCsv2(dir, name, columns, rows) {
+  const lines = [columns.join(',')];
+  for (const row of rows) lines.push(columns.map((c) => csvValue(row[c])).join(','));
+  writeFileSync(join(dir, name), lines.join('\n') + '\n', 'utf8');
+}
+
 // Короткая сводка, чтобы убедиться, что данные выглядят правдоподобно
 const byStatus = {};
 for (const o of orders) byStatus[o.status] = (byStatus[o.status] || 0) + 1;
