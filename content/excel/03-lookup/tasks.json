@@ -1,0 +1,93 @@
+{
+  "tasks": [
+    {
+      "id": "vlookup-zero",
+      "title": "Зачем ноль в конце",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Что означает последний аргумент `0` в формуле `=ВПР(B2;$G$2:$I$30;2;0)`?",
+      "options": [
+        { "text": "Искать точное совпадение", "correct": true, "explain": "Да. Без него ВПР ищет приблизительное совпадение и может вернуть чужие данные." },
+        { "text": "Вернуть 0, если значение не найдено", "explain": "Нет — если значение не найдено, будет ошибка #Н/Д. Для замены ошибки есть ЕСЛИОШИБКА." },
+        { "text": "Начать поиск с нулевой строки", "explain": "Нет, номера строк тут ни при чём." },
+        { "text": "Взять значение из нулевого столбца", "explain": "Номер столбца — это третий аргумент (2), а не четвёртый." }
+      ],
+      "hints": ["Вспомни раздел урока про приблизительное совпадение."]
+    },
+    {
+      "id": "vlookup-city",
+      "title": "Город клиента",
+      "difficulty": 2,
+      "type": "sheet",
+      "prompt": "Слева — заказы с ID клиента, справа (столбцы G–I) — справочник клиентов. Заполни столбец **D «Город клиента»** с помощью **ВПР**. Формулу — в D2, затем протяни вниз.",
+      "sheet": {
+        "dataSql": "WITH o AS (SELECT row_number() OVER (ORDER BY order_id) AS rn, order_id, customer_id, amount FROM orders WHERE order_id BETWEEN 110200 AND 110211), c AS (SELECT row_number() OVER (ORDER BY customer_id) AS rn, customer_id, COALESCE(city, 'не указан') AS city, acquisition_channel FROM customers WHERE customer_id IN (SELECT customer_id FROM o)) SELECT o.order_id AS \"Заказ\", o.customer_id AS \"ID клиента\", o.amount AS \"Сумма\", NULL AS \"Город клиента\", NULL AS \"Канал клиента\", NULL AS \" \", c.customer_id AS \"Клиент\", c.city AS \"Город\", c.acquisition_channel AS \"Канал\" FROM o LEFT JOIN c USING (rn) ORDER BY rn",
+        "widths": [80, 95, 90, 140, 130, 30, 80, 150, 100],
+        "checks": [{ "range": "D2:D", "formula": "=ВПР(B2;$G$2:$I$30;2;0)", "requireFunction": "ВПР" }]
+      },
+      "hints": [
+        "Ищем ID клиента (B2) в справочнике G2:I… и берём второй столбец справочника — город.",
+        "Не забудь закрепить справочник знаками `$` и поставить `0` в конце.",
+        "`=ВПР(B2;$G$2:$I$30;2;0)`"
+      ],
+      "selfTest": {
+        "correct": ["{\"D2\": \"=ВПР(B2;$G$2:$H$20;2;ЛОЖЬ)\"}"],
+        "wrong": ["{\"D2\": \"=ВПР(B2;G2:I13;2;0)\"}", "{\"D2\": \"=ВПР(B2;$G$2:$I$30;3;0)\"}"]
+      }
+    },
+    {
+      "id": "xlookup-channel",
+      "title": "Канал через ПРОСМОТРX",
+      "difficulty": 2,
+      "type": "sheet",
+      "prompt": "Теперь заполни столбец **E «Канал клиента»** — откуда пришёл клиент. Используй функцию **ПРОСМОТРX**: найди ID клиента в столбце G и верни значение из столбца I.",
+      "sheet": {
+        "dataSql": "WITH o AS (SELECT row_number() OVER (ORDER BY order_id) AS rn, order_id, customer_id, amount FROM orders WHERE order_id BETWEEN 110200 AND 110211), c AS (SELECT row_number() OVER (ORDER BY customer_id) AS rn, customer_id, COALESCE(city, 'не указан') AS city, acquisition_channel FROM customers WHERE customer_id IN (SELECT customer_id FROM o)) SELECT o.order_id AS \"Заказ\", o.customer_id AS \"ID клиента\", o.amount AS \"Сумма\", NULL AS \"Город клиента\", NULL AS \"Канал клиента\", NULL AS \" \", c.customer_id AS \"Клиент\", c.city AS \"Город\", c.acquisition_channel AS \"Канал\" FROM o LEFT JOIN c USING (rn) ORDER BY rn",
+        "widths": [80, 95, 90, 140, 130, 30, 80, 150, 100],
+        "checks": [{ "range": "E2:E", "formula": "=ПРОСМОТРX(B2;$G$2:$G$30;$I$2:$I$30)", "requireFunction": "ПРОСМОТРX" }]
+      },
+      "hints": [
+        "`ПРОСМОТРX(что ищем; где ищем; что вернуть)` — три диапазона, и все, кроме B2, закреплены `$`.",
+        "`=ПРОСМОТРX(B2;$G$2:$G$30;$I$2:$I$30)`"
+      ],
+      "selfTest": {
+        "correct": ["{\"E2\": \"=ПРОСМОТРХ(B2;$G$2:$G$13;$I$2:$I$13)\"}"],
+        "wrong": ["{\"E2\": \"=ПРОСМОТРX(B2;$G$2:$G$30;$H$2:$H$30)\"}"]
+      }
+    },
+    {
+      "id": "na-reasons",
+      "title": "Откуда #Н/Д",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "ВПР вернула `#Н/Д` для клиента, который **точно есть** в справочнике. Какие причины возможны? Выбери все подходящие.",
+      "options": [
+        { "text": "В одной из таблиц у значения лишний пробел в конце", "correct": true },
+        { "text": "В одной таблице ID записан как число, а в другой — как текст", "correct": true },
+        { "text": "Справочник не закреплён `$` и «уехал» при протягивании", "correct": true },
+        { "text": "В справочнике слишком много столбцов", "explain": "Количество столбцов справочника не мешает поиску." }
+      ],
+      "hints": ["Правильных вариантов несколько. Вспомни список причин из урока."]
+    },
+    {
+      "id": "iferror",
+      "title": "Вместо ошибки — понятный текст",
+      "difficulty": 3,
+      "type": "sheet",
+      "prompt": "В справочнике (столбцы G–H) есть только клиенты из **Москвы и Санкт-Петербурга**, поэтому для части заказов город не найдётся. Заполни столбец **D «Город клиента»** так, чтобы вместо ошибки `#Н/Д` было написано `нет данных`.",
+      "sheet": {
+        "dataSql": "WITH o AS (SELECT row_number() OVER (ORDER BY order_id) AS rn, order_id, customer_id, amount FROM orders WHERE order_id BETWEEN 110300 AND 110314), c AS (SELECT row_number() OVER (ORDER BY customer_id) AS rn, customer_id, city FROM customers WHERE customer_id IN (SELECT customer_id FROM o) AND city IN ('Москва', 'Санкт-Петербург')) SELECT o.order_id AS \"Заказ\", o.customer_id AS \"ID клиента\", o.amount AS \"Сумма\", NULL AS \"Город клиента\", NULL AS \" \", NULL AS \"  \", c.customer_id AS \"Клиент\", c.city AS \"Город\" FROM o LEFT JOIN c USING (rn) ORDER BY rn",
+        "widths": [80, 95, 90, 140, 30, 30, 80, 160],
+        "checks": [{ "range": "D2:D", "formula": "=ЕСЛИОШИБКА(ВПР(B2;$G$2:$H$30;2;0);\"нет данных\")", "requireFunction": "ЕСЛИОШИБКА" }]
+      },
+      "hints": [
+        "Сначала напиши обычную ВПР — часть ячеек покажет `#Н/Д`.",
+        "Оберни ВПР в `ЕСЛИОШИБКА(ВПР(...);\"нет данных\")`."
+      ],
+      "selfTest": {
+        "correct": ["{\"D2\": \"=ЕСЛИОШИБКА(ПРОСМОТРX(B2;$G$2:$G$30;$H$2:$H$30);\\\"нет данных\\\")\"}"],
+        "wrong": ["{\"D2\": \"=ВПР(B2;$G$2:$H$30;2;0)\"}"]
+      }
+    }
+  ]
+}

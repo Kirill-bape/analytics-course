@@ -32,7 +32,7 @@ export function applyUserCells(hf: HyperFormula, cells: Record<string, string>) 
 export function expectedSheet(base: Raw[][], spec: SheetSpec): HyperFormula {
   const hf = buildSheet(base);
   for (const c of spec.checks) {
-    const { start, end } = parseRange(c.range);
+    const { start, end } = parseRange(c.range, base.length - 1);
     hf.setCellContents(cell(start.row, start.col), toEngine(c.formula));
     fillDown(hf, start.row, start.col, end.row);
   }
@@ -45,7 +45,7 @@ const fmtVal = (v: unknown) => (typeof v === 'number' ? v.toLocaleString('ru-RU'
 export function checkSheet(base: Raw[][], spec: SheetSpec, user: HyperFormula): { ok: boolean; title: string; details: string[] } {
   const exp = expectedSheet(base, spec);
   for (const c of spec.checks) {
-    const { start, end } = parseRange(c.range);
+    const { start, end } = parseRange(c.range, base.length - 1);
     const col = start.col;
     const cells = [];
     for (let r = start.row; r <= end.row; r++) cells.push(r);
@@ -77,26 +77,31 @@ export function checkSheet(base: Raw[][], spec: SheetSpec, user: HyperFormula): 
         return { ok: false, title: `Нужна функция ${c.requireFunction}.`, details: [`В этом задании тренируем функцию \`${c.requireFunction}\` — используй её в формуле.`] };
       }
     }
+    // Есть ли в формуле незакреплённый диапазон (например, E2:E16 без $)
+    const firstFormula = toRussian(user.getCellFormula(cell(start.row, col)) ?? '');
+    const looseRange = /(^|[^$A-Z])[A-Z]+\d+:[A-Z]+\d+/.test(firstFormula) || /(^|[^$A-Z])[A-Z]+\d+:\$?[A-Z]+\$?\d+/.test(firstFormula);
     for (const r of cells) {
       const u = numericValue(user, r, col);
       const e = numericValue(exp, r, col);
       if (u && typeof u === 'object') {
-        return { ok: false, title: `В ячейке ${addrName(r, col)} ошибка.`, details: [ERROR_HELP[u.error] ?? 'Формула вернула ошибку. Проверь её.'] };
+        const details = [ERROR_HELP[u.error] ?? 'Формула вернула ошибку. Проверь её.'];
+        if (r !== start.row && looseRange) details.push(`В первой ячейке ${first} ошибки нет — похоже, при протягивании «съехал» диапазон. Закрепи его знаками \`$\`.`);
+        return { ok: false, title: `В ячейке ${addrName(r, col)} ошибка.`, details };
       }
-      const same =
-        typeof u === 'number' && typeof e === 'number'
-          ? Math.abs(u - e) <= 1e-6 + Math.abs(e) * 1e-9
-          : String(u ?? '').trim().toLowerCase() === String(e ?? '').trim().toLowerCase();
+      // Текст сравниваем точно: пробелы и регистр букв важны
+      const same = typeof u === 'number' && typeof e === 'number' ? Math.abs(u - e) <= 1e-6 + Math.abs(e) * 1e-9 : String(u ?? '') === String(e ?? '');
       if (!same) {
         const details: string[] = [];
-        if (r !== start.row) {
+        if (r !== start.row && looseRange) {
           details.push(
             `Первая ячейка ${first} правильная, а ${addrName(r, col)} — нет. Похоже, при протягивании «съехала» ссылка, которая должна стоять на месте. Закрепи её знаком доллара: \`$H$2\` вместо \`H2\`.`,
           );
         } else if (typeof u === 'number' && typeof e === 'number') {
           details.push(`Получилось ${fmtVal(u)} — это ${u > e ? 'больше' : 'меньше'} правильного. Проверь формулу: те ли ячейки в ней участвуют?`);
         } else {
-          details.push(`Получилось ${fmtVal(u)}, а должно быть другое. Проверь формулу и текст в кавычках (регистр букв, пробелы).`);
+          details.push(
+            `Получилось ${fmtVal(u)}, а должно быть другое.${r !== start.row ? ` В ${first} всё верно — значит, формула подходит не для всех строк.` : ''} Проверь формулу и текст в кавычках: регистр букв и пробелы важны.`,
+          );
         }
         return { ok: false, title: `Значение в ячейке ${addrName(r, col)} не совпадает.`, details };
       }

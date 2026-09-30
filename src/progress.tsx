@@ -21,6 +21,8 @@ export interface ProgressData {
 
 const EMPTY: ProgressData = { version: 1, tasks: {}, activeDays: [] };
 const LS_KEY = 'analytics-course-progress';
+/** Тестовый режим (адрес с ?sandbox): прогресс не загружается и не сохраняется */
+export const SANDBOX = typeof location !== 'undefined' && new URLSearchParams(location.search).has('sandbox');
 
 export function todayKey(d = new Date()): string {
   const p = (n: number) => String(n).padStart(2, '0');
@@ -60,6 +62,10 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     (async () => {
       let result: ProgressData = EMPTY;
+      if (SANDBOX) {
+        setLoaded(true);
+        return;
+      }
       try {
         const res = await fetch('/api/progress');
         if (!res.ok) throw new Error(String(res.status));
@@ -83,7 +89,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
 
   // Сохранение (с небольшой задержкой, чтобы не писать файл на каждое нажатие)
   useEffect(() => {
-    if (!loaded || !dirty.current) return;
+    if (!loaded || !dirty.current || SANDBOX) return;
     const body = JSON.stringify(data, null, 2);
     try {
       localStorage.setItem(LS_KEY, body);
@@ -105,7 +111,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   // Сохранить при закрытии вкладки
   useEffect(() => {
     const flush = () => {
-      if (dirty.current) navigator.sendBeacon('/api/progress', new Blob([JSON.stringify(latest.current)], { type: 'application/json' }));
+      if (dirty.current && !SANDBOX) navigator.sendBeacon('/api/progress', new Blob([JSON.stringify(latest.current)], { type: 'application/json' }));
     };
     window.addEventListener('pagehide', flush);
     return () => window.removeEventListener('pagehide', flush);

@@ -104,7 +104,7 @@ async function checkTask(key: string, task: TaskDef): Promise<Row> {
         const { row, col } = parseAddr(addr);
         hf.setCellContents(cell(row, col), toEngine(formula));
         const chk = spec.checks.find((c) => c.range.split(':')[0] === addr);
-        if (chk) fillDown(hf, row, col, parseRange(chk.range).end.row);
+        if (chk) fillDown(hf, row, col, parseRange(chk.range, base.length - 1).end.row);
       }
       return hf;
     };

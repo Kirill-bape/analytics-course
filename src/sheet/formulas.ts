@@ -33,7 +33,18 @@ function mapFunctionNames(formula: string, fn: (name: string) => string): string
 
 export function toEngine(raw: string): string {
   if (!raw.startsWith('=')) return raw;
-  return mapFunctionNames(raw, (name) => EN_BY_RU.get(name.toUpperCase()) ?? name.toUpperCase());
+  const mapped = mapFunctionNames(raw, (name) => EN_BY_RU.get(name.toUpperCase()) ?? name.toUpperCase());
+  // ЛОЖЬ и ИСТИНА без скобок (как в русском Excel) → FALSE() и TRUE()
+  return mapped
+    .split(/("(?:[^"]|"")*")/)
+    .map((part, i) =>
+      i % 2 === 1
+        ? part
+        : part.replace(/(?<![A-Za-zА-ЯЁа-яё0-9_.])(ЛОЖЬ|ИСТИНА|FALSE|TRUE)(?![A-Za-zА-ЯЁа-яё0-9_.(])/gi, (w) =>
+            /^(ложь|false)$/i.test(w) ? 'FALSE()' : 'TRUE()',
+          ),
+    )
+    .join('');
 }
 
 export function toRussian(formula: string): string {
@@ -71,10 +82,16 @@ export function parseAddr(a: string): { row: number; col: number } {
   return { row: Number(m[2]) - 1, col: col - 1 };
 }
 
-export function parseRange(r: string): { start: { row: number; col: number }; end: { row: number; col: number } } {
+/**
+ * Разбор диапазона. "D2:D11" — обычный диапазон, "D2:D" — до последней строки данных
+ * (для него нужен lastRow).
+ */
+export function parseRange(r: string, lastRow = -1): { start: { row: number; col: number }; end: { row: number; col: number } } {
   const [a, b] = r.split(':');
   const start = parseAddr(a);
-  return { start, end: b ? parseAddr(b) : start };
+  if (!b) return { start, end: start };
+  if (/\d/.test(b)) return { start, end: parseAddr(b) };
+  return { start, end: { row: lastRow, col: parseAddr(`${b}1`).col } };
 }
 
 export const cell = (row: number, col: number): SimpleCellAddress => ({ sheet: 0, row, col });

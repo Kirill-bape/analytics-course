@@ -49,7 +49,7 @@ function SolutionView({ task }: { task: TaskDef }) {
               {b && (
                 <>
                   {' '}
-                  → протянуть до <code>{b}</code>
+                  → протянуть {/\d/.test(b) ? <>до <code>{b}</code></> : 'до конца данных'}
                 </>
               )}
             </li>

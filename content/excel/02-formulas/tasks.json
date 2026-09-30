@@ -1,0 +1,89 @@
+{
+  "tasks": [
+    {
+      "id": "total",
+      "title": "Итог за период",
+      "difficulty": 1,
+      "type": "sheet",
+      "prompt": "Перед тобой 15 заказов июня 2026. В ячейке **F2** посчитай общую сумму всех заказов из столбца E.",
+      "sheet": {
+        "dataSql": "SELECT o.order_id AS \"Заказ\", o.order_date AS \"Дата\", c.city AS \"Город\", o.status AS \"Статус\", o.amount AS \"Сумма\" FROM orders o JOIN customers c USING (customer_id) WHERE o.order_date >= '2026-06-01' AND c.city IS NOT NULL ORDER BY o.order_id LIMIT 15",
+        "extraHeaders": ["Итого"],
+        "widths": [80, 100, 140, 100, 100, 110],
+        "checks": [{ "range": "F2", "formula": "=СУММ(E2:E16)", "requireFunction": "СУММ" }]
+      },
+      "hints": ["Функция суммы — `СУММ`, в скобках — диапазон ячеек.", "`=СУММ(E2:E16)`"],
+      "selfTest": { "wrong": ["{\"F2\": \"=СУММ(E2:E10)\"}"] }
+    },
+    {
+      "id": "avg-check",
+      "title": "Средний чек",
+      "difficulty": 1,
+      "type": "sheet",
+      "prompt": "В ячейке **F2** посчитай средний чек — среднюю сумму заказа, **округлённую до целых** рублей.",
+      "sheet": {
+        "dataSql": "SELECT o.order_id AS \"Заказ\", o.order_date AS \"Дата\", c.city AS \"Город\", o.status AS \"Статус\", o.amount AS \"Сумма\" FROM orders o JOIN customers c USING (customer_id) WHERE o.order_date >= '2026-06-01' AND c.city IS NOT NULL ORDER BY o.order_id LIMIT 15",
+        "extraHeaders": ["Средний чек"],
+        "widths": [80, 100, 140, 100, 100, 120],
+        "checks": [{ "range": "F2", "formula": "=ОКРУГЛ(СРЗНАЧ(E2:E16);0)", "requireFunction": "ОКРУГЛ" }]
+      },
+      "hints": ["Среднее считает `СРЗНАЧ`, округление — `ОКРУГЛ(число;знаков)`.", "Вложи одну функцию в другую: `=ОКРУГЛ(СРЗНАЧ(E2:E16);0)` — ноль знаков после запятой."],
+      "selfTest": { "wrong": ["{\"F2\": \"=СРЗНАЧ(E2:E16)\"}"] }
+    },
+    {
+      "id": "big-flag",
+      "title": "Отметить крупные заказы",
+      "difficulty": 2,
+      "type": "sheet",
+      "prompt": "Заполни столбец **F «Крупный?»**: напиши `да`, если сумма заказа **10 000 ₽ и больше**, иначе — `нет`. Формулу — в F2, затем протяни вниз.",
+      "sheet": {
+        "dataSql": "SELECT o.order_id AS \"Заказ\", o.order_date AS \"Дата\", c.city AS \"Город\", o.status AS \"Статус\", o.amount AS \"Сумма\" FROM orders o JOIN customers c USING (customer_id) WHERE o.order_date >= '2026-06-01' AND c.city IS NOT NULL ORDER BY o.order_id LIMIT 15",
+        "extraHeaders": ["Крупный?"],
+        "widths": [80, 100, 140, 100, 100, 100],
+        "checks": [{ "range": "F2:F", "formula": "=ЕСЛИ(E2>=10000;\"да\";\"нет\")", "requireFunction": "ЕСЛИ" }]
+      },
+      "hints": ["Нужна функция `ЕСЛИ(условие; если да; если нет)`.", "Текст — в двойных кавычках: `=ЕСЛИ(E2>=10000;\"да\";\"нет\")`."],
+      "selfTest": { "correct": ["{\"F2\": \"=ЕСЛИ(E2<10000;\\\"нет\\\";\\\"да\\\")\"}"], "wrong": ["{\"F2\": \"=ЕСЛИ(E2>=1000;\\\"да\\\";\\\"нет\\\")\"}"] }
+    },
+    {
+      "id": "share",
+      "title": "Доля каждого заказа",
+      "difficulty": 3,
+      "type": "sheet",
+      "prompt": "Заполни столбец **F «Доля, %»**: какую долю (в процентах) составляет каждый заказ от общей суммы всех 15 заказов. Округли до **1 знака**. Формулу напиши в F2 и протяни вниз — все доли должны быть правильными.",
+      "sheet": {
+        "dataSql": "SELECT o.order_id AS \"Заказ\", o.order_date AS \"Дата\", c.city AS \"Город\", o.status AS \"Статус\", o.amount AS \"Сумма\" FROM orders o JOIN customers c USING (customer_id) WHERE o.order_date >= '2026-06-01' AND c.city IS NOT NULL ORDER BY o.order_id LIMIT 15",
+        "extraHeaders": ["Доля, %"],
+        "widths": [80, 100, 140, 100, 100, 100],
+        "checks": [{ "range": "F2:F", "formula": "=ОКРУГЛ(E2/СУММ($E$2:$E$16)*100;1)" }]
+      },
+      "hints": [
+        "Доля = сумма заказа / общая сумма × 100.",
+        "Если протянуть `=E2/СУММ(E2:E16)`, диапазон суммы «уедет» вниз. Его нужно закрепить знаками `$`.",
+        "`=ОКРУГЛ(E2/СУММ($E$2:$E$16)*100;1)`"
+      ],
+      "selfTest": {
+        "correct": ["{\"F2\": \"=ОКРУГЛ(E2*100/СУММ(E$2:E$16);1)\"}"],
+        "wrong": ["{\"F2\": \"=ОКРУГЛ(E2/СУММ(E2:E16)*100;1)\"}", "{\"F2\": \"=E2/СУММ($E$2:$E$16)*100\"}"]
+      }
+    },
+    {
+      "id": "sumif",
+      "title": "Выручка только доставленных",
+      "difficulty": 3,
+      "type": "sheet",
+      "prompt": "Выручку считают только по доставленным заказам. В ячейке **F2** посчитай сумму заказов со статусом `delivered` с помощью функции **СУММЕСЛИ**.",
+      "sheet": {
+        "dataSql": "SELECT o.order_id AS \"Заказ\", o.order_date AS \"Дата\", c.city AS \"Город\", o.status AS \"Статус\", o.amount AS \"Сумма\" FROM orders o JOIN customers c USING (customer_id) WHERE o.order_date >= '2026-06-20' AND c.city IS NOT NULL ORDER BY o.order_id LIMIT 15",
+        "extraHeaders": ["Выручка"],
+        "widths": [80, 100, 140, 100, 100, 110],
+        "checks": [{ "range": "F2", "formula": "=СУММЕСЛИ(D2:D16;\"delivered\";E2:E16)", "requireFunction": "СУММЕСЛИ" }]
+      },
+      "hints": [
+        "`СУММЕСЛИ(где проверять; условие; что складывать)`.",
+        "Проверяем статус (столбец D), условие `\"delivered\"`, складываем суммы (столбец E)."
+      ],
+      "selfTest": { "wrong": ["{\"F2\": \"=СУММЕСЛИ(D2:D16;\\\"cancelled\\\";E2:E16)\"}"] }
+    }
+  ]
+}
