@@ -32,7 +32,7 @@ export function SqlExample({ code }: { code: string }) {
     <div className="example">
       <CodeEditor value={value} onChange={setValue} onRun={run} compact />
       <div className="example-actions">
-        <button className="btn btn-small btn-primary" onClick={run} disabled={busy || db.state !== 'ready'}>
+        <button className="btn btn-small btn-primary" onClick={run} disabled={busy || db.state === 'error'}>
           {db.state === 'loading' ? 'База загружается…' : busy ? 'Выполняется…' : '▶ Запустить пример'}
         </button>
         {value !== code && (

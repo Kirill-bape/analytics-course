@@ -28,7 +28,8 @@ export function SqlTask({ task, taskKey, tp, fail, succeed, saveDraft }: TaskBod
     return () => clearTimeout(t);
   }, [code, starter, tp.code, saveDraft]);
 
-  const ready = db.state === 'ready' && !busy;
+  // Если база ещё загружается, запрос просто подождёт её
+  const ready = db.state !== 'error' && !busy;
 
   const run = async () => {
     if (!ready) return;

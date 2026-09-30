@@ -164,7 +164,7 @@ export function Chart({ spec, columns, rows }: Props) {
           </g>
         ))}
         {labels.map((l, i) =>
-          i % labelEvery === 0 || i === labels.length - 1 ? (
+          i % labelEvery === 0 || (i === labels.length - 1 && i % labelEvery >= labelEvery * 0.6) ? (
             <text key={i} x={xOf(i)} y={h - 12} className="chart-tick" textAnchor="middle">
               {l.length > 10 ? l.slice(0, 10) : l}
             </text>

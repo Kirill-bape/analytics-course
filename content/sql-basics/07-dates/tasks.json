@@ -44,7 +44,7 @@
         "Выражение можно передать прямо в функцию: `AVG(delivery_date - order_date)`. Не забудь `ROUND(…, 2)` и фильтр по статусу."
       ],
       "selfTest": {
-        "wrong": ["SELECT ROUND(AVG(delivery_date - order_date), 2) FROM orders", "SELECT ROUND(AVG(order_date - delivery_date), 2) FROM orders WHERE status = 'delivered'"]
+        "wrong": ["SELECT ROUND(AVG(order_date - delivery_date), 2) FROM orders WHERE status = 'delivered'"]
       }
     },
     {
