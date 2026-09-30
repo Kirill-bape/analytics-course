@@ -161,7 +161,9 @@ async def _run_user(code, result_var):
     out = {"display": None, "result": None, "has_result": False}
     try:
         value = await eval_code_async(code, globals=ns, filename="<code>")
-        if value is not None:
+        # Служебные объекты matplotlib (Text, Line2D…) не показываем — под графиком они только мешают
+        probe = value[0] if isinstance(value, list) and value else value
+        if value is not None and not type(probe).__module__.startswith("matplotlib"):
             out["display"] = _display(value)
         if result_var:
             if result_var in ns:

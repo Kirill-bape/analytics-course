@@ -1,0 +1,62 @@
+{
+  "tasks": [
+    {
+      "id": "aov-hand",
+      "title": "Средний чек",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "За неделю выручка — **2 400 000 ₽**, доставлено **200** заказов. Какой средний чек?",
+      "answer": 12000,
+      "unit": "₽",
+      "hints": ["Средний чек = выручка / число заказов."],
+      "selfTest": { "correct": ["12000", "12 000"], "wrong": ["480000000"] }
+    },
+    {
+      "id": "cr-hand",
+      "title": "Конверсия",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Сайт за день посетили **8 000** человек, **240** из них сделали заказ. Какая конверсия в покупку, в процентах?",
+      "answer": 3,
+      "unit": "%",
+      "hints": ["Конверсия = покупатели / посетители × 100%."],
+      "wrongAnswers": [{ "value": 0.03, "message": "Это доля. В процентах нужно умножить на 100." }],
+      "selfTest": { "correct": ["3", "3%"], "wrong": ["0,03"] }
+    },
+    {
+      "id": "kpi-row",
+      "title": "KPI за июнь",
+      "difficulty": 2,
+      "prompt": "Собери KPI за **июнь 2026** по доставленным заказам в одну строку: `revenue` (выручка), `orders_cnt` (число заказов), `buyers` (уникальные покупатели), `aov` (средний чек, округли до целых).",
+      "solution": "SELECT SUM(amount) AS revenue,\n       COUNT(*) AS orders_cnt,\n       COUNT(DISTINCT customer_id) AS buyers,\n       ROUND(SUM(amount) / COUNT(*), 0) AS aov\nFROM orders\nWHERE status = 'delivered'\n  AND order_date >= '2026-06-01' AND order_date < '2026-07-01';",
+      "checkColumnNames": true,
+      "hints": ["Все показатели — агрегаты в одном `SELECT`.", "Покупатели — `COUNT(DISTINCT customer_id)`."],
+      "selfTest": { "correct": ["SELECT SUM(amount) AS revenue, COUNT(*) AS orders_cnt, COUNT(DISTINCT customer_id) AS buyers, ROUND(AVG(amount)) AS aov FROM orders WHERE status = 'delivered' AND order_date >= '2026-06-01'"] }
+    },
+    {
+      "id": "repeat-rate",
+      "title": "Доля повторных покупателей",
+      "difficulty": 3,
+      "prompt": "Какой процент покупателей сделал **2 и более** доставленных заказа (за всё время)? Покупатель — клиент хотя бы с одним доставленным заказом. Округли до 1 знака. Одно число.",
+      "solution": "WITH per_customer AS (\n    SELECT customer_id, COUNT(*) AS orders_cnt\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n)\nSELECT ROUND(100.0 * SUM(CASE WHEN orders_cnt >= 2 THEN 1 ELSE 0 END) / COUNT(*), 1) AS repeat_pct\nFROM per_customer;",
+      "hints": [
+        "Шаг 1 (CTE): число доставленных заказов каждого клиента.",
+        "Шаг 2: доля клиентов с `orders_cnt >= 2` — через `SUM(CASE WHEN …)` / `COUNT(*)`."
+      ],
+      "selfTest": { "correct": ["WITH p AS (SELECT customer_id, COUNT(*) AS c FROM orders WHERE status = 'delivered' GROUP BY customer_id) SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE c >= 2) / COUNT(*), 1) FROM p"] }
+    },
+    {
+      "id": "why-revenue-fell",
+      "title": "Почему упала выручка",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Выручка в этом месяце упала на 10%. Число покупателей и число заказов на покупателя не изменились. Где искать причину?",
+      "options": [
+        { "text": "В среднем чеке: при тех же покупателях и частоте выручка падает только из-за него", "correct": true, "explain": "Выручка = покупатели × заказы на покупателя × средний чек. Два множителя на месте — значит, изменился третий. Дальше смотрим, почему упал чек: скидки, другие категории, меньше товаров в заказе." },
+        { "text": "В конверсии сайта", "explain": "Число покупателей не изменилось — значит, конверсия в покупку тут ни при чём." },
+        { "text": "Причину по метрикам не найти", "explain": "Дерево метрик как раз помогает сузить поиск." }
+      ],
+      "hints": ["Вспомни формулу разложения выручки на множители."]
+    }
+  ]
+}

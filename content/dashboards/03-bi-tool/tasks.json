@@ -1,0 +1,54 @@
+{
+  "tasks": [
+    {
+      "id": "widget-kpi",
+      "title": "Виджет: KPI с изменением",
+      "difficulty": 2,
+      "prompt": [
+        "Подготовь данные для KPI-карточки «Число заказов»: для **каждого месяца** выведи `month` (первый день месяца), `orders_cnt` (все заказы, любой статус) и `change_pct` — изменение к прошлому месяцу в процентах, округлённое до 1 знака.",
+        "",
+        "Сортировка — по месяцу."
+      ],
+      "solution": "WITH m AS (\n    SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, COUNT(*) AS orders_cnt\n    FROM orders\n    GROUP BY month\n)\nSELECT month, orders_cnt,\n       ROUND(100.0 * (orders_cnt - LAG(orders_cnt) OVER (ORDER BY month)) / LAG(orders_cnt) OVER (ORDER BY month), 1) AS change_pct\nFROM m\nORDER BY month;",
+      "orderMatters": true,
+      "chart": { "type": "line", "y": [1] },
+      "hints": ["Как в теме про оконные функции: число заказов по месяцам в CTE, изменение — через `LAG`."]
+    },
+    {
+      "id": "widget-weekly",
+      "title": "Виджет: выручка по неделям",
+      "difficulty": 2,
+      "prompt": "Подготовь данные для линейного графика: выручка доставленных заказов по **неделям** 2026 года. Столбцы: `week` (первый день недели, `date_trunc('week', …)`), `revenue`. Сортировка — по неделе.",
+      "solution": "SELECT CAST(date_trunc('week', order_date) AS DATE) AS week, SUM(amount) AS revenue\nFROM orders\nWHERE status = 'delivered' AND order_date >= '2026-01-01'\nGROUP BY week\nORDER BY week;",
+      "orderMatters": true,
+      "chart": { "type": "line" },
+      "hints": ["`date_trunc('week', order_date)` даёт понедельник недели."]
+    },
+    {
+      "id": "widget-category",
+      "title": "Виджет: доля категорий",
+      "difficulty": 3,
+      "prompt": "Подготовь данные для столбчатой диаграммы: доля каждой категории в выручке доставленных заказов **2026 года** (выручка позиции — `quantity * price` из `order_items`). Столбцы: `category`, `share_pct` (округли до 1 знака). От большей доли к меньшей.",
+      "solution": "WITH c AS (\n    SELECT p.category, SUM(oi.quantity * oi.price) AS revenue\n    FROM order_items oi\n    JOIN orders o ON o.order_id = oi.order_id\n    JOIN products p ON p.product_id = oi.product_id\n    WHERE o.status = 'delivered' AND o.order_date >= '2026-01-01'\n    GROUP BY p.category\n)\nSELECT category, ROUND(100.0 * revenue / SUM(revenue) OVER (), 1) AS share_pct\nFROM c\nORDER BY share_pct DESC;",
+      "orderMatters": true,
+      "chart": { "type": "bar" },
+      "hints": ["Выручка по категориям (CTE), доля — через `SUM(revenue) OVER ()`."]
+    },
+    {
+      "id": "datalens",
+      "title": "Дашборд в Yandex DataLens",
+      "difficulty": 3,
+      "type": "checklist",
+      "prompt": "Собери дашборд продаж в бесплатном BI-инструменте по инструкции из урока (DataLens, Looker Studio или Power BI — на выбор). Это задание для портфолио. Отметь шаги по мере выполнения.",
+      "items": [
+        "Создал(а) аккаунт и подключение, загрузил(а) `orders.csv` и `customers.csv`",
+        "Создал(а) датасет, связал(а) таблицы по `customer_id`, добавил(а) поле «Выручка»",
+        "Сделал(а) KPI-индикаторы: выручка, число заказов, средний чек",
+        "Сделал(а) линейный график выручки по неделям и столбцы по городам",
+        "Собрал(а) дашборд по раскладке «от общего к деталям», добавил(а) фильтры периода и города",
+        "Сохранил(а) скриншот или ссылку для портфолио"
+      ],
+      "hints": []
+    }
+  ]
+}

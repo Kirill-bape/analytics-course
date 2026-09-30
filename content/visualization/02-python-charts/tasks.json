@@ -1,0 +1,78 @@
+{
+  "tasks": [
+    {
+      "id": "bar",
+      "title": "Столбцы: выручка по способам оплаты",
+      "difficulty": 1,
+      "type": "python",
+      "check": "plot",
+      "plot": { "kind": "bar", "title": true },
+      "prompt": "Построй **столбчатую диаграмму** выручки доставленных заказов по способам оплаты. Добавь **заголовок**.",
+      "starter": "import matplotlib.pyplot as plt\n\nd = orders[orders[\"status\"] == \"delivered\"]\nrevenue = d.groupby(\"payment_method\")[\"amount\"].sum().sort_values(ascending=False)\n\n# построй график здесь\n",
+      "solution": "import matplotlib.pyplot as plt\n\nd = orders[orders[\"status\"] == \"delivered\"]\nrevenue = d.groupby(\"payment_method\")[\"amount\"].sum().sort_values(ascending=False)\n\nplt.bar(revenue.index, revenue.values)\nplt.title(\"Выручка по способам оплаты\")",
+      "hints": ["`plt.bar(revenue.index, revenue.values)` — подписи и высоты столбцов.", "Заголовок: `plt.title(\"…\")`."],
+      "selfTest": {
+        "correct": ["import matplotlib.pyplot as plt\nd = orders[orders['status'] == 'delivered']\nd.groupby('payment_method')['amount'].sum().plot(kind='barh')\nplt.title('Выручка')"],
+        "wrong": ["import matplotlib.pyplot as plt\nplt.bar(['a', 'b'], [1, 2])", "import matplotlib.pyplot as plt\nplt.plot([1, 2], [3, 4])\nplt.title('x')"]
+      }
+    },
+    {
+      "id": "line",
+      "title": "Линия: заказы по месяцам",
+      "difficulty": 2,
+      "type": "python",
+      "check": "plot",
+      "plot": { "kind": "line", "title": true, "xlabel": true, "ylabel": true },
+      "prompt": "Построй **линейный график** числа заказов (всех статусов) по месяцам. Добавь заголовок и подписи обеих осей.",
+      "starter": "import matplotlib.pyplot as plt\n\nmonthly = orders.groupby(orders[\"order_date\"].dt.to_period(\"M\")).size()\n\n",
+      "solution": "import matplotlib.pyplot as plt\n\nmonthly = orders.groupby(orders[\"order_date\"].dt.to_period(\"M\")).size()\n\nplt.figure(figsize=(9, 4))\nplt.plot(monthly.index.astype(str), monthly.values, marker=\"o\")\nplt.title(\"Число заказов по месяцам\")\nplt.xlabel(\"Месяц\")\nplt.ylabel(\"Заказов\")\nplt.xticks(rotation=45)",
+      "hints": [
+        "Месяцы — это периоды; для подписей преврати их в текст: `monthly.index.astype(str)`.",
+        "`plt.plot(x, y)`, затем `plt.title`, `plt.xlabel`, `plt.ylabel`."
+      ],
+      "selfTest": {
+        "correct": ["import matplotlib.pyplot as plt\norders.groupby(orders['order_date'].dt.to_period('M')).size().plot()\nplt.title('Заказы')\nplt.xlabel('Месяц')\nplt.ylabel('Число')"],
+        "wrong": ["import matplotlib.pyplot as plt\nm = orders.groupby(orders['order_date'].dt.to_period('M')).size()\nplt.plot(m.index.astype(str), m.values)\nplt.title('Заказы')"]
+      }
+    },
+    {
+      "id": "hist",
+      "title": "Гистограмма чеков",
+      "difficulty": 2,
+      "type": "python",
+      "check": "plot",
+      "plot": { "kind": "bar", "title": true, "xlabel": true },
+      "prompt": "Построй **гистограмму** сумм доставленных заказов **до 50 000 ₽** (30–40 интервалов). Добавь заголовок и подпись оси X.",
+      "starter": "import matplotlib.pyplot as plt\n\namounts = orders.loc[(orders[\"status\"] == \"delivered\") & (orders[\"amount\"] < 50000), \"amount\"]\n\n",
+      "solution": "import matplotlib.pyplot as plt\n\namounts = orders.loc[(orders[\"status\"] == \"delivered\") & (orders[\"amount\"] < 50000), \"amount\"]\n\nplt.hist(amounts, bins=40)\nplt.title(\"Распределение сумм заказов\")\nplt.xlabel(\"Сумма заказа, ₽\")",
+      "hints": ["`plt.hist(amounts, bins=40)`.", "Подпись оси X: `plt.xlabel(\"Сумма заказа, ₽\")`."]
+    },
+    {
+      "id": "scatter",
+      "title": "Точки: опыт и брак",
+      "difficulty": 3,
+      "type": "python",
+      "check": "plot",
+      "plot": { "kind": "scatter", "title": true, "xlabel": true, "ylabel": true },
+      "prompt": "Для каждого оператора посчитан стаж и процент брака (таблица `ops`). Построй **точечную диаграмму**: X — стаж, Y — процент брака. Добавь заголовок и подписи осей.",
+      "starter": "import matplotlib.pyplot as plt\n\nops = production.groupby(\"operator_id\")[[\"defect_units\", \"produced_units\"]].sum()\nops[\"defect_pct\"] = 100 * ops[\"defect_units\"] / ops[\"produced_units\"]\nops = ops.join(operators.set_index(\"operator_id\")[\"experience_years\"])\n\n",
+      "solution": "import matplotlib.pyplot as plt\n\nops = production.groupby(\"operator_id\")[[\"defect_units\", \"produced_units\"]].sum()\nops[\"defect_pct\"] = 100 * ops[\"defect_units\"] / ops[\"produced_units\"]\nops = ops.join(operators.set_index(\"operator_id\")[\"experience_years\"])\n\nplt.scatter(ops[\"experience_years\"], ops[\"defect_pct\"])\nplt.title(\"Опыт оператора и процент брака\")\nplt.xlabel(\"Стаж, лет\")\nplt.ylabel(\"Брак, %\")",
+      "hints": ["`plt.scatter(x, y)` — сначала стаж, потом процент брака.", "Не забудь три подписи: заголовок и обе оси."]
+    },
+    {
+      "id": "barh-top",
+      "title": "Топ-10 товаров",
+      "difficulty": 3,
+      "type": "python",
+      "check": "plot",
+      "plot": { "kind": "bar", "title": true, "xlabel": true },
+      "prompt": "Построй **горизонтальную** столбчатую диаграмму **10 товаров** с наибольшим числом проданных штук (все заказы, кроме отменённых). Самый продаваемый — сверху. Нужны заголовок и подпись оси X.",
+      "starter": "import matplotlib.pyplot as plt\n\nok = order_items.merge(orders[[\"order_id\", \"status\"]], on=\"order_id\")\nok = ok[ok[\"status\"] != \"cancelled\"].merge(products[[\"product_id\", \"product_name\"]], on=\"product_id\")\ntop = ok.groupby(\"product_name\")[\"quantity\"].sum().nlargest(10)\n\n",
+      "solution": "import matplotlib.pyplot as plt\n\nok = order_items.merge(orders[[\"order_id\", \"status\"]], on=\"order_id\")\nok = ok[ok[\"status\"] != \"cancelled\"].merge(products[[\"product_id\", \"product_name\"]], on=\"product_id\")\ntop = ok.groupby(\"product_name\")[\"quantity\"].sum().nlargest(10)\n\nplt.figure(figsize=(8, 5))\nplt.barh(top.index[::-1], top.values[::-1])\nplt.title(\"Топ-10 товаров по продажам\")\nplt.xlabel(\"Продано, шт.\")",
+      "hints": [
+        "Горизонтальные столбцы — `plt.barh(подписи, значения)`.",
+        "`barh` рисует первый элемент внизу. Чтобы лидер был сверху, разверни порядок: `top.index[::-1]`, `top.values[::-1]`."
+      ]
+    }
+  ]
+}
