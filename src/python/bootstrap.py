@@ -67,7 +67,15 @@ def _col_name(c):
 
 
 def _frame_to_table(df, limit=None):
-    if not isinstance(df.index, pd.RangeIndex) or any(n is not None for n in df.index.names):
+    idx = df.index
+    # Безымянный числовой индекс (номера строк после фильтра) не показываем и не сравниваем.
+    # Именованный индекс (например, после groupby) превращаем в обычный столбец.
+    plain = isinstance(idx, pd.RangeIndex) or (
+        not isinstance(idx, pd.MultiIndex) and idx.name is None and pd.api.types.is_integer_dtype(idx)
+    )
+    if plain:
+        df = df.reset_index(drop=True)
+    else:
         df = df.reset_index()
     total = len(df)
     if limit is not None:

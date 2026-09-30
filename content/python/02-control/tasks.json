@@ -1,0 +1,68 @@
+{
+  "tasks": [
+    {
+      "id": "segment-if",
+      "title": "Сегмент заказа",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Допиши код: в переменную `result` должна попасть строка `\"крупный\"`, если `amount` **не меньше 10 000**, `\"средний\"` — если **не меньше 3 000**, иначе `\"маленький\"`. Проверка запустит твой код с `amount = 7400`.",
+      "starter": "amount = 7400\n\nif amount >= 10000:\n    result = \"крупный\"\n# допиши остальные условия\n",
+      "solution": "amount = 7400\n\nif amount >= 10000:\n    result = \"крупный\"\nelif amount >= 3000:\n    result = \"средний\"\nelse:\n    result = \"маленький\"",
+      "hints": ["Второе условие — `elif amount >= 3000:`, последнее — `else:`.", "Не забудь двоеточия и отступы в 4 пробела."],
+      "selfTest": { "wrong": ["amount = 7400\nif amount >= 10000:\n    result = 'крупный'\nelse:\n    result = 'маленький'"] }
+    },
+    {
+      "id": "count-big",
+      "title": "Сколько крупных заказов",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "С помощью цикла `for` посчитай, сколько сумм в списке `amounts` **не меньше 10 000**. Ответ — в `result`.",
+      "starter": "amounts = [1200, 15400, 3300, 890, 22000, 7600, 10000, 9999, 45100]\nresult = 0\n",
+      "solution": "amounts = [1200, 15400, 3300, 890, 22000, 7600, 10000, 9999, 45100]\nresult = 0\nfor a in amounts:\n    if a >= 10000:\n        result += 1",
+      "hints": ["Внутри цикла проверь `if a >= 10000:` и увеличь счётчик: `result += 1`.", "Обрати внимание на 10000 — «не меньше» значит `>=`."],
+      "selfTest": {
+        "correct": ["amounts = [1200, 15400, 3300, 890, 22000, 7600, 10000, 9999, 45100]\nresult = len([a for a in amounts if a >= 10000])"],
+        "wrong": ["amounts = [1200, 15400, 3300, 890, 22000, 7600, 10000, 9999, 45100]\nresult = len([a for a in amounts if a > 10000])"]
+      }
+    },
+    {
+      "id": "function",
+      "title": "Функция маржинальности",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Напиши функцию `margin_pct(price, cost)`, которая возвращает маржинальность в процентах: `(price − cost) / price × 100`, округлённую до **1 знака**. Затем положи в `result` список маржинальностей для трёх товаров из `goods` (в том же порядке).",
+      "starter": "goods = [(2290, 1500), (84990, 70000), (459, 210)]  # (цена, себестоимость)\n\ndef margin_pct(price, cost):\n    ...\n\nresult = [margin_pct(p, c) for p, c in goods]\n",
+      "solution": "goods = [(2290, 1500), (84990, 70000), (459, 210)]\n\ndef margin_pct(price, cost):\n    return round((price - cost) / price * 100, 1)\n\nresult = [margin_pct(p, c) for p, c in goods]",
+      "orderMatters": true,
+      "hints": ["Вместо `...` напиши `return` с формулой.", "`return round((price - cost) / price * 100, 1)`"],
+      "selfTest": { "wrong": ["goods = [(2290, 1500), (84990, 70000), (459, 210)]\ndef margin_pct(price, cost):\n    return round((price - cost) / cost * 100, 1)\nresult = [margin_pct(p, c) for p, c in goods]"] }
+    },
+    {
+      "id": "comprehension",
+      "title": "Цены со скидкой",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Из списка `prices` оставь только цены **дороже 3 000 ₽** и примени к ним скидку **15%**, округлив до целых. Сохрани новый список в `result` (порядок — как в исходном списке).",
+      "starter": "prices = [2290, 4790, 459, 12990, 890, 7990, 1490, 3490]\nresult = ",
+      "solution": "prices = [2290, 4790, 459, 12990, 890, 7990, 1490, 3490]\nresult = [round(p * 0.85) for p in prices if p > 3000]",
+      "orderMatters": true,
+      "hints": ["Генератор списка с условием: `[выражение for p in prices if условие]`.", "`[round(p * 0.85) for p in prices if p > 3000]`"],
+      "selfTest": { "wrong": ["prices = [2290, 4790, 459, 12990, 890, 7990, 1490, 3490]\nresult = [round(p * 0.85) for p in prices]"] }
+    },
+    {
+      "id": "loop-print",
+      "title": "Отчёт по городам",
+      "difficulty": 3,
+      "type": "python",
+      "check": "stdout",
+      "prompt": "Для каждого города из словаря `city_revenue` выведи строку вида\n\n`Москва: 40.2 млн ₽`\n\n— выручку в миллионах с **1 знаком** после точки. Города — в том порядке, в каком они в словаре.",
+      "starter": "city_revenue = {\"Москва\": 40160676, \"Санкт-Петербург\": 20854310, \"Казань\": 7412090}\n\nfor city, revenue in city_revenue.items():\n    ...\n",
+      "solution": "city_revenue = {\"Москва\": 40160676, \"Санкт-Петербург\": 20854310, \"Казань\": 7412090}\n\nfor city, revenue in city_revenue.items():\n    print(f\"{city}: {revenue / 1_000_000:.1f} млн ₽\")",
+      "hints": ["`.items()` отдаёт пары «ключ, значение».", "Формат с одним знаком: `{x:.1f}`. Миллионы — делим на 1 000 000."],
+      "selfTest": {
+        "correct": ["city_revenue = {'Москва': 40160676, 'Санкт-Петербург': 20854310, 'Казань': 7412090}\nfor c in city_revenue:\n    print(c + ': ' + str(round(city_revenue[c] / 1000000, 1)) + ' млн ₽')"],
+        "wrong": ["city_revenue = {'Москва': 40160676, 'Санкт-Петербург': 20854310, 'Казань': 7412090}\nfor c, r in city_revenue.items():\n    print(f'{c}: {r} ₽')"]
+      }
+    }
+  ]
+}

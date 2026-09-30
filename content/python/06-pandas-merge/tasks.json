@@ -1,0 +1,62 @@
+{
+  "tasks": [
+    {
+      "id": "merge-basic",
+      "title": "Кто заказывал 30 июня",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Соедини заказы с клиентами и положи в `result` заказы за **30 июня 2026**: столбцы `order_id`, `full_name`, `city`.",
+      "starter": "last_day = orders[orders[\"order_date\"] == \"2026-06-30\"]\nresult = ",
+      "solution": "last_day = orders[orders[\"order_date\"] == \"2026-06-30\"]\nresult = last_day.merge(customers, on=\"customer_id\")[[\"order_id\", \"full_name\", \"city\"]]",
+      "hints": ["`last_day.merge(customers, on=\"customer_id\")`, затем выбери три столбца."]
+    },
+    {
+      "id": "top-cities",
+      "title": "Пять городов-лидеров",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Найди **5 городов** с наибольшей выручкой (доставленные заказы). Результат (город и выручка), от большей к меньшей, — в `result`.",
+      "starter": "result = ",
+      "solution": "result = (\n    orders[orders[\"status\"] == \"delivered\"]\n    .merge(customers[[\"customer_id\", \"city\"]], on=\"customer_id\")\n    .groupby(\"city\")[\"amount\"].sum()\n    .sort_values(ascending=False)\n    .head(5)\n)",
+      "orderMatters": true,
+      "hints": ["Цепочка: фильтр доставленных → `merge` с городами → `groupby(\"city\")` → сумма → сортировка → `head(5)`."],
+      "selfTest": { "correct": ["d = orders[orders['status'] == 'delivered'].merge(customers, on='customer_id')\nresult = d.groupby('city', as_index=False)['amount'].sum().nlargest(5, 'amount')"] }
+    },
+    {
+      "id": "no-orders",
+      "title": "Клиенты без заказов",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Сколько клиентов **не сделали ни одного заказа**? Используй `merge` с `how=\"left\"` и `indicator=True`. Число — в `result`.",
+      "starter": "buyers = orders[[\"customer_id\"]].drop_duplicates()\nm = customers.merge(buyers, on=\"customer_id\", how=\"left\", indicator=True)\nresult = ",
+      "solution": "buyers = orders[[\"customer_id\"]].drop_duplicates()\nm = customers.merge(buyers, on=\"customer_id\", how=\"left\", indicator=True)\nresult = (m[\"_merge\"] == \"left_only\").sum()",
+      "hints": ["Нужные строки — где `m[\"_merge\"] == \"left_only\"`.", "Количество `True` в маске — `.sum()`."],
+      "selfTest": { "correct": ["result = (~customers['customer_id'].isin(orders['customer_id'])).sum()"] }
+    },
+    {
+      "id": "category-revenue",
+      "title": "Выручка по категориям",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": "Посчитай выручку по категориям товаров для **доставленных** заказов: соедини `order_items` с `orders` (статус) и `products` (категория), создай столбец `revenue = quantity × price` (цена из `order_items`). Результат (категория и выручка), от большей к меньшей, — в `result`.",
+      "starter": "items = (\n    order_items\n    .merge(orders[[\"order_id\", \"status\"]], on=\"order_id\")\n    .merge(products[[\"product_id\", \"category\"]], on=\"product_id\")\n)\n",
+      "solution": "items = (\n    order_items\n    .merge(orders[[\"order_id\", \"status\"]], on=\"order_id\")\n    .merge(products[[\"product_id\", \"category\"]], on=\"product_id\")\n)\nitems[\"revenue\"] = items[\"quantity\"] * items[\"price\"]\nresult = items[items[\"status\"] == \"delivered\"].groupby(\"category\")[\"revenue\"].sum().sort_values(ascending=False)",
+      "orderMatters": true,
+      "hints": ["Новый столбец: `items[\"revenue\"] = items[\"quantity\"] * items[\"price\"]`.", "Потом фильтр по статусу, `groupby(\"category\")`, сумма, сортировка."],
+      "mistakes": [{ "pattern": "price_y|price_now", "message": "Выручку считают по цене **на момент покупки** — это `price` из `order_items`, а не текущая цена из `products`." }]
+    },
+    {
+      "id": "how-quiz",
+      "title": "Какой how выбрать",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Нужен список **всех** товаров каталога и сколько раз каждый продавался — включая товары без продаж (у них должно быть 0). Какой `how` выбрать в `products.merge(sales, on=\"product_id\", how=...)`?",
+      "options": [
+        { "text": "\"left\"", "correct": true, "explain": "Сохраняются все строки левой таблицы (`products`), а у товаров без продаж будут пустые значения — их заменим нулём через `fillna(0)`." },
+        { "text": "\"inner\"", "explain": "Товары без продаж пропадут — у них нет пары в `sales`." },
+        { "text": "\"right\"", "explain": "Сохранятся все строки `sales`, а товары без продаж — нет." }
+      ],
+      "hints": ["Какая таблица должна сохраниться полностью — и она слева или справа?"]
+    }
+  ]
+}

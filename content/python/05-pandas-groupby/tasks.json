@@ -1,0 +1,61 @@
+{
+  "tasks": [
+    {
+      "id": "status-size",
+      "title": "Заказы по статусам",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Посчитай число заказов в каждом статусе и положи в `result` (статус и количество).",
+      "starter": "result = ",
+      "solution": "result = orders.groupby(\"status\").size()",
+      "hints": ["`groupby(\"status\").size()` — размер каждой группы.", "Подойдёт и `orders[\"status\"].value_counts()`."],
+      "selfTest": { "correct": ["result = orders['status'].value_counts()", "result = orders.groupby('status', as_index=False)['order_id'].count()"] }
+    },
+    {
+      "id": "payment-revenue",
+      "title": "Выручка по способам оплаты",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Посчитай выручку **доставленных** заказов по способам оплаты и отсортируй от большей к меньшей. Результат (способ оплаты и выручка) — в `result`.",
+      "starter": "delivered = orders[orders[\"status\"] == \"delivered\"]\nresult = ",
+      "solution": "delivered = orders[orders[\"status\"] == \"delivered\"]\nresult = delivered.groupby(\"payment_method\")[\"amount\"].sum().sort_values(ascending=False)",
+      "orderMatters": true,
+      "hints": ["Группируй `delivered` по `payment_method`, суммируй `amount`.", "В конце — `.sort_values(ascending=False)`."],
+      "selfTest": { "wrong": ["result = orders.groupby('payment_method')['amount'].sum().sort_values(ascending=False)"] }
+    },
+    {
+      "id": "category-agg",
+      "title": "Каталог по категориям",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Для каждой категории посчитай число товаров `products_cnt` и среднюю цену `avg_price`, округлённую до целых. Результат с категорией — в `result`.",
+      "starter": "result = ",
+      "solution": "result = products.groupby(\"category\").agg(\n    products_cnt=(\"product_id\", \"count\"),\n    avg_price=(\"price\", \"mean\"),\n).round(0)",
+      "hints": ["Именованные агрегаты: `.agg(products_cnt=(\"product_id\", \"count\"), avg_price=(\"price\", \"mean\"))`.", "Округли весь результат: `.round(0)`."],
+      "selfTest": { "wrong": ["result = products.groupby('category').agg(products_cnt=('product_id', 'count'), avg_price=('price', 'mean'))"] }
+    },
+    {
+      "id": "monthly",
+      "title": "Выручка по месяцам 2025",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": "Посчитай выручку доставленных заказов **2025 года** по месяцам. Результат — в `result`: номер месяца (1–12) и выручка, по порядку месяцев.",
+      "starter": "d = orders[(orders[\"status\"] == \"delivered\") & (orders[\"order_date\"].dt.year == 2025)]\nresult = ",
+      "solution": "d = orders[(orders[\"status\"] == \"delivered\") & (orders[\"order_date\"].dt.year == 2025)]\nresult = d.groupby(d[\"order_date\"].dt.month)[\"amount\"].sum()",
+      "orderMatters": true,
+      "hints": ["Номер месяца — `d[\"order_date\"].dt.month`.", "Группируй по нему: `d.groupby(d[\"order_date\"].dt.month)[\"amount\"].sum()`."],
+      "selfTest": { "correct": ["d = orders[(orders['status'] == 'delivered') & (orders['order_date'].dt.year == 2025)].copy()\nd['m'] = d['order_date'].dt.month\nresult = d.groupby('m', as_index=False)['amount'].sum()"] }
+    },
+    {
+      "id": "pivot",
+      "title": "Сводная по заводу",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": "Построй сводную таблицу выпуска: строки — `line_id`, столбцы — смены (`shift`), значения — сумма `produced_units`. Результат — в `result`.",
+      "starter": "result = ",
+      "solution": "result = production.pivot_table(index=\"line_id\", columns=\"shift\", values=\"produced_units\", aggfunc=\"sum\")",
+      "hints": ["`pivot_table(index=…, columns=…, values=…, aggfunc=\"sum\")`."],
+      "selfTest": { "correct": ["result = production.groupby(['line_id', 'shift'])['produced_units'].sum().unstack()"] }
+    }
+  ]
+}

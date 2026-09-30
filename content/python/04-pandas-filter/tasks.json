@@ -1,0 +1,69 @@
+{
+  "tasks": [
+    {
+      "id": "kazan",
+      "title": "Клиенты из Казани",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Положи в `result` все строки таблицы `customers`, где город — Казань (все столбцы).",
+      "starter": "result = ",
+      "solution": "result = customers[customers[\"city\"] == \"Казань\"]",
+      "hints": ["Маска: `customers[\"city\"] == \"Казань\"`, затем подставь её в квадратные скобки."],
+      "selfTest": { "correct": ["result = customers.query('city == \"Казань\"').reset_index(drop=True)"], "wrong": ["result = customers[customers['city'] == 'казань']"] }
+    },
+    {
+      "id": "expensive-tech",
+      "title": "Дорогая электроника",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Положи в `result` товары категории **«Электроника» дороже 30 000 ₽** — только столбцы `product_name` и `price`.",
+      "starter": "result = ",
+      "solution": "result = products.loc[(products[\"category\"] == \"Электроника\") & (products[\"price\"] > 30000), [\"product_name\", \"price\"]]",
+      "hints": ["Два условия соединяются знаком `&`, и каждое — в своих скобках.", "Столбцы можно выбрать после фильтра: `df[маска][[\"product_name\", \"price\"]]`."],
+      "selfTest": {
+        "correct": ["t = products[(products['category'] == 'Электроника') & (products['price'] > 30000)]\nresult = t[['product_name', 'price']]"],
+        "wrong": ["result = products.loc[(products['category'] == 'Электроника') | (products['price'] > 30000), ['product_name', 'price']]"]
+      }
+    },
+    {
+      "id": "cash-problems",
+      "title": "Проблемные заказы за наличные",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Положи в `result` заказы, оплаченные наличными (`cash`), со статусом `cancelled` **или** `returned`. Столбцы: `order_id`, `status`, `amount`.",
+      "starter": "result = ",
+      "solution": "mask = (orders[\"payment_method\"] == \"cash\") & orders[\"status\"].isin([\"cancelled\", \"returned\"])\nresult = orders.loc[mask, [\"order_id\", \"status\", \"amount\"]]",
+      "hints": ["Для двух статусов удобен `.isin([...])`.", "Объедини условие по способу оплаты и `isin` через `&`."],
+      "selfTest": { "correct": ["m = (orders['payment_method'] == 'cash') & ((orders['status'] == 'cancelled') | (orders['status'] == 'returned'))\nresult = orders[m][['order_id', 'status', 'amount']]"] }
+    },
+    {
+      "id": "top5",
+      "title": "Пятёрка самых дорогих",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Положи в `result` **5 самых дорогих** товаров (столбцы `product_name` и `price`) — от самого дорогого.",
+      "starter": "result = ",
+      "solution": "result = products.sort_values(\"price\", ascending=False).head(5)[[\"product_name\", \"price\"]]",
+      "orderMatters": true,
+      "hints": ["Сортировка по убыванию: `sort_values(\"price\", ascending=False)`, потом `.head(5)`."],
+      "selfTest": {
+        "correct": ["result = products.nlargest(5, 'price')[['product_name', 'price']]"],
+        "wrong": ["result = products.sort_values('price').head(5)[['product_name', 'price']]"]
+      }
+    },
+    {
+      "id": "sets",
+      "title": "Товары-наборы",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": "Найди все товары, в названии которых есть слово **«набор»** в любом регистре («Набор ножей…», «Носки набор…»). Положи в `result` столбцы `product_name` и `category`.",
+      "starter": "result = ",
+      "solution": "result = products.loc[products[\"product_name\"].str.contains(\"набор\", case=False), [\"product_name\", \"category\"]]",
+      "hints": ["Поиск текста в столбце — `.str.contains(...)`.", "Чтобы не различать регистр, добавь `case=False`."],
+      "selfTest": {
+        "correct": ["result = products[products['product_name'].str.lower().str.contains('набор')][['product_name', 'category']]"],
+        "wrong": ["result = products[products['product_name'].str.contains('набор')][['product_name', 'category']]"]
+      }
+    }
+  ]
+}

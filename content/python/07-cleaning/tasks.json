@@ -1,0 +1,61 @@
+{
+  "tasks": [
+    {
+      "id": "missing",
+      "title": "Сколько пропусков",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Посчитай число пропусков в **каждом столбце** таблицы `orders`. Результат (столбец и число пропусков) — в `result`.",
+      "starter": "result = ",
+      "solution": "result = orders.isna().sum()",
+      "hints": ["`isna()` + `sum()`."],
+      "selfTest": { "wrong": ["result = orders.count()"] }
+    },
+    {
+      "id": "fill-rating",
+      "title": "Заполнить рейтинг медианой",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "У части товаров нет рейтинга. Положи в `result` столбец `rating`, в котором пропуски заполнены **медианой** рейтинга всех товаров.",
+      "starter": "result = ",
+      "solution": "result = products[\"rating\"].fillna(products[\"rating\"].median())",
+      "hints": ["Медиана столбца — `products[\"rating\"].median()`.", "Передай её в `fillna(...)`."],
+      "selfTest": { "wrong": ["result = products['rating'].fillna(0)", "result = products['rating'].fillna(products['rating'].mean())"] }
+    },
+    {
+      "id": "clean-cities",
+      "title": "Города к единому виду",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "В столбце `city` таблицы `raw` города записаны кто как. Приведи их к единому виду: без пробелов по краям, каждое слово с заглавной буквы. Положи очищенный столбец в `result`.",
+      "starter": "raw = pd.DataFrame({\"city\": [\"  москва\", \"МОСКВА \", \" Казань\", \"санкт-петербург\", \"НИЖНИЙ НОВГОРОД\", \"казань  \"]})\nresult = ",
+      "solution": "raw = pd.DataFrame({\"city\": [\"  москва\", \"МОСКВА \", \" Казань\", \"санкт-петербург\", \"НИЖНИЙ НОВГОРОД\", \"казань  \"]})\nresult = raw[\"city\"].str.strip().str.title()",
+      "orderMatters": true,
+      "hints": ["Цепочка методов `.str`: `.str.strip()` убирает пробелы, `.str.title()` делает заглавной первую букву каждого слова."],
+      "selfTest": { "wrong": ["raw = pd.DataFrame({'city': ['  москва', 'МОСКВА ', ' Казань', 'санкт-петербург', 'НИЖНИЙ НОВГОРОД', 'казань  ']})\nresult = raw['city'].str.title()"] }
+    },
+    {
+      "id": "prices",
+      "title": "Цены из текста",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": "Цены в выгрузке — текст вида `\"12 990 ₽\"` и `\"1 290,50 ₽\"`. Преврати их в числа (`float`) и положи получившийся столбец в `result`.",
+      "starter": "raw = pd.Series([\"12 990 ₽\", \"1 290,50 ₽\", \"459 ₽\", \"84 990 ₽\", \"790,90 ₽\"])\nresult = ",
+      "solution": "raw = pd.Series([\"12 990 ₽\", \"1 290,50 ₽\", \"459 ₽\", \"84 990 ₽\", \"790,90 ₽\"])\nresult = raw.str.replace(\" \", \"\").str.replace(\"₽\", \"\").str.replace(\",\", \".\").astype(float)",
+      "orderMatters": true,
+      "hints": ["Убери пробелы и знак рубля через `.str.replace(...)`.", "Запятую замени на точку — в Python дробная часть через точку. В конце — `.astype(float)`."],
+      "selfTest": { "wrong": ["raw = pd.Series(['12 990 ₽', '1 290,50 ₽', '459 ₽', '84 990 ₽', '790,90 ₽'])\nresult = raw.str.replace(' ', '').str.replace('₽', '').str.replace(',', '').astype(float)"] }
+    },
+    {
+      "id": "dupes",
+      "title": "Дубли в выгрузке",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "В таблице `raw` некоторые заказы выгрузились дважды. Удали **полные дубли строк** и положи очищенную таблицу в `result`.",
+      "starter": "raw = pd.DataFrame({\n    \"order_id\": [101, 102, 102, 103, 104, 104, 105],\n    \"amount\": [1200.0, 3400.0, 3400.0, 890.0, 15600.0, 15600.0, 2300.0],\n})\nresult = ",
+      "solution": "raw = pd.DataFrame({\n    \"order_id\": [101, 102, 102, 103, 104, 104, 105],\n    \"amount\": [1200.0, 3400.0, 3400.0, 890.0, 15600.0, 15600.0, 2300.0],\n})\nresult = raw.drop_duplicates()",
+      "hints": ["Метод `drop_duplicates()` убирает повторяющиеся строки."],
+      "selfTest": { "correct": ["raw = pd.DataFrame({'order_id': [101, 102, 102, 103, 104, 104, 105], 'amount': [1200.0, 3400.0, 3400.0, 890.0, 15600.0, 15600.0, 2300.0]})\nresult = raw.drop_duplicates().reset_index(drop=True)"] }
+    }
+  ]
+}

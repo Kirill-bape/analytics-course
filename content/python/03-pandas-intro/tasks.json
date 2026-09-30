@@ -1,0 +1,60 @@
+{
+  "tasks": [
+    {
+      "id": "rows",
+      "title": "Сколько строк",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Положи в `result` **количество строк** в таблице `order_items`.",
+      "starter": "result = ",
+      "solution": "result = order_items.shape[0]",
+      "hints": ["`df.shape` возвращает пару (строки, столбцы). Первый элемент — `[0]`.", "Можно и так: `len(order_items)`."],
+      "selfTest": { "correct": ["result = len(order_items)"], "wrong": ["result = order_items.shape[1]"] }
+    },
+    {
+      "id": "columns",
+      "title": "Нужные столбцы",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Положи в `result` таблицу из двух столбцов таблицы `products`: `product_name` и `price` (все строки).",
+      "starter": "result = ",
+      "solution": "result = products[[\"product_name\", \"price\"]]",
+      "hints": ["Несколько столбцов выбирают списком в двойных квадратных скобках: `df[[\"a\", \"b\"]]`."],
+      "selfTest": { "wrong": ["result = products"] }
+    },
+    {
+      "id": "read-csv",
+      "title": "Сколько категорий",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Прочитай файл `products.csv` функцией `pd.read_csv` и положи в `result` **число разных категорий** товаров.",
+      "starter": "df = pd.read_csv(\"products.csv\")\nresult = ",
+      "solution": "df = pd.read_csv(\"products.csv\")\nresult = df[\"category\"].nunique()",
+      "hints": ["Число уникальных значений в столбце — `.nunique()`."],
+      "selfTest": { "correct": ["result = len(products['category'].unique())"], "wrong": ["df = pd.read_csv('products.csv')\nresult = df['category'].count()"] }
+    },
+    {
+      "id": "top-cities",
+      "title": "Самые частые города",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Найди **5 городов**, где больше всего клиентов (по таблице `customers`), и сколько в каждом клиентов. Положи результат в `result` — от самого частого к более редким.",
+      "starter": "result = ",
+      "solution": "result = customers[\"city\"].value_counts().head(5)",
+      "orderMatters": true,
+      "hints": ["`value_counts()` уже сортирует по убыванию.", "Первые 5 значений — `.head(5)`."],
+      "selfTest": { "correct": ["result = customers.groupby('city').size().sort_values(ascending=False).head(5)"] }
+    },
+    {
+      "id": "delivered-mean",
+      "title": "Средний чек в pandas",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Посчитай **средний чек по всем заказам** таблицы `orders` (без фильтров), округли до **2 знаков** и положи в `result`.",
+      "starter": "result = ",
+      "solution": "result = round(orders[\"amount\"].mean(), 2)",
+      "hints": ["Среднее столбца — `orders[\"amount\"].mean()`.", "Округление — `round(…, 2)` или `.round(2)`."],
+      "selfTest": { "wrong": ["result = orders['amount'].mean()"] }
+    }
+  ]
+}

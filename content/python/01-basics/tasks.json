@@ -1,0 +1,59 @@
+{
+  "tasks": [
+    {
+      "id": "revenue-var",
+      "title": "Первый расчёт",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Чайник стоит **2 290 ₽**, продали **7** штук. Сохрани цену в переменную `price`, количество — в `quantity`, а выручку (произведение) — в переменную **`result`**.",
+      "starter": "price = \nquantity = \nresult = ",
+      "solution": "price = 2290\nquantity = 7\nresult = price * quantity",
+      "hints": ["Числа в Python пишутся без пробелов: `2290`.", "`result = price * quantity`"],
+      "selfTest": { "correct": ["result = 2290 * 7"], "wrong": ["result = 2290 + 7"] }
+    },
+    {
+      "id": "fstring",
+      "title": "Сообщение для отчёта",
+      "difficulty": 1,
+      "type": "python",
+      "check": "stdout",
+      "prompt": "Выведи с помощью `print` и f-строки ровно такую строку:\n\n`Заказов за день: 42, выручка: 118500 ₽`\n\nЧисла возьми из переменных `orders_cnt` и `revenue`.",
+      "starter": "orders_cnt = 42\nrevenue = 118500\n",
+      "solution": "orders_cnt = 42\nrevenue = 118500\nprint(f\"Заказов за день: {orders_cnt}, выручка: {revenue} ₽\")",
+      "hints": ["f-строка: `f\"Текст {переменная}\"`.", "Следи за запятой и пробелами — строка должна совпасть символ в символ."],
+      "selfTest": { "wrong": ["print('Заказов за день: 42 выручка: 118500 ₽')"] }
+    },
+    {
+      "id": "list-range",
+      "title": "Размах цен",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Дан список цен. Положи в `result` **размах** — разницу между самой высокой и самой низкой ценой.",
+      "starter": "prices = [2290, 4790, 459, 12990, 890, 7990, 1490]\nresult = ",
+      "solution": "prices = [2290, 4790, 459, 12990, 890, 7990, 1490]\nresult = max(prices) - min(prices)",
+      "hints": ["Функции `max()` и `min()` принимают список."],
+      "selfTest": { "wrong": ["prices = [2290, 4790, 459, 12990, 890, 7990, 1490]\nresult = max(prices)"] }
+    },
+    {
+      "id": "avg-rounded",
+      "title": "Средняя цена",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Посчитай среднюю цену товаров из списка и округли до **2 знаков**. Ответ — в `result`.",
+      "starter": "prices = [2290, 4790, 459, 12990, 890, 7990, 1490]\nresult = ",
+      "solution": "prices = [2290, 4790, 459, 12990, 890, 7990, 1490]\nresult = round(sum(prices) / len(prices), 2)",
+      "hints": ["Среднее = сумма / количество: `sum(prices) / len(prices)`.", "Округление: `round(число, 2)`."],
+      "selfTest": { "wrong": ["prices = [2290, 4790, 459, 12990, 890, 7990, 1490]\nresult = sum(prices) / len(prices)"] }
+    },
+    {
+      "id": "dict",
+      "title": "Заказы из регионов",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "В словаре `city_orders` — число заказов по городам. Положи в `result` **суммарное** число заказов **Казани и Самары**.",
+      "starter": "city_orders = {\"Москва\": 4120, \"Казань\": 730, \"Самара\": 450, \"Уфа\": 440}\nresult = ",
+      "solution": "city_orders = {\"Москва\": 4120, \"Казань\": 730, \"Самара\": 450, \"Уфа\": 440}\nresult = city_orders[\"Казань\"] + city_orders[\"Самара\"]",
+      "hints": ["Значение из словаря достают по ключу: `city_orders[\"Казань\"]`."]
+    }
+  ]
+}
