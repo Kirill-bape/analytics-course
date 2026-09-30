@@ -1,0 +1,61 @@
+{
+  "tasks": [
+    {
+      "id": "read-r",
+      "title": "Как читать коэффициент",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Корреляция между стажем оператора и долей брака: **r = −0,62**. Что это значит?",
+      "options": [
+        { "text": "Средняя обратная связь: у более опытных операторов брака обычно меньше", "correct": true, "explain": "Знак «−» — величины меняются в разные стороны, 0,62 по модулю — связь средней силы." },
+        { "text": "Опыт уменьшает брак на 62%", "explain": "Коэффициент корреляции — не процент и не размер эффекта, а мера согласованности." },
+        { "text": "Связи нет, потому что число отрицательное", "explain": "Отрицательная корреляция — это тоже связь, просто обратная." },
+        { "text": "Доказано, что опыт — причина снижения брака", "explain": "Корреляция не доказывает причинность: например, опытных могут ставить на новые линии, где брака меньше из-за оборудования." }
+      ],
+      "hints": ["Посмотри на знак и на модуль числа — таблица в уроке."]
+    },
+    {
+      "id": "downtime-output",
+      "title": "Простои и выпуск",
+      "difficulty": 2,
+      "prompt": "Посчитай корреляцию между простоем (`downtime_min`) и выпуском (`produced_units`) для **всех смен линии 3**. Округли до 3 знаков. Одно число.",
+      "solution": "SELECT ROUND(corr(downtime_min, produced_units), 3) AS r\nFROM production\nWHERE line_id = 3;",
+      "hints": ["Функция корреляции — `corr(x, y)`.", "`SELECT ROUND(corr(downtime_min, produced_units), 3) FROM production WHERE line_id = 3`"],
+      "selfTest": { "correct": ["SELECT ROUND(corr(produced_units, downtime_min), 3) FROM production WHERE line_id = 3"] }
+    },
+    {
+      "id": "experience-defects",
+      "title": "Опыт и брак",
+      "difficulty": 3,
+      "prompt": "Для каждого оператора посчитай долю брака (сумма `defect_units` / сумма `produced_units` × 100), а затем — корреляцию между `experience_years` оператора и этой долей. Округли до 3 знаков. Одно число.",
+      "solution": "WITH ops AS (\n    SELECT o.operator_id, o.experience_years,\n           100.0 * SUM(p.defect_units) / SUM(p.produced_units) AS defect_pct\n    FROM production p\n    JOIN operators o ON o.operator_id = p.operator_id\n    GROUP BY o.operator_id, o.experience_years\n)\nSELECT ROUND(corr(experience_years, defect_pct), 3) AS r\nFROM ops;",
+      "hints": [
+        "Шаг 1 (CTE): доля брака по каждому оператору — нужен JOIN с `operators`, чтобы получить стаж.",
+        "Шаг 2: `corr(experience_years, defect_pct)` по результату шага 1."
+      ],
+      "selfTest": { "wrong": ["SELECT ROUND(corr(o.experience_years, p.defect_units), 3) FROM production p JOIN operators o USING (operator_id)"] }
+    },
+    {
+      "id": "causation",
+      "title": "Промокоды и лояльность",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Аналитик выяснил: клиенты, которые хоть раз использовали промокод, делают в среднем в 2 раза больше заказов. Маркетолог предлагает раздать промокоды всем, чтобы удвоить продажи. Что ответить?",
+      "options": [
+        { "text": "Сначала проверить A/B-тестом: связь может быть обратной — активные клиенты просто чаще получают и используют промокоды", "correct": true, "explain": "Корреляция не доказывает, что промокод **вызывает** рост заказов. Проверить причину может только эксперимент." },
+        { "text": "Согласиться: связь в 2 раза — это очень сильный эффект", "explain": "Сила связи ничего не говорит о направлении причины." },
+        { "text": "Отказаться: корреляция ничего не значит", "explain": "Значит — это повод для гипотезы. Её нужно проверить экспериментом, а не отбросить." }
+      ],
+      "hints": ["Вспомни раздел «Корреляция — не причинность»."]
+    },
+    {
+      "id": "price-rating",
+      "title": "Дорогие товары — лучше?",
+      "difficulty": 2,
+      "prompt": "Есть ли связь между ценой товара (`price`) и его рейтингом (`rating`)? Посчитай корреляцию по всем товарам (товары без рейтинга функция пропустит сама). Округли до 3 знаков.",
+      "solution": "SELECT ROUND(corr(price, rating), 3) AS r\nFROM products;",
+      "hints": ["`corr(price, rating)` по таблице `products`."],
+      "explanation": "Корреляция близка к нулю — линейной связи между ценой и рейтингом нет: дорогой товар не обязательно оценивают выше."
+    }
+  ]
+}

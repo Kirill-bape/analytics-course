@@ -44,7 +44,7 @@ export function judgeNumber(task: TaskDef, answer: number | string, input: strin
   const tol = task.tolerance ?? 1e-6 + Math.abs(answer) * 1e-9;
   if (Math.abs(v - answer) <= tol) return { ok: true };
   for (const w of task.wrongAnswers ?? []) {
-    if (Math.abs(v - w.value) <= Math.max(tol, Math.abs(w.value) * 1e-6)) return { ok: false, title: 'Не совсем.', details: [w.message] };
+    if (Math.abs(v - w.value) <= Math.max(tol, Math.abs(w.value) * 0.005)) return { ok: false, title: 'Не совсем.', details: [w.message] };
   }
   const k = decimals(answer);
   if (decimals(v) > k && Math.abs(Number(v.toFixed(k)) - answer) <= tol) {

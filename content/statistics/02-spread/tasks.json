@@ -1,0 +1,57 @@
+{
+  "tasks": [
+    {
+      "id": "which-spread",
+      "title": "Где разброс больше",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Сроки доставки двух курьерских служб (в днях). У какой **стандартное отклонение** больше?\n\n- Служба А: 4, 4, 5, 4, 3, 4\n- Служба Б: 1, 7, 1, 7, 2, 6",
+      "options": [
+        { "text": "У службы Б", "correct": true, "explain": "Среднее у обеих 4 дня, но у Б значения далеко от среднего — разброс большой." },
+        { "text": "У службы А", "explain": "У А все значения близко к 4 — разброс маленький." },
+        { "text": "Одинаковое, ведь средние равны", "explain": "Равенство средних ничего не говорит о разбросе — в этом и смысл стандартного отклонения." }
+      ],
+      "hints": ["Сначала посчитай среднее каждой службы, потом посмотри, насколько далеко от него значения."]
+    },
+    {
+      "id": "std",
+      "title": "Разброс чеков",
+      "difficulty": 2,
+      "prompt": "Для **доставленных** заказов посчитай в одной строке: `mean_amount` — средний чек и `std_amount` — стандартное отклонение суммы заказа (по выборке). Оба округли до целых.",
+      "solution": "SELECT ROUND(AVG(amount), 0) AS mean_amount,\n       ROUND(stddev_samp(amount), 0) AS std_amount\nFROM orders\nWHERE status = 'delivered';",
+      "checkColumnNames": true,
+      "hints": ["Стандартное отклонение по выборке — `stddev_samp(amount)`.", "Не забудь `ROUND(…, 0)` у обоих столбцов."],
+      "selfTest": { "correct": ["SELECT ROUND(AVG(amount)) AS mean_amount, ROUND(stddev(amount)) AS std_amount FROM orders WHERE status = 'delivered'"] }
+    },
+    {
+      "id": "iqr",
+      "title": "Квартили суммы заказа",
+      "difficulty": 2,
+      "prompt": "Для **доставленных** заказов посчитай `q1` (25-й процентиль суммы), `q3` (75-й процентиль) и `iqr` = q3 − q1. Все три значения округли до 2 знаков.",
+      "solution": "SELECT ROUND(quantile_cont(amount, 0.25), 2) AS q1,\n       ROUND(quantile_cont(amount, 0.75), 2) AS q3,\n       ROUND(quantile_cont(amount, 0.75) - quantile_cont(amount, 0.25), 2) AS iqr\nFROM orders\nWHERE status = 'delivered';",
+      "checkColumnNames": true,
+      "hints": ["Процентиль в DuckDB — `quantile_cont(столбец, доля)`: 25-й — это 0.25.", "IQR — разность двух квантилей."]
+    },
+    {
+      "id": "p90-delivery",
+      "title": "Обещание клиентам",
+      "difficulty": 3,
+      "prompt": "Маркетинг хочет написать на сайте: «**90%** заказов доставляем за N дней». Найди N — 90-й процентиль срока доставки (`delivery_date - order_date`) для доставленных заказов. Одно число.",
+      "solution": "SELECT quantile_cont(delivery_date - order_date, 0.9) AS p90_days\nFROM orders\nWHERE status = 'delivered';",
+      "hints": ["Срок доставки — `delivery_date - order_date`.", "90-й процентиль — `quantile_cont(…, 0.9)`."],
+      "selfTest": { "wrong": ["SELECT AVG(delivery_date - order_date) FROM orders WHERE status = 'delivered'"] }
+    },
+    {
+      "id": "range-hand",
+      "title": "Размах вручную",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Выпуск линии за пять смен: **412, 398, 405, 170, 409** штук. Посчитай размах.",
+      "answer": 242,
+      "unit": "шт.",
+      "hints": ["Размах = максимум − минимум."],
+      "explanation": "412 − 170 = 242. Одна «плохая» смена (170 — вероятно, поломка) сильно увеличила размах. Поэтому размах чувствителен к выбросам, а IQR — нет.",
+      "selfTest": { "correct": ["242"], "wrong": ["14"] }
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "tasks": [
+    {
+      "id": "shape",
+      "title": "Форма распределения чеков",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Средний чек доставленного заказа — 11 780 ₽, медианный — 5 490 ₽. Какая форма у распределения чеков?",
+      "options": [
+        { "text": "Скошено вправо: много небольших заказов и «хвост» очень крупных", "correct": true, "explain": "Крупные заказы тянут среднее вверх, а медиана остаётся на месте — поэтому среднее заметно больше медианы." },
+        { "text": "Нормальное (симметричное)", "explain": "У симметричного распределения среднее и медиана почти равны." },
+        { "text": "Скошено влево", "explain": "При скошенности влево среднее было бы меньше медианы." }
+      ],
+      "hints": ["Сравни среднее и медиану — таблица форм в уроке подскажет."]
+    },
+    {
+      "id": "histogram",
+      "title": "Гистограмма выпуска",
+      "difficulty": 2,
+      "prompt": [
+        "Построй гистограмму выпуска смен **линии 1** (`line_id = 1`): раздели `produced_units` на корзины по **50 штук** и посчитай смены в каждой.",
+        "",
+        "Столбцы: `bucket_from` (нижняя граница корзины, целое число), `shifts`. Сортировка — по `bucket_from`."
+      ],
+      "solution": "SELECT CAST(FLOOR(produced_units / 50) * 50 AS INTEGER) AS bucket_from,\n       COUNT(*) AS shifts\nFROM production\nWHERE line_id = 1\nGROUP BY bucket_from\nORDER BY bucket_from;",
+      "orderMatters": true,
+      "chart": { "type": "bar" },
+      "hints": [
+        "Нижняя граница корзины: `FLOOR(produced_units / 50) * 50`.",
+        "Приведи её к целому: `CAST(... AS INTEGER)`, затем `GROUP BY` и `COUNT(*)`."
+      ],
+      "explanation": "Большинство смен — в районе 380–400 штук (близко к нормальному распределению), но слева есть длинный хвост: смены с поломками и простоями. Именно такие смены и надо разбирать.",
+      "selfTest": { "correct": ["SELECT produced_units // 50 * 50 AS bucket_from, COUNT(*) AS shifts FROM production WHERE line_id = 1 GROUP BY 1 ORDER BY 1"] }
+    },
+    {
+      "id": "zscore",
+      "title": "Насколько необычна смена",
+      "difficulty": 2,
+      "type": "number",
+      "prompt": "Средний выпуск смены — **400** шт., стандартное отклонение — **25** шт. В ночную смену выпустили **325** шт. Посчитай z-оценку этой смены.",
+      "answer": -3,
+      "hints": ["z = (значение − среднее) / σ.", "(325 − 400) / 25 = ?"],
+      "wrongAnswers": [{ "value": 3, "message": "Знак важен: выпуск **ниже** среднего, поэтому z отрицательная." }],
+      "explanation": "z = −3: смена на три стандартных отклонения хуже средней. Для нормального распределения это случается реже, чем в 0,3% случаев, — повод разобраться, что произошло.",
+      "selfTest": { "correct": ["-3"], "wrong": ["3", "-75"] }
+    },
+    {
+      "id": "outliers",
+      "title": "Сколько выбросов",
+      "difficulty": 3,
+      "prompt": "Найди, сколько **доставленных** заказов являются выбросами сверху по правилу IQR: сумма больше **Q3 + 1,5 × IQR** (квартили считай по доставленным заказам). Одно число.",
+      "solution": "WITH q AS (\n    SELECT quantile_cont(amount, 0.25) AS q1,\n           quantile_cont(amount, 0.75) AS q3\n    FROM orders\n    WHERE status = 'delivered'\n)\nSELECT COUNT(*) AS outliers\nFROM orders, q\nWHERE status = 'delivered'\n  AND amount > q3 + 1.5 * (q3 - q1);",
+      "hints": [
+        "Шаг 1 (CTE): посчитай `q1` и `q3`.",
+        "Шаг 2: соедини заказы с CTE (`FROM orders, q` — у CTE одна строка) и посчитай заказы, где `amount > q3 + 1.5 * (q3 - q1)`."
+      ],
+      "selfTest": {
+        "correct": ["SELECT COUNT(*) FROM orders WHERE status = 'delivered' AND amount > (SELECT quantile_cont(amount, 0.75) + 1.5 * (quantile_cont(amount, 0.75) - quantile_cont(amount, 0.25)) FROM orders WHERE status = 'delivered')"],
+        "wrong": ["WITH q AS (SELECT quantile_cont(amount, 0.25) AS q1, quantile_cont(amount, 0.75) AS q3 FROM orders) SELECT COUNT(*) FROM orders, q WHERE amount > q3 + 1.5 * (q3 - q1)"]
+      }
+    },
+    {
+      "id": "rule-68-95",
+      "title": "Правило двух сигм",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Выпуск смены распределён нормально: среднее 400 шт., σ = 25 шт. В какой диапазон попадает примерно **95%** смен?",
+      "options": [
+        { "text": "От 350 до 450 шт.", "correct": true, "explain": "±2σ: 400 − 50 = 350, 400 + 50 = 450." },
+        { "text": "От 375 до 425 шт.", "explain": "Это ±1σ — туда попадает около 68% смен." },
+        { "text": "От 325 до 475 шт.", "explain": "Это ±3σ — около 99,7% смен." }
+      ],
+      "hints": ["95% — это среднее плюс-минус две сигмы."]
+    }
+  ]
+}

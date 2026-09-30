@@ -1,0 +1,54 @@
+{
+  "tasks": [
+    {
+      "id": "median-hand",
+      "title": "Медиана вручную",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Время доставки шести заказов (в днях): **3, 1, 7, 2, 4, 2**. Найди медиану.",
+      "answer": 2.5,
+      "unit": "дня",
+      "hints": ["Сначала выстрой значения по возрастанию.", "Значений шесть — чётное количество. Медиана — среднее двух центральных: (2 + 3) / 2."],
+      "wrongAnswers": [
+        { "value": 3.1666666, "message": "Это среднее арифметическое, а нужна медиана — значение посередине упорядоченного ряда." },
+        { "value": 7, "message": "Не забудь упорядочить значения перед поиском середины." }
+      ],
+      "selfTest": { "correct": ["2,5", "2.5"], "wrong": ["3", "2"] }
+    },
+    {
+      "id": "mean-vs-median",
+      "title": "Средний и медианный чек",
+      "difficulty": 2,
+      "prompt": "Для **доставленных** заказов посчитай два показателя в одной строке: `mean_amount` — средний чек (округли до 2 знаков) и `median_amount` — медианный чек.",
+      "solution": "SELECT ROUND(AVG(amount), 2) AS mean_amount,\n       median(amount) AS median_amount\nFROM orders\nWHERE status = 'delivered';",
+      "checkColumnNames": true,
+      "hints": ["Медиана в DuckDB — функция `median(столбец)`.", "`SELECT ROUND(AVG(amount), 2) AS mean_amount, median(amount) AS median_amount FROM orders WHERE status = 'delivered'`"],
+      "selfTest": { "correct": ["SELECT ROUND(AVG(amount), 2) AS mean_amount, quantile_cont(amount, 0.5) AS median_amount FROM orders WHERE status = 'delivered'"] }
+    },
+    {
+      "id": "what-to-report",
+      "title": "Что написать в отчёте",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Средний чек доставленного заказа заметно больше медианного. Руководитель спрашивает: «Сколько тратит **обычный** покупатель за заказ?» Что ответить?",
+      "options": [
+        { "text": "Назвать медиану: половина заказов меньше этой суммы, половина — больше", "correct": true, "explain": "Медиана описывает «обычный» заказ и не искажается редкими дорогими покупками." },
+        { "text": "Назвать среднее: оно учитывает все заказы", "explain": "Учитывает — но несколько очень дорогих заказов завышают среднее, и «обычный» заказ оказывается меньше." },
+        { "text": "Назвать самый частый заказ (моду) в рублях", "explain": "Для денежных сумм с копейками мода почти бесполезна: одинаковых сумм мало." }
+      ],
+      "hints": ["Вспомни пример с зарплатой директора."]
+    },
+    {
+      "id": "items-mode",
+      "title": "Сколько товаров в типичном заказе",
+      "difficulty": 3,
+      "prompt": "Какое **число позиций** в заказе встречается чаще всего? Посчитай число позиций в каждом заказе (строки `order_items`), а потом найди моду. Результат — одно число.",
+      "solution": "SELECT mode(items_cnt) AS typical_items\nFROM (\n    SELECT order_id, COUNT(*) AS items_cnt\n    FROM order_items\n    GROUP BY order_id\n) AS t;",
+      "hints": [
+        "Шаг 1: `SELECT order_id, COUNT(*) AS items_cnt FROM order_items GROUP BY order_id`.",
+        "Шаг 2: оберни шаг 1 в подзапрос и примени `mode(items_cnt)`."
+      ],
+      "selfTest": { "correct": ["WITH t AS (SELECT order_id, COUNT(*) AS c FROM order_items GROUP BY order_id) SELECT c FROM t GROUP BY c ORDER BY COUNT(*) DESC LIMIT 1"] }
+    }
+  ]
+}
