@@ -1,0 +1,70 @@
+{
+  "tasks": [
+    {
+      "id": "payment-share",
+      "title": "Доля способов оплаты",
+      "difficulty": 2,
+      "prompt": "Посчитай долю каждого способа оплаты в **количестве** всех заказов. Столбцы: `payment_method`, `orders_cnt`, `share_pct` (в процентах, округли до 1 знака). Сортировка — по количеству, от большего.",
+      "solution": "SELECT payment_method,\n       COUNT(*) AS orders_cnt,\n       ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 1) AS share_pct\nFROM orders\nGROUP BY payment_method\nORDER BY orders_cnt DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Общее количество заказов можно получить окном поверх группировки: `SUM(COUNT(*)) OVER ()`.",
+        "Или отдельным подзапросом: `(SELECT COUNT(*) FROM orders)`."
+      ],
+      "selfTest": { "correct": ["SELECT payment_method, COUNT(*) AS orders_cnt, ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM orders), 1) AS share_pct FROM orders GROUP BY payment_method ORDER BY orders_cnt DESC"] }
+    },
+    {
+      "id": "cumulative-2025",
+      "title": "Накопленная выручка 2025",
+      "difficulty": 2,
+      "prompt": "Построй для 2025 года: `month` (первый день месяца), `revenue` (выручка доставленных заказов за месяц) и `cumulative` — накопленная выручка с начала года. Сортировка — по месяцу.",
+      "solution": "WITH m AS (\n    SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, SUM(amount) AS revenue\n    FROM orders\n    WHERE status = 'delivered'\n      AND order_date >= '2025-01-01' AND order_date < '2026-01-01'\n    GROUP BY month\n)\nSELECT month, revenue,\n       SUM(revenue) OVER (ORDER BY month) AS cumulative\nFROM m\nORDER BY month;",
+      "orderMatters": true,
+      "chart": { "type": "line", "y": [2] },
+      "hints": ["Сначала выручка по месяцам (CTE), потом накопительная сумма: `SUM(revenue) OVER (ORDER BY month)`."]
+    },
+    {
+      "id": "mom-growth",
+      "title": "Рост к прошлому месяцу",
+      "difficulty": 3,
+      "prompt": [
+        "Для каждого месяца (весь период данных) выведи `month`, `revenue` (доставленные заказы) и `growth_pct` — рост выручки к **предыдущему месяцу** в процентах, округлённый до 1 знака. У первого месяца рост — пустой (`NULL`).",
+        "",
+        "Сортировка — по месяцу."
+      ],
+      "solution": "WITH m AS (\n    SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, SUM(amount) AS revenue\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY month\n)\nSELECT month, revenue,\n       ROUND(100.0 * (revenue - LAG(revenue) OVER (ORDER BY month)) / LAG(revenue) OVER (ORDER BY month), 1) AS growth_pct\nFROM m\nORDER BY month;",
+      "orderMatters": true,
+      "hints": [
+        "Выручка прошлого месяца — `LAG(revenue) OVER (ORDER BY month)`.",
+        "Рост в % = (текущая − прошлая) / прошлая × 100."
+      ],
+      "selfTest": { "wrong": ["WITH m AS (SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, SUM(amount) AS revenue FROM orders WHERE status = 'delivered' GROUP BY month) SELECT month, revenue, ROUND(100.0 * (LEAD(revenue) OVER (ORDER BY month) - revenue) / revenue, 1) FROM m ORDER BY month"] }
+    },
+    {
+      "id": "days-between",
+      "title": "Как часто возвращаются клиенты",
+      "difficulty": 3,
+      "prompt": "Посчитай **среднее число дней между соседними заказами** одного клиента (по всем клиентам и заказам любого статуса). Округли до 1 знака. Одно число.",
+      "solution": "WITH gaps AS (\n    SELECT order_date - LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date, order_id) AS gap\n    FROM orders\n)\nSELECT ROUND(AVG(gap), 1) AS avg_days_between\nFROM gaps;",
+      "hints": [
+        "Предыдущий заказ **того же** клиента — `LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date)`.",
+        "Разница дат — это дни. У первого заказа клиента разница пустая, а `AVG` пустые значения пропускает — это как раз то, что нужно."
+      ],
+      "selfTest": { "wrong": ["WITH g AS (SELECT order_date - LAG(order_date) OVER (ORDER BY order_date) AS gap FROM orders) SELECT ROUND(AVG(gap), 1) FROM g"] }
+    },
+    {
+      "id": "ma7",
+      "title": "Скользящее среднее за неделю",
+      "difficulty": 3,
+      "prompt": "Для каждого дня **декабря 2025** выведи `order_date`, `orders_cnt` (число заказов за день) и `ma7` — среднее число заказов за 7 дней (этот день и 6 предыдущих **дней декабря**), округлённое до 1 знака. Сортировка — по дате.",
+      "solution": "WITH d AS (\n    SELECT order_date, COUNT(*) AS orders_cnt\n    FROM orders\n    WHERE order_date >= '2025-12-01' AND order_date < '2026-01-01'\n    GROUP BY order_date\n)\nSELECT order_date, orders_cnt,\n       ROUND(AVG(orders_cnt) OVER (ORDER BY order_date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW), 1) AS ma7\nFROM d\nORDER BY order_date;",
+      "orderMatters": true,
+      "chart": { "type": "line", "y": [1, 2] },
+      "hints": [
+        "Сначала число заказов по дням декабря (CTE), потом среднее в окне.",
+        "Рамка окна: `ROWS BETWEEN 6 PRECEDING AND CURRENT ROW`."
+      ]
+    }
+  ]
+}

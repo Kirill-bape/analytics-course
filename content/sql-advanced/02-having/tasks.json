@@ -1,0 +1,65 @@
+{
+  "tasks": [
+    {
+      "id": "big-categories",
+      "title": "Большие категории",
+      "difficulty": 1,
+      "prompt": "Выведи категории, в которых **больше 14 товаров**: `category` и `products_cnt`. Сортировка — по количеству товаров, от большего.",
+      "solution": "SELECT category, COUNT(*) AS products_cnt\nFROM products\nGROUP BY category\nHAVING COUNT(*) > 14\nORDER BY products_cnt DESC;",
+      "orderMatters": true,
+      "hints": ["Условие на итог группы пишется в `HAVING`, после `GROUP BY`.", "`HAVING COUNT(*) > 14`"],
+      "mistakes": [{ "pattern": "where[^;]*count\\s*\\(", "message": "Агрегатная функция в `WHERE` не работает — условие на итог группы пишут в `HAVING`." }],
+      "selfTest": { "wrong": ["SELECT category, COUNT(*) AS products_cnt FROM products GROUP BY category HAVING COUNT(*) >= 14 ORDER BY products_cnt DESC"] }
+    },
+    {
+      "id": "loyal",
+      "title": "Лояльные клиенты",
+      "difficulty": 2,
+      "prompt": "Найди клиентов, сделавших **15 и более** заказов (любого статуса). Столбцы: `customer_id`, `orders_cnt`. Сортировка — по количеству заказов (от большего), при равенстве — по `customer_id`.",
+      "solution": "SELECT customer_id, COUNT(*) AS orders_cnt\nFROM orders\nGROUP BY customer_id\nHAVING COUNT(*) >= 15\nORDER BY orders_cnt DESC, customer_id;",
+      "orderMatters": true,
+      "hints": ["Группируй заказы по клиенту.", "Отбор групп: `HAVING COUNT(*) >= 15`; сортировка по двум столбцам."],
+      "selfTest": { "wrong": ["SELECT customer_id, COUNT(*) AS orders_cnt FROM orders GROUP BY customer_id HAVING COUNT(*) > 15 ORDER BY orders_cnt DESC, customer_id"] }
+    },
+    {
+      "id": "big-cities",
+      "title": "Крупные города",
+      "difficulty": 2,
+      "prompt": "Какие города дали магазину **больше 100 клиентов**? Выведи `city` и `customers_cnt`, отсортируй по количеству клиентов (от большего). Клиентов без города не учитывай.",
+      "solution": "SELECT city, COUNT(*) AS customers_cnt\nFROM customers\nWHERE city IS NOT NULL\nGROUP BY city\nHAVING COUNT(*) > 100\nORDER BY customers_cnt DESC;",
+      "orderMatters": true,
+      "hints": ["Условие «город указан» проверяется для каждой строки — оно идёт в `WHERE`. Условие «больше 100 клиентов» — в `HAVING`."],
+      "selfTest": { "correct": ["SELECT city, COUNT(*) AS customers_cnt FROM customers GROUP BY city HAVING COUNT(*) > 100 AND city IS NOT NULL ORDER BY customers_cnt DESC"] }
+    },
+    {
+      "id": "promo-avg",
+      "title": "Щедрые промокоды",
+      "difficulty": 3,
+      "prompt": "Для каждого промокода посчитай число заказов `orders_cnt` и среднюю скидку `avg_discount` (округли до 2 знаков). Оставь только промокоды со средней скидкой **больше 500 ₽**. Сортировка — по средней скидке, от большей.",
+      "solution": "SELECT promo_code,\n       COUNT(*) AS orders_cnt,\n       ROUND(AVG(discount), 2) AS avg_discount\nFROM orders\nWHERE promo_code IS NOT NULL\nGROUP BY promo_code\nHAVING AVG(discount) > 500\nORDER BY avg_discount DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Заказы без промокода (`NULL`) нам не нужны — отсей их в `WHERE`.",
+        "Условие на среднюю скидку: `HAVING AVG(discount) > 500`."
+      ]
+    },
+    {
+      "id": "defect-operators",
+      "title": "Где больше всего брака",
+      "difficulty": 3,
+      "prompt": [
+        "Найди операторов завода, у которых **процент брака больше 3%** за всё время. Процент брака = сумма `defect_units` / сумма `produced_units` × 100.",
+        "",
+        "Столбцы: `operator_id`, `defect_pct` (округли до 2 знаков). Сортировка — по `defect_pct`, от большего."
+      ],
+      "solution": "SELECT operator_id,\n       ROUND(100.0 * SUM(defect_units) / SUM(produced_units), 2) AS defect_pct\nFROM production\nGROUP BY operator_id\nHAVING 100.0 * SUM(defect_units) / SUM(produced_units) > 3\nORDER BY defect_pct DESC;",
+      "orderMatters": true,
+      "hints": [
+        "Процент считается из двух сумм по группе: `100.0 * SUM(defect_units) / SUM(produced_units)`.",
+        "Это же выражение повтори в `HAVING … > 3`."
+      ],
+      "selfTest": { "wrong": ["SELECT operator_id, ROUND(AVG(100.0 * defect_units / produced_units), 2) AS defect_pct FROM production GROUP BY operator_id HAVING AVG(100.0 * defect_units / produced_units) > 3 ORDER BY defect_pct DESC"] }
+    }
+  ]
+}

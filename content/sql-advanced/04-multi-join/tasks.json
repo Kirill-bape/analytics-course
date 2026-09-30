@@ -1,0 +1,61 @@
+{
+  "tasks": [
+    {
+      "id": "category-revenue",
+      "title": "Выручка по категориям",
+      "difficulty": 2,
+      "prompt": "Посчитай выручку по категориям товаров для **доставленных** заказов: `category`, `revenue` (сумма `quantity * price` из `order_items`). Сортировка — по выручке, от большей.",
+      "solution": "SELECT p.category, SUM(oi.quantity * oi.price) AS revenue\nFROM order_items oi\nJOIN orders o ON o.order_id = oi.order_id\nJOIN products p ON p.product_id = oi.product_id\nWHERE o.status = 'delivered'\nGROUP BY p.category\nORDER BY revenue DESC;",
+      "orderMatters": true,
+      "chart": { "type": "bar" },
+      "hints": ["Понадобятся три таблицы: `order_items`, `orders` (для статуса) и `products` (для категории).", "Выручка позиции — `oi.quantity * oi.price`."]
+    },
+    {
+      "id": "top-products-2026",
+      "title": "Хиты продаж 2026",
+      "difficulty": 2,
+      "prompt": "Найди **5 товаров**, которых продали больше всего **штук** в заказах 2026 года (статус не важен, кроме `cancelled` — отменённые не считаем). Столбцы: `product_name`, `units`. От большего к меньшему; при равенстве — по названию.",
+      "solution": "SELECT p.product_name, SUM(oi.quantity) AS units\nFROM order_items oi\nJOIN orders o ON o.order_id = oi.order_id\nJOIN products p ON p.product_id = oi.product_id\nWHERE o.order_date >= '2026-01-01'\n  AND o.status <> 'cancelled'\nGROUP BY p.product_name\nORDER BY units DESC, p.product_name\nLIMIT 5;",
+      "orderMatters": true,
+      "hints": ["Штуки — это `SUM(oi.quantity)`.", "Условия на дату и статус — в `WHERE`, потом `GROUP BY p.product_name`, сортировка и `LIMIT 5`."]
+    },
+    {
+      "id": "books-orders",
+      "title": "Сколько заказов с книгами",
+      "difficulty": 2,
+      "prompt": "Сколько **разных заказов** содержали хотя бы одну книгу (категория `'Книги'`)? Результат — одно число.",
+      "solution": "SELECT COUNT(DISTINCT oi.order_id) AS orders_with_books\nFROM order_items oi\nJOIN products p ON p.product_id = oi.product_id\nWHERE p.category = 'Книги';",
+      "hints": ["В одном заказе может быть несколько книг — тогда он встретится несколько раз.", "Считай уникальные номера заказов: `COUNT(DISTINCT oi.order_id)`."],
+      "selfTest": { "wrong": ["SELECT COUNT(*) FROM order_items oi JOIN products p ON p.product_id = oi.product_id WHERE p.category = 'Книги'"] }
+    },
+    {
+      "id": "moscow-categories",
+      "title": "Что покупает Москва",
+      "difficulty": 3,
+      "prompt": "Посчитай выручку по категориям товаров только для **доставленных** заказов клиентов **из Москвы**. Столбцы: `category`, `revenue`; сортировка — по выручке, от большей. Понадобятся четыре таблицы.",
+      "solution": "SELECT p.category, SUM(oi.quantity * oi.price) AS revenue\nFROM order_items oi\nJOIN orders o ON o.order_id = oi.order_id\nJOIN customers c ON c.customer_id = o.customer_id\nJOIN products p ON p.product_id = oi.product_id\nWHERE o.status = 'delivered'\n  AND c.city = 'Москва'\nGROUP BY p.category\nORDER BY revenue DESC;",
+      "orderMatters": true,
+      "hints": ["Цепочка: `order_items` → `orders` → `customers`, и отдельно `order_items` → `products`.", "Два условия в `WHERE`: статус и город."]
+    },
+    {
+      "id": "january-sport",
+      "title": "Зимние продажи спорттоваров",
+      "difficulty": 3,
+      "prompt": [
+        "Выведи **все** товары категории `'Спорт и отдых'` и сколько **штук** каждого продали в **январе 2026** (отменённые заказы тоже считаем). Товары без продаж в январе тоже должны быть в списке — с нулём.",
+        "",
+        "Столбцы: `product_name`, `units`. Сортировка — по `units` (от большего), затем по названию."
+      ],
+      "solution": "SELECT p.product_name, COALESCE(SUM(j.quantity), 0) AS units\nFROM products p\nLEFT JOIN (\n    SELECT oi.product_id, oi.quantity\n    FROM order_items oi\n    JOIN orders o ON o.order_id = oi.order_id\n    WHERE o.order_date >= '2026-01-01' AND o.order_date < '2026-02-01'\n) AS j ON j.product_id = p.product_id\nWHERE p.category = 'Спорт и отдых'\nGROUP BY p.product_name\nORDER BY units DESC, p.product_name;",
+      "orderMatters": true,
+      "hints": [
+        "Это ловушка из урока: если поставить условие на дату заказа в `WHERE`, товары без продаж пропадут.",
+        "Подготовь январские позиции подзапросом и присоедини его через `LEFT JOIN`. Пустые суммы замени нулём: `COALESCE(SUM(...), 0)`."
+      ],
+      "selfTest": {
+        "correct": ["SELECT p.product_name, COALESCE(SUM(oi.quantity), 0) AS units FROM products p LEFT JOIN order_items oi ON oi.product_id = p.product_id AND oi.order_id IN (SELECT order_id FROM orders WHERE order_date >= '2026-01-01' AND order_date < '2026-02-01') WHERE p.category = 'Спорт и отдых' GROUP BY p.product_name ORDER BY units DESC, p.product_name"],
+        "wrong": ["SELECT p.product_name, SUM(oi.quantity) AS units FROM products p LEFT JOIN order_items oi ON oi.product_id = p.product_id LEFT JOIN orders o ON o.order_id = oi.order_id WHERE p.category = 'Спорт и отдых' AND o.order_date >= '2026-01-01' AND o.order_date < '2026-02-01' GROUP BY p.product_name ORDER BY units DESC, p.product_name"]
+      }
+    }
+  ]
+}

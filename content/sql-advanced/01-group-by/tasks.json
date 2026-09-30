@@ -1,0 +1,71 @@
+{
+  "tasks": [
+    {
+      "id": "status-count",
+      "title": "Заказы по статусам",
+      "difficulty": 1,
+      "prompt": "Посчитай, сколько заказов в каждом статусе. Столбцы: `status`, `orders_cnt`. Отсортируй от самого частого статуса к самому редкому.",
+      "solution": "SELECT status, COUNT(*) AS orders_cnt\nFROM orders\nGROUP BY status\nORDER BY orders_cnt DESC;",
+      "orderMatters": true,
+      "chart": { "type": "bar" },
+      "hints": ["Группируем по `status`, считаем `COUNT(*)`.", "`GROUP BY status ORDER BY orders_cnt DESC`"],
+      "selfTest": { "wrong": ["SELECT status, COUNT(*) FROM orders GROUP BY status ORDER BY status", "SELECT COUNT(*) FROM orders"] }
+    },
+    {
+      "id": "payment-revenue",
+      "title": "Выручка по способам оплаты",
+      "difficulty": 2,
+      "prompt": "Посчитай выручку (сумму `amount` **доставленных** заказов) по каждому способу оплаты. Столбцы: `payment_method`, `revenue`. Сортировка — по выручке, от большей к меньшей.",
+      "solution": "SELECT payment_method, SUM(amount) AS revenue\nFROM orders\nWHERE status = 'delivered'\nGROUP BY payment_method\nORDER BY revenue DESC;",
+      "orderMatters": true,
+      "chart": { "type": "bar" },
+      "hints": ["Сначала отфильтруй доставленные заказы в `WHERE`, потом группируй.", "`WHERE status = 'delivered' GROUP BY payment_method ORDER BY revenue DESC`"],
+      "selfTest": { "wrong": ["SELECT payment_method, SUM(amount) AS revenue FROM orders GROUP BY payment_method ORDER BY revenue DESC"] }
+    },
+    {
+      "id": "category-stats",
+      "title": "Каталог по категориям",
+      "difficulty": 2,
+      "prompt": "Для каждой категории товаров выведи: `category`, количество товаров `products_cnt` и среднюю цену `avg_price`, **округлённую до целых**. Отсортируй по категории (по алфавиту).",
+      "solution": "SELECT category,\n       COUNT(*) AS products_cnt,\n       ROUND(AVG(price), 0) AS avg_price\nFROM products\nGROUP BY category\nORDER BY category;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": ["Два агрегата в одном запросе: `COUNT(*)` и `AVG(price)`.", "Округление до целых — `ROUND(AVG(price), 0)`."],
+      "selfTest": { "wrong": ["SELECT category, COUNT(*) AS products_cnt, AVG(price) AS avg_price FROM products GROUP BY category ORDER BY category"] }
+    },
+    {
+      "id": "monthly-2025",
+      "title": "Выручка по месяцам 2025 года",
+      "difficulty": 3,
+      "prompt": [
+        "Построй помесячную выручку (доставленные заказы) за **2025 год**. Столбцы:",
+        "",
+        "- `month` — первый день месяца (например, `2025-01-01`);",
+        "- `revenue` — выручка за месяц.",
+        "",
+        "Отсортируй по месяцу. Под результатом появится график — посмотри на сезонность."
+      ],
+      "solution": "SELECT CAST(date_trunc('month', order_date) AS DATE) AS month,\n       SUM(amount) AS revenue\nFROM orders\nWHERE status = 'delivered'\n  AND order_date >= '2025-01-01' AND order_date < '2026-01-01'\nGROUP BY month\nORDER BY month;",
+      "orderMatters": true,
+      "chart": { "type": "line" },
+      "hints": [
+        "Первый день месяца даёт `date_trunc('month', order_date)`.",
+        "Группируй по этому выражению (или по его псевдониму) и не забудь фильтр по году и статусу."
+      ],
+      "selfTest": {
+        "correct": ["SELECT date_trunc('month', order_date) AS m, SUM(amount) FROM orders WHERE status = 'delivered' AND EXTRACT(YEAR FROM order_date) = 2025 GROUP BY 1 ORDER BY 1"],
+        "wrong": ["SELECT EXTRACT(MONTH FROM order_date) AS m, SUM(amount) FROM orders WHERE status = 'delivered' AND EXTRACT(YEAR FROM order_date) = 2025 GROUP BY 1 ORDER BY 1"]
+      }
+    },
+    {
+      "id": "lines-shifts",
+      "title": "Производство: линии и смены",
+      "difficulty": 3,
+      "prompt": "По таблице `production` посчитай для каждой линии и смены: `line_id`, `shift`, выпуск `produced` (сумма `produced_units`) и брак `defects` (сумма `defect_units`). Сортировка — по `line_id`, затем по `shift`.",
+      "solution": "SELECT line_id, shift,\n       SUM(produced_units) AS produced,\n       SUM(defect_units) AS defects\nFROM production\nGROUP BY line_id, shift\nORDER BY line_id, shift;",
+      "orderMatters": true,
+      "hints": ["Группировка по двум столбцам: `GROUP BY line_id, shift`.", "Сортировка тоже по двум: `ORDER BY line_id, shift`."],
+      "selfTest": { "wrong": ["SELECT line_id, SUM(produced_units), SUM(defect_units) FROM production GROUP BY line_id ORDER BY line_id"] }
+    }
+  ]
+}

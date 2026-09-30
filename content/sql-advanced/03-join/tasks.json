@@ -1,0 +1,55 @@
+{
+  "tasks": [
+    {
+      "id": "last-day",
+      "title": "Кто заказывал 30 июня",
+      "difficulty": 1,
+      "prompt": "Выведи заказы за **30 июня 2026** с именем и городом клиента: `order_id`, `full_name`, `city`. Сортировка — по `order_id`.",
+      "solution": "SELECT o.order_id, c.full_name, c.city\nFROM orders o\nJOIN customers c ON c.customer_id = o.customer_id\nWHERE o.order_date = '2026-06-30'\nORDER BY o.order_id;",
+      "orderMatters": true,
+      "hints": ["Имя и город — в `customers`, дата заказа — в `orders`. Соедини их по `customer_id`.", "`FROM orders o JOIN customers c ON c.customer_id = o.customer_id WHERE o.order_date = '2026-06-30'`"],
+      "selfTest": { "correct": ["SELECT order_id, full_name, city FROM orders JOIN customers USING (customer_id) WHERE order_date = '2026-06-30' ORDER BY order_id"] }
+    },
+    {
+      "id": "top-cities",
+      "title": "Пять городов-лидеров",
+      "difficulty": 2,
+      "prompt": "Найди **5 городов** с наибольшей выручкой (сумма `amount` доставленных заказов). Столбцы: `city`, `revenue`, от большей выручки к меньшей.",
+      "solution": "SELECT c.city, SUM(o.amount) AS revenue\nFROM orders o\nJOIN customers c ON c.customer_id = o.customer_id\nWHERE o.status = 'delivered'\nGROUP BY c.city\nORDER BY revenue DESC\nLIMIT 5;",
+      "orderMatters": true,
+      "chart": { "type": "bar" },
+      "hints": ["Соедини `orders` с `customers`, отфильтруй доставленные, сгруппируй по городу.", "В конце — `ORDER BY revenue DESC LIMIT 5`."]
+    },
+    {
+      "id": "no-orders",
+      "title": "Клиенты без заказов",
+      "difficulty": 2,
+      "prompt": "Сколько клиентов зарегистрировались, но **не сделали ни одного заказа**? Результат — одно число.",
+      "solution": "SELECT COUNT(*) AS customers_without_orders\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.customer_id\nWHERE o.order_id IS NULL;",
+      "hints": ["Нужны клиенты, у которых нет пары в `orders`. Какой JOIN сохраняет строки без пары?", "`LEFT JOIN orders ... WHERE o.order_id IS NULL`, а потом `COUNT(*)`."],
+      "selfTest": {
+        "correct": ["SELECT COUNT(*) FROM customers WHERE customer_id NOT IN (SELECT customer_id FROM orders)"],
+        "wrong": ["SELECT COUNT(*) FROM customers c JOIN orders o ON o.customer_id = c.customer_id WHERE o.order_id IS NULL"]
+      }
+    },
+    {
+      "id": "never-sold",
+      "title": "Товары без продаж",
+      "difficulty": 2,
+      "prompt": "Какие товары **ни разу не продавались** (их нет ни в одной строке `order_items`)? Выведи `product_name` и `category`, отсортируй по `product_name`.",
+      "solution": "SELECT p.product_name, p.category\nFROM products p\nLEFT JOIN order_items oi ON oi.product_id = p.product_id\nWHERE oi.item_id IS NULL\nORDER BY p.product_name;",
+      "orderMatters": true,
+      "hints": ["Это поиск «сирот»: все товары + их продажи, где продаж нет.", "`FROM products p LEFT JOIN order_items oi ON oi.product_id = p.product_id WHERE oi.item_id IS NULL`"]
+    },
+    {
+      "id": "lines-output",
+      "title": "Выпуск по линиям",
+      "difficulty": 3,
+      "prompt": "Для каждой производственной линии посчитай выпуск за **2026 год**: `line_name`, `workshop`, `produced` (сумма `produced_units`). Сортировка — по выпуску, от большего.",
+      "solution": "SELECT l.line_name, l.workshop, SUM(p.produced_units) AS produced\nFROM production p\nJOIN production_lines l ON l.line_id = p.line_id\nWHERE p.prod_date >= '2026-01-01'\nGROUP BY l.line_name, l.workshop\nORDER BY produced DESC;",
+      "orderMatters": true,
+      "chart": { "type": "bar", "x": 0, "y": [2] },
+      "hints": ["Названия линий — в `production_lines`, выпуск — в `production`. Соедини по `line_id`.", "Группируй по обоим выводимым столбцам: `GROUP BY l.line_name, l.workshop`."]
+    }
+  ]
+}

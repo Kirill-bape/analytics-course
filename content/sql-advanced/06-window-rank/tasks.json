@@ -1,0 +1,77 @@
+{
+  "tasks": [
+    {
+      "id": "rank-types",
+      "title": "RANK или DENSE_RANK",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Цены товаров: 900, 700, 700, 500. Какие места получит товар за 500 ₽ при `RANK()` и при `DENSE_RANK()` (сортировка по убыванию цены)?",
+      "options": [
+        { "text": "RANK — 4, DENSE_RANK — 3", "correct": true, "explain": "RANK «перепрыгивает» через занятые места (1, 2, 2, 4), DENSE_RANK идёт без пропусков (1, 2, 2, 3)." },
+        { "text": "RANK — 3, DENSE_RANK — 4", "explain": "Наоборот: пропуски делает именно RANK." },
+        { "text": "Оба — 4", "explain": "DENSE_RANK не пропускает номера." },
+        { "text": "Оба — 3", "explain": "RANK пропускает номер после двух одинаковых значений." }
+      ],
+      "hints": ["Посмотри таблицу сравнения трёх функций в уроке."]
+    },
+    {
+      "id": "price-rank",
+      "title": "Рейтинг цен в категории",
+      "difficulty": 2,
+      "prompt": "Для **каждого** товара выведи `category`, `product_name`, `price` и `price_rank` — место товара по цене внутри своей категории (самый дорогой — 1). Одинаковой цене — одинаковое место, без пропусков номеров. Сортировка — по категории, затем по месту, затем по названию.",
+      "solution": "SELECT category, product_name, price,\n       DENSE_RANK() OVER (PARTITION BY category ORDER BY price DESC) AS price_rank\nFROM products\nORDER BY category, price_rank, product_name;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Одинаковое место без пропусков — это `DENSE_RANK()`.",
+        "`DENSE_RANK() OVER (PARTITION BY category ORDER BY price DESC) AS price_rank`"
+      ],
+      "selfTest": { "wrong": ["SELECT category, product_name, price, DENSE_RANK() OVER (ORDER BY price DESC) AS price_rank FROM products ORDER BY category, price_rank, product_name"] }
+    },
+    {
+      "id": "top1-category",
+      "title": "Самый дорогой в категории",
+      "difficulty": 2,
+      "prompt": "Для каждой категории найди **самый дорогой** товар: `category`, `product_name`, `price`. Сортировка — по категории.",
+      "solution": "WITH ranked AS (\n    SELECT category, product_name, price,\n           ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC, product_name) AS rn\n    FROM products\n)\nSELECT category, product_name, price\nFROM ranked\nWHERE rn = 1\nORDER BY category;",
+      "orderMatters": true,
+      "hints": [
+        "Сначала пронумеруй товары внутри категории от дорогих к дешёвым, потом оставь номер 1.",
+        "Нумерацию сделай в CTE, а фильтр `WHERE rn = 1` — во внешнем запросе."
+      ],
+      "selfTest": {
+        "correct": ["SELECT category, product_name, price FROM products QUALIFY ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) = 1 ORDER BY category"],
+        "wrong": ["SELECT category, MAX(product_name), MAX(price) FROM products GROUP BY category ORDER BY category"]
+      }
+    },
+    {
+      "id": "top3-city",
+      "title": "Лучшие клиенты трёх городов",
+      "difficulty": 3,
+      "prompt": [
+        "Для городов **Казань, Самара и Уфа** найди по **3 клиента** с наибольшей выручкой (доставленные заказы).",
+        "",
+        "Столбцы: `city`, `full_name`, `revenue`. Сортировка — по городу, затем по выручке (от большей). При равной выручке выше клиент с меньшим `customer_id`."
+      ],
+      "solution": "WITH rev AS (\n    SELECT c.city, c.customer_id, c.full_name, SUM(o.amount) AS revenue\n    FROM orders o\n    JOIN customers c ON c.customer_id = o.customer_id\n    WHERE o.status = 'delivered'\n      AND c.city IN ('Казань', 'Самара', 'Уфа')\n    GROUP BY c.city, c.customer_id, c.full_name\n),\nranked AS (\n    SELECT *, ROW_NUMBER() OVER (PARTITION BY city ORDER BY revenue DESC, customer_id) AS rn\n    FROM rev\n)\nSELECT city, full_name, revenue\nFROM ranked\nWHERE rn <= 3\nORDER BY city, revenue DESC;",
+      "orderMatters": true,
+      "hints": [
+        "Шаг 1: выручка каждого клиента из нужных городов (`GROUP BY` по городу и клиенту).",
+        "Шаг 2: `ROW_NUMBER() OVER (PARTITION BY city ORDER BY revenue DESC, customer_id)`.",
+        "Шаг 3: оставь `rn <= 3`."
+      ]
+    },
+    {
+      "id": "second-order",
+      "title": "Второй заказ",
+      "difficulty": 3,
+      "prompt": "Аналитики продукта хотят знать, сколько клиентов вернулись за **вторым** заказом (любого статуса). Посчитай количество клиентов, у которых есть второй заказ. Реши через оконную нумерацию заказов клиента. Одно число.",
+      "solution": "WITH numbered AS (\n    SELECT customer_id,\n           ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date, order_id) AS n\n    FROM orders\n)\nSELECT COUNT(*) AS returned_customers\nFROM numbered\nWHERE n = 2;",
+      "hints": ["Пронумеруй заказы каждого клиента по дате. У кого есть номер 2 — тот вернулся."],
+      "selfTest": {
+        "correct": ["SELECT COUNT(*) FROM (SELECT customer_id FROM orders GROUP BY customer_id HAVING COUNT(*) >= 2)"],
+        "wrong": ["SELECT COUNT(*) FROM (SELECT customer_id, ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date) AS n FROM orders) WHERE n >= 2"]
+      }
+    }
+  ]
+}

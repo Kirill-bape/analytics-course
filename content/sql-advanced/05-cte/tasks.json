@@ -1,0 +1,67 @@
+{
+  "tasks": [
+    {
+      "id": "above-avg-books",
+      "title": "Книги дороже средней",
+      "difficulty": 1,
+      "prompt": "Выведи книги (категория `'Книги'`), которые стоят **дороже средней цены книги**. Столбцы: `product_name`, `price`; сортировка — по цене, от дорогих.",
+      "solution": "SELECT product_name, price\nFROM products\nWHERE category = 'Книги'\n  AND price > (SELECT AVG(price) FROM products WHERE category = 'Книги')\nORDER BY price DESC;",
+      "orderMatters": true,
+      "hints": ["Среднюю цену книги посчитай подзапросом: `(SELECT AVG(price) FROM products WHERE category = 'Книги')`.", "Не забудь условие на категорию и во внешнем запросе."],
+      "selfTest": { "wrong": ["SELECT product_name, price FROM products WHERE category = 'Книги' AND price > (SELECT AVG(price) FROM products) ORDER BY price DESC"] }
+    },
+    {
+      "id": "big-orders-count",
+      "title": "Заказы выше среднего чека",
+      "difficulty": 2,
+      "prompt": "Сколько **доставленных** заказов имеют сумму **больше среднего чека** доставленных заказов? Одно число.",
+      "solution": "SELECT COUNT(*) AS big_orders\nFROM orders\nWHERE status = 'delivered'\n  AND amount > (SELECT AVG(amount) FROM orders WHERE status = 'delivered');",
+      "hints": ["Средний чек — подзапрос с `AVG(amount)` и тем же фильтром по статусу."]
+    },
+    {
+      "id": "bf-customers",
+      "title": "Охотники за скидками",
+      "difficulty": 2,
+      "prompt": "Сколько **разных клиентов из Москвы** хотя бы раз использовали промокод `BLACKFRIDAY`? Реши через `IN (подзапрос)`. Одно число.",
+      "solution": "SELECT COUNT(*) AS customers_cnt\nFROM customers\nWHERE city = 'Москва'\n  AND customer_id IN (SELECT customer_id FROM orders WHERE promo_code = 'BLACKFRIDAY');",
+      "hints": ["Внутренний запрос возвращает список `customer_id` с промокодом, внешний — считает москвичей из этого списка."],
+      "selfTest": {
+        "correct": ["SELECT COUNT(DISTINCT c.customer_id) FROM customers c JOIN orders o ON o.customer_id = c.customer_id WHERE c.city = 'Москва' AND o.promo_code = 'BLACKFRIDAY'"],
+        "wrong": ["SELECT COUNT(*) FROM customers c JOIN orders o ON o.customer_id = c.customer_id WHERE c.city = 'Москва' AND o.promo_code = 'BLACKFRIDAY'"]
+      }
+    },
+    {
+      "id": "avg-month",
+      "title": "Средний месяц",
+      "difficulty": 3,
+      "prompt": "Какая **средняя месячная выручка** за 2025 год? Сначала посчитай выручку (доставленные заказы) по каждому месяцу 2025 года, потом — среднее по месяцам. Округли до целых. Одно число.",
+      "solution": "WITH monthly AS (\n    SELECT date_trunc('month', order_date) AS month, SUM(amount) AS revenue\n    FROM orders\n    WHERE status = 'delivered'\n      AND order_date >= '2025-01-01' AND order_date < '2026-01-01'\n    GROUP BY month\n)\nSELECT ROUND(AVG(revenue), 0) AS avg_monthly_revenue\nFROM monthly;",
+      "hints": ["Два шага: выручка по месяцам (`GROUP BY` месяц) → среднее по этим числам.", "Первый шаг оформи через `WITH monthly AS (...)`, второй — `SELECT ROUND(AVG(revenue), 0) FROM monthly`."],
+      "selfTest": {
+        "correct": ["SELECT ROUND(SUM(amount) / 12, 0) FROM orders WHERE status = 'delivered' AND EXTRACT(YEAR FROM order_date) = 2025"],
+        "wrong": ["SELECT ROUND(AVG(amount), 0) FROM orders WHERE status = 'delivered' AND EXTRACT(YEAR FROM order_date) = 2025"]
+      }
+    },
+    {
+      "id": "new-customers",
+      "title": "Новые покупатели по месяцам",
+      "difficulty": 3,
+      "prompt": [
+        "Сколько **новых покупателей** приходило каждый месяц 2026 года? Новый покупатель месяца — клиент, чей **первый заказ** (любого статуса) сделан в этом месяце.",
+        "",
+        "Столбцы: `month` (первый день месяца), `new_customers`. Сортировка — по месяцу."
+      ],
+      "solution": "WITH first_orders AS (\n    SELECT customer_id, MIN(order_date) AS first_date\n    FROM orders\n    GROUP BY customer_id\n)\nSELECT CAST(date_trunc('month', first_date) AS DATE) AS month,\n       COUNT(*) AS new_customers\nFROM first_orders\nWHERE first_date >= '2026-01-01'\nGROUP BY month\nORDER BY month;",
+      "orderMatters": true,
+      "chart": { "type": "line" },
+      "hints": [
+        "Шаг 1: для каждого клиента найди дату первого заказа — `MIN(order_date)` с группировкой по клиенту.",
+        "Шаг 2: по этим датам посчитай клиентов в каждом месяце 2026 года.",
+        "Важно: фильтр «2026 год» нужно применять **после** поиска первого заказа, иначе клиенты, покупавшие ещё в 2025, посчитаются новыми."
+      ],
+      "selfTest": {
+        "wrong": ["SELECT CAST(date_trunc('month', first_date) AS DATE) AS month, COUNT(*) FROM (SELECT customer_id, MIN(order_date) AS first_date FROM orders WHERE order_date >= '2026-01-01' GROUP BY customer_id) GROUP BY month ORDER BY month"]
+      }
+    }
+  ]
+}
