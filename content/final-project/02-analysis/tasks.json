@@ -1,0 +1,81 @@
+{
+  "tasks": [
+    {
+      "id": "cohort-size",
+      "title": "Размеры когорт",
+      "difficulty": 2,
+      "prompt": "Посчитай размер каждой когорты **2025 года**: `cohort` (первый день месяца первого заказа клиента) и `customers` (число клиентов). Сортировка — по когорте.",
+      "solution": "WITH first AS (\n    SELECT customer_id, CAST(date_trunc('month', MIN(order_date)) AS DATE) AS cohort\n    FROM orders\n    GROUP BY customer_id\n)\nSELECT cohort, COUNT(*) AS customers\nFROM first\nWHERE cohort >= '2025-01-01' AND cohort < '2026-01-01'\nGROUP BY cohort\nORDER BY cohort;",
+      "orderMatters": true,
+      "chart": { "type": "bar" },
+      "hints": ["Когорта клиента — месяц его **первого** заказа: `date_trunc('month', MIN(order_date))` с группировкой по клиенту.", "Фильтр по 2025 году применяй к когорте, а не к заказам."]
+    },
+    {
+      "id": "retention-m1",
+      "title": "Удержание через месяц",
+      "difficulty": 3,
+      "prompt": [
+        "Для когорт **2025 года** посчитай, какой процент клиентов сделал заказ в **следующем месяце** после месяца первого заказа.",
+        "",
+        "Столбцы: `cohort`, `size` (клиентов в когорте), `m1_pct` (процент вернувшихся в месяце +1, округли до 1 знака). Сортировка — по когорте."
+      ],
+      "solution": "WITH first AS (\n    SELECT customer_id, CAST(date_trunc('month', MIN(order_date)) AS DATE) AS cohort\n    FROM orders\n    GROUP BY customer_id\n),\nactivity AS (\n    SELECT DISTINCT f.cohort, o.customer_id,\n           date_diff('month', f.cohort, CAST(date_trunc('month', o.order_date) AS DATE)) AS month_n\n    FROM orders o\n    JOIN first f USING (customer_id)\n)\nSELECT cohort,\n       COUNT(DISTINCT customer_id) FILTER (WHERE month_n = 0) AS size,\n       ROUND(100.0 * COUNT(DISTINCT customer_id) FILTER (WHERE month_n = 1)\n             / COUNT(DISTINCT customer_id) FILTER (WHERE month_n = 0), 1) AS m1_pct\nFROM activity\nWHERE cohort >= '2025-01-01' AND cohort < '2026-01-01'\nGROUP BY cohort\nORDER BY cohort;",
+      "orderMatters": true,
+      "chart": { "type": "line", "y": [2] },
+      "hints": [
+        "Возьми второй запрос из урока за основу — он почти готов.",
+        "Номер месяца жизни: `date_diff('month', cohort, месяц_заказа)`. Вернувшиеся в следующем месяце — `month_n = 1`."
+      ]
+    },
+    {
+      "id": "rfm",
+      "title": "RFM: самые ценные клиенты",
+      "difficulty": 3,
+      "prompt": [
+        "Посчитай RFM-показатели по доставленным заказам: `customer_id`, `recency_days` (дней от последнего заказа до 2026-06-30), `frequency` (число заказов), `monetary` (сумма). Выведи **10 клиентов** с наибольшим `monetary`; при равенстве — по `customer_id`."
+      ],
+      "solution": "SELECT customer_id,\n       DATE '2026-06-30' - MAX(order_date) AS recency_days,\n       COUNT(*) AS frequency,\n       SUM(amount) AS monetary\nFROM orders\nWHERE status = 'delivered'\nGROUP BY customer_id\nORDER BY monetary DESC, customer_id\nLIMIT 10;",
+      "orderMatters": true,
+      "hints": ["Давность: `DATE '2026-06-30' - MAX(order_date)` — это число дней.", "Сортировка по `monetary DESC`, затем `LIMIT 10`."]
+    },
+    {
+      "id": "rfm-segments",
+      "title": "Сегменты RFM",
+      "difficulty": 3,
+      "prompt": [
+        "Раздели покупателей (доставленные заказы) на сегменты по простым правилам и посчитай размер каждого:",
+        "",
+        "- `'лучшие'` — последний заказ не старше 60 дней **и** не меньше 5 заказов;",
+        "- `'уходящие'` — последний заказ старше 180 дней **и** не меньше 3 заказов;",
+        "- `'новички'` — ровно 1 заказ и он не старше 60 дней;",
+        "- `'остальные'` — все прочие.",
+        "",
+        "Столбцы: `segment`, `customers`. Сортировка — по числу клиентов, от большего. Давность считай до `2026-06-30`."
+      ],
+      "solution": "WITH rfm AS (\n    SELECT customer_id,\n           DATE '2026-06-30' - MAX(order_date) AS recency_days,\n           COUNT(*) AS frequency\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n)\nSELECT CASE\n           WHEN recency_days <= 60 AND frequency >= 5 THEN 'лучшие'\n           WHEN recency_days > 180 AND frequency >= 3 THEN 'уходящие'\n           WHEN frequency = 1 AND recency_days <= 60 THEN 'новички'\n           ELSE 'остальные'\n       END AS segment,\n       COUNT(*) AS customers\nFROM rfm\nGROUP BY segment\nORDER BY customers DESC;",
+      "orderMatters": true,
+      "chart": { "type": "bar" },
+      "hints": [
+        "Шаг 1 (CTE): давность и частота по каждому клиенту.",
+        "Шаг 2: `CASE WHEN … THEN 'лучшие' … ELSE 'остальные' END AS segment`, группировка по сегменту."
+      ]
+    },
+    {
+      "id": "notebook",
+      "title": "Ноутбук проекта",
+      "difficulty": 3,
+      "type": "checklist",
+      "prompt": "Собери анализ проекта в Jupyter Notebook (например, в бесплатном Google Colab). Отметь выполненные разделы.",
+      "items": [
+        "Загрузил(а) данные из CSV в pandas и провёл(а) аудит",
+        "Раздел 1: динамика выручки, заказов и среднего чека по месяцам — с графиками",
+        "Раздел 2: разрезы по категориям и городам — где рост, где проблемы",
+        "Раздел 3: когортный анализ удержания (таблица или тепловая карта)",
+        "Раздел 4: RFM-сегменты и рекомендация для каждого",
+        "Раздел 5: результаты A/B-теста checkout_v2 со статистическим тестом",
+        "Под каждым графиком — 1–2 предложения вывода"
+      ],
+      "hints": []
+    }
+  ]
+}

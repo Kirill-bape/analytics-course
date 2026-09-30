@@ -1,0 +1,45 @@
+{
+  "tasks": [
+    {
+      "id": "good-question",
+      "title": "Сильный вопрос",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Какой из вопросов лучше всего подходит для исследования в портфолио?",
+      "options": [
+        { "text": "«Какая доля клиентов делает повторную покупку в течение 60 дней, и различается ли она по каналам привлечения?»", "correct": true, "explain": "Конкретный, измеримый вопрос, ответ на который подскажет, в какие каналы вкладываться." },
+        { "text": "«Проанализировать данные интернет-магазина»", "explain": "Слишком общо: непонятно, что считать и когда остановиться." },
+        { "text": "«Построить как можно больше графиков по продажам»", "explain": "Количество графиков — не цель; важны вопросы и выводы." }
+      ],
+      "hints": ["Сильный вопрос — конкретный, измеримый и ведёт к действию."]
+    },
+    {
+      "id": "audit",
+      "title": "Аудит данных",
+      "difficulty": 2,
+      "prompt": [
+        "Сделай аудит таблицы `products` одним запросом: `products_cnt` — число товаров, `categories_cnt` — число категорий, `null_rating_pct` — процент товаров без рейтинга (округли до 1 знака), `min_price` и `max_price`."
+      ],
+      "solution": "SELECT COUNT(*) AS products_cnt,\n       COUNT(DISTINCT category) AS categories_cnt,\n       ROUND(100.0 * AVG(CASE WHEN rating IS NULL THEN 1 ELSE 0 END), 1) AS null_rating_pct,\n       MIN(price) AS min_price,\n       MAX(price) AS max_price\nFROM products;",
+      "checkColumnNames": true,
+      "hints": ["Все показатели — агрегаты в одном `SELECT`.", "Доля пустых: `AVG(CASE WHEN rating IS NULL THEN 1 ELSE 0 END)` × 100."],
+      "selfTest": { "correct": ["SELECT COUNT(*) AS products_cnt, COUNT(DISTINCT category) AS categories_cnt, ROUND(100.0 * (COUNT(*) - COUNT(rating)) / COUNT(*), 1) AS null_rating_pct, MIN(price) AS min_price, MAX(price) AS max_price FROM products"] }
+    },
+    {
+      "id": "brief",
+      "title": "Бриф проекта",
+      "difficulty": 2,
+      "type": "checklist",
+      "prompt": "Создай файл `README.md` для будущего проекта (в заметках или сразу на GitHub) и опиши в нём бриф исследования по структуре из урока. Отметь готовые пункты.",
+      "items": [
+        "Цель: какое решение поможет принять анализ",
+        "3–5 конкретных вопросов исследования",
+        "Гипотезы: что ожидаю увидеть и почему",
+        "Данные: какие таблицы и поля нужны, их период и ограничения",
+        "План анализа: какой расчёт или график ответит на каждый вопрос",
+        "Провёл(а) аудит данных: число строк, период, пропуски"
+      ],
+      "hints": []
+    }
+  ]
+}
