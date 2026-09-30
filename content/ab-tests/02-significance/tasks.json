@@ -1,0 +1,72 @@
+{
+  "tasks": [
+    {
+      "id": "pvalue-meaning",
+      "title": "Что значит p-value",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Тест показал **p-value = 0,02**. Как это правильно прочитать?",
+      "options": [
+        { "text": "Если бы эффекта не было, такая или большая разница получалась бы случайно лишь в 2% случаев", "correct": true, "explain": "Именно так. При α = 0,05 результат значимый." },
+        { "text": "Вероятность того, что новая версия лучше, — 98%", "explain": "Частая ошибка: p-value — не вероятность гипотезы." },
+        { "text": "Новая версия лучше на 2%", "explain": "p-value ничего не говорит о размере эффекта." }
+      ],
+      "hints": ["Определение p-value — в самом начале урока."]
+    },
+    {
+      "id": "decision",
+      "title": "Значимо или нет",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Уровень значимости α = 0,05. Тест дал **p-value = 0,12**. Какой вывод правильный?",
+      "options": [
+        { "text": "Данных недостаточно, чтобы утверждать, что эффект есть", "correct": true, "explain": "p ≥ α — отвергнуть H₀ нельзя. Это не доказывает, что эффекта нет: он может быть слишком маленьким для такой выборки." },
+        { "text": "Доказано, что эффекта нет", "explain": "Отсутствие значимости ≠ доказательство отсутствия эффекта." },
+        { "text": "Эффект есть, просто небольшой", "explain": "Утверждать, что эффект есть, по этому тесту нельзя." }
+      ],
+      "hints": ["Сравни p-value с α."]
+    },
+    {
+      "id": "z-hand",
+      "title": "z-статистика",
+      "difficulty": 2,
+      "type": "number",
+      "prompt": "Конверсия в группе A — **0,100**, в группе B — **0,112**, стандартная ошибка разницы — **0,005**. Посчитай z.",
+      "answer": 2.4,
+      "hints": ["z = (конверсия_B − конверсия_A) / SE."],
+      "explanation": "z = 0,012 / 0,005 = 2,4. Это больше 1,96 — разница значима при α = 0,05.",
+      "selfTest": { "correct": ["2,4"], "wrong": ["0,012"] }
+    },
+    {
+      "id": "ztest-python",
+      "title": "z-тест для checkout_v2",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": "Посчитай **p-value** двустороннего z-теста для конверсий групп A и B эксперимента `checkout_v2` (формула — в уроке). Округли до **4 знаков** и положи в `result`.",
+      "starter": "from scipy import stats\n\nt = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\ng = t.groupby(\"group_name\")[\"converted\"].agg([\"sum\", \"count\"])\nbuyers_a, n_a = g.loc[\"A\"]\nbuyers_b, n_b = g.loc[\"B\"]\n\n# посчитай p_a, p_b, p_pool, se, z и p_value\n\nresult = ",
+      "solution": "from scipy import stats\n\nt = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\ng = t.groupby(\"group_name\")[\"converted\"].agg([\"sum\", \"count\"])\nbuyers_a, n_a = g.loc[\"A\"]\nbuyers_b, n_b = g.loc[\"B\"]\n\np_a, p_b = buyers_a / n_a, buyers_b / n_b\np_pool = (buyers_a + buyers_b) / (n_a + n_b)\nse = (p_pool * (1 - p_pool) * (1 / n_a + 1 / n_b)) ** 0.5\nz = (p_b - p_a) / se\np_value = 2 * (1 - stats.norm.cdf(abs(z)))\nresult = round(p_value, 4)",
+      "hints": [
+        "Общая конверсия: `p_pool = (buyers_a + buyers_b) / (n_a + n_b)`.",
+        "`se = (p_pool * (1 - p_pool) * (1 / n_a + 1 / n_b)) ** 0.5`, `z = (p_b - p_a) / se`.",
+        "`p_value = 2 * (1 - stats.norm.cdf(abs(z)))`."
+      ],
+      "selfTest": {
+        "correct": ["from scipy import stats\nimport numpy as np\nt = ab_users[ab_users['experiment'] == 'checkout_v2']\ntab = pd.crosstab(t['group_name'], t['converted'])\nchi2, p, dof, exp = stats.chi2_contingency(tab, correction=False)\nresult = round(p, 4)"],
+        "wrong": ["from scipy import stats\nt = ab_users[ab_users['experiment'] == 'checkout_v2']\ng = t.groupby('group_name')['converted'].agg(['sum', 'count'])\nba, na = g.loc['A']\nbb, nb = g.loc['B']\npp = (ba + bb) / (na + nb)\nse = (pp * (1 - pp) * (1 / na + 1 / nb)) ** 0.5\nz = (bb / nb - ba / na) / se\nresult = round(1 - stats.norm.cdf(abs(z)), 4)"]
+      }
+    },
+    {
+      "id": "errors",
+      "title": "Ошибка первого рода",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Команда внедрила новую версию, потому что A/B-тест показал значимый рост. Позже выяснилось, что на самом деле версия ничего не меняла. Какая это ошибка?",
+      "options": [
+        { "text": "Ошибка I рода — ложная тревога: увидели эффект, которого нет", "correct": true, "explain": "Её вероятность при верной H₀ равна α — обычно 5%." },
+        { "text": "Ошибка II рода", "explain": "Ошибка II рода — наоборот: эффект есть, а тест его не заметил." },
+        { "text": "Это не ошибка, а нормальный результат", "explain": "Решение приняли на основе ложного вывода — это ошибка I рода." }
+      ],
+      "hints": ["Таблица ошибок в уроке."]
+    }
+  ]
+}

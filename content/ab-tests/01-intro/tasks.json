@@ -1,0 +1,62 @@
+{
+  "tasks": [
+    {
+      "id": "why-random",
+      "title": "Зачем делить случайно",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Почему пользователей в A/B-тесте делят на группы **случайно**, а не, например, «Москва — новая версия, остальные — старая»?",
+      "options": [
+        { "text": "Чтобы группы отличались только версией страницы, а всё остальное (города, устройства, привычки) было в среднем одинаковым", "correct": true, "explain": "Тогда разницу в метрике можно приписать именно изменению." },
+        { "text": "Так быстрее технически", "explain": "Дело не в скорости, а в честности сравнения." },
+        { "text": "Чтобы в тестовой группе было больше людей", "explain": "Размеры групп задаются отдельно — случайность нужна для одинакового состава." }
+      ],
+      "hints": ["Что будет, если в тестовой группе окажутся только москвичи, которые и так покупают чаще?"]
+    },
+    {
+      "id": "srm",
+      "title": "Размеры групп",
+      "difficulty": 1,
+      "prompt": "Проверь разбиение эксперимента `checkout_v2`: выведи `group_name` и число пользователей `users` в каждой группе. Сортировка — по группе.",
+      "solution": "SELECT group_name, COUNT(*) AS users\nFROM ab_users\nWHERE experiment = 'checkout_v2'\nGROUP BY group_name\nORDER BY group_name;",
+      "orderMatters": true,
+      "hints": ["Фильтр по эксперименту и группировка по `group_name`."]
+    },
+    {
+      "id": "conversion",
+      "title": "Конверсия по группам",
+      "difficulty": 2,
+      "prompt": "Для эксперимента `checkout_v2` посчитай по каждой группе: `group_name`, `users`, `buyers` (сколько купили — сумма `converted`) и `conversion_pct` — конверсию в процентах, округлённую до 2 знаков. Сортировка — по группе.",
+      "solution": "SELECT group_name,\n       COUNT(*) AS users,\n       SUM(converted) AS buyers,\n       ROUND(100.0 * AVG(converted), 2) AS conversion_pct\nFROM ab_users\nWHERE experiment = 'checkout_v2'\nGROUP BY group_name\nORDER BY group_name;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": ["`converted` — это 0 или 1, поэтому `SUM` — число купивших, а `AVG` — доля.", "Конверсия в %: `ROUND(100.0 * AVG(converted), 2)`."],
+      "selfTest": { "correct": ["SELECT group_name, COUNT(*) AS users, SUM(converted) AS buyers, ROUND(100.0 * SUM(converted) / COUNT(*), 2) AS conversion_pct FROM ab_users WHERE experiment = 'checkout_v2' GROUP BY 1 ORDER BY 1"] }
+    },
+    {
+      "id": "h0",
+      "title": "Нулевая гипотеза",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Тестируем новый цвет кнопки «Купить». Как звучит **нулевая гипотеза H₀**?",
+      "options": [
+        { "text": "Конверсия с новым цветом кнопки такая же, как со старым; различия в данных — случайность", "correct": true },
+        { "text": "Новый цвет кнопки увеличивает конверсию", "explain": "Это альтернативная гипотеза H₁ — то, что мы хотим показать." },
+        { "text": "Новый цвет кнопки нравится пользователям больше", "explain": "Это не проверяемое утверждение о метрике." }
+      ],
+      "hints": ["Нулевая гипотеза всегда про «разницы нет»."]
+    },
+    {
+      "id": "uplift",
+      "title": "Относительный прирост",
+      "difficulty": 2,
+      "type": "number",
+      "prompt": "Конверсия в группе A — **10%**, в группе B — **11,3%**. На сколько **процентов** (относительно A) выросла конверсия?",
+      "answer": 13,
+      "unit": "%",
+      "hints": ["Относительный прирост = (B − A) / A × 100%."],
+      "wrongAnswers": [{ "value": 1.3, "message": "Это абсолютная разница — **процентные пункты**. Нужен относительный прирост: раздели разницу на конверсию группы A." }],
+      "selfTest": { "correct": ["13"], "wrong": ["1,3"] }
+    }
+  ]
+}

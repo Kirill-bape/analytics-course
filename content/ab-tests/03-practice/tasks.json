@@ -1,0 +1,64 @@
+{
+  "tasks": [
+    {
+      "id": "chi2",
+      "title": "Хи-квадрат для конверсии",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Посчитай p-value критерия хи-квадрат (`correction=False`) для конверсий групп эксперимента `checkout_v2`. Округли до **4 знаков** — в `result`.",
+      "starter": "from scipy import stats\n\nt = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\ntable = pd.crosstab(t[\"group_name\"], t[\"converted\"])\n\nresult = ",
+      "solution": "from scipy import stats\n\nt = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\ntable = pd.crosstab(t[\"group_name\"], t[\"converted\"])\nchi2, p_value, dof, expected = stats.chi2_contingency(table, correction=False)\nresult = round(p_value, 4)",
+      "hints": ["`stats.chi2_contingency(table, correction=False)` возвращает четыре значения; p-value — второе."],
+      "selfTest": { "wrong": ["from scipy import stats\nt = ab_users[ab_users['experiment'] == 'checkout_v2']\ntable = pd.crosstab(t['group_name'], t['converted'])\nchi2, p, dof, e = stats.chi2_contingency(table)\nresult = round(chi2, 4)"] }
+    },
+    {
+      "id": "ttest",
+      "title": "t-тест для выручки",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": "Сравни **выручку на пользователя** (столбец `revenue`) групп B и A эксперимента `checkout_v2` t-тестом Уэлча. Положи в `result` p-value, округлённое до **4 знаков**.",
+      "starter": "from scipy import stats\n\nt = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\na = t.loc[t[\"group_name\"] == \"A\", \"revenue\"]\nb = t.loc[t[\"group_name\"] == \"B\", \"revenue\"]\n\nresult = ",
+      "solution": "from scipy import stats\n\nt = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\na = t.loc[t[\"group_name\"] == \"A\", \"revenue\"]\nb = t.loc[t[\"group_name\"] == \"B\", \"revenue\"]\n\nresult = round(stats.ttest_ind(b, a, equal_var=False).pvalue, 4)",
+      "hints": ["`stats.ttest_ind(b, a, equal_var=False)` — у результата есть поле `.pvalue`."],
+      "selfTest": { "correct": ["from scipy import stats\nt = ab_users[ab_users['experiment'] == 'checkout_v2']\nres = stats.ttest_ind(t[t.group_name == 'A'].revenue, t[t.group_name == 'B'].revenue, equal_var=False)\nresult = round(res.pvalue, 4)"] }
+    },
+    {
+      "id": "banner",
+      "title": "Эксперимент с баннером",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Посчитай p-value хи-квадрат теста (`correction=False`) для конверсий эксперимента **`banner_color`**. Округли до 4 знаков — в `result`. Потом ответь себе: значим ли результат при α = 0,05?",
+      "starter": "from scipy import stats\n\nresult = ",
+      "solution": "from scipy import stats\n\nt = ab_users[ab_users[\"experiment\"] == \"banner_color\"]\ntable = pd.crosstab(t[\"group_name\"], t[\"converted\"])\nchi2, p_value, dof, expected = stats.chi2_contingency(table, correction=False)\nresult = round(p_value, 4)",
+      "hints": ["Код такой же, как в первом задании темы, — поменяй название эксперимента."],
+      "explanation": "p-value заметно больше 0,05 — значимой разницы нет. Вывод: цвет кнопки на конверсию не повлиял (или эффект слишком мал, чтобы увидеть его на такой выборке). Оставляем как есть."
+    },
+    {
+      "id": "ci-diff",
+      "title": "Интервал для разницы конверсий",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": "Для `checkout_v2` посчитай 95%-й доверительный интервал для разницы конверсий **B − A** в **процентных пунктах**. Положи в `result` список `[нижняя, верхняя]`, каждое число округли до **2 знаков**.",
+      "starter": "t = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\ng = t.groupby(\"group_name\")[\"converted\"].agg([\"mean\", \"count\"])\np_a, n_a = g.loc[\"A\"]\np_b, n_b = g.loc[\"B\"]\n\nresult = ",
+      "solution": "t = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\ng = t.groupby(\"group_name\")[\"converted\"].agg([\"mean\", \"count\"])\np_a, n_a = g.loc[\"A\"]\np_b, n_b = g.loc[\"B\"]\n\ndiff = p_b - p_a\nse = (p_a * (1 - p_a) / n_a + p_b * (1 - p_b) / n_b) ** 0.5\nresult = [round(100 * (diff - 1.96 * se), 2), round(100 * (diff + 1.96 * se), 2)]",
+      "orderMatters": true,
+      "hints": [
+        "Стандартная ошибка разницы: `(p_a*(1-p_a)/n_a + p_b*(1-p_b)/n_b) ** 0.5`.",
+        "Границы: `diff ± 1.96 * se`; переведи в п.п. (× 100) и округли."
+      ]
+    },
+    {
+      "id": "conclusion",
+      "title": "Вывод по checkout_v2",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Итоги `checkout_v2`: конверсия B выше на 1,2 п.п. (9,6% → 10,7%), p-value ≈ 0,014, 95% ДИ разницы — от 0,2 до 2,1 п.п. Выручка на пользователя тоже выросла (p ≈ 0,02). Что рекомендовать?",
+      "options": [
+        { "text": "Внедрять новую страницу: рост значимый, интервал целиком выше нуля; после запуска продолжать следить за метриками", "correct": true, "explain": "Главная метрика значимо выросла, даже нижняя граница эффекта положительная, выручка не пострадала — хороший повод внедрять." },
+        { "text": "Не внедрять: эффект всего 1,2 п.п.", "explain": "1,2 п.п. при базовой конверсии 9,6% — это рост примерно на 12%. Для магазина это очень заметные деньги." },
+        { "text": "Продолжать тест, пока p-value не станет ещё меньше", "explain": "Длительность теста задают заранее. «Подглядывание» и продление ради красивого p-value искажают результат — об этом следующая тема." }
+      ],
+      "hints": ["Смотри на главную метрику и доверительный интервал."]
+    }
+  ]
+}

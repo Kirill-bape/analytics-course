@@ -641,7 +641,7 @@ writeCsv('order_items.csv', ['item_id', 'order_id', 'product_id', 'quantity', 'p
 
   const experiments = [
     // Новая страница оформления заказа: эффект есть
-    { name: 'checkout_v2', start: '2026-05-04', days: 28, perGroup: 8000, conv: { A: 0.1, B: 0.113 }, avgCheck: { A: 3600, B: 3650 } },
+    { name: 'checkout_v2', start: '2026-05-04', days: 28, perGroup: 8000, conv: { A: 0.1, B: 0.106 }, avgCheck: { A: 3600, B: 3600 } },
     // Цвет кнопки на баннере: эффекта нет
     { name: 'banner_color', start: '2026-06-01', days: 14, perGroup: 3000, conv: { A: 0.05, B: 0.051 }, avgCheck: { A: 2900, B: 2900 } },
   ];
@@ -674,6 +674,17 @@ writeCsv('order_items.csv', ['item_id', 'order_id', 'product_id', 'quantity', 'p
   }
   writeCsv2(OUT_AB, 'ab_users.csv', ['user_id', 'experiment', 'group_name', 'entry_date', 'device', 'sessions', 'converted', 'revenue'], users);
   console.log(`A/B-тесты: ${users.length} пользователей в ${experiments.length} экспериментах`);
+  // Контроль: конверсии и z-статистика каждого эксперимента
+  for (const e of experiments) {
+    const g = (grp) => users.filter((u) => u.experiment === e.name && u.group_name === grp);
+    const a = g('A');
+    const b = g('B');
+    const ca = a.reduce((s, u) => s + u.converted, 0);
+    const cb = b.reduce((s, u) => s + u.converted, 0);
+    const pp = (ca + cb) / (a.length + b.length);
+    const z = (cb / b.length - ca / a.length) / Math.sqrt(pp * (1 - pp) * (1 / a.length + 1 / b.length));
+    console.log(`  ${e.name}: A ${(100 * ca / a.length).toFixed(2)}%, B ${(100 * cb / b.length).toFixed(2)}%, z = ${z.toFixed(2)}`);
+  }
 }
 
 function writeCsv2(dir, name, columns, rows) {
