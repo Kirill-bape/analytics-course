@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { modules } from '../content';
 import { href } from '../router';
-import { todayKey, useProgress } from '../progress';
+import { SANDBOX, todayKey, useProgress } from '../progress';
 import { coursePercent, nextStep, planStatus, streakInfo, taskTotals, topicStats } from '../stats';
 import { plural } from '../sql/compare';
 
@@ -39,6 +40,48 @@ function Heatmap({ activeDays }: { activeDays: string[] }) {
   );
 }
 
+const SNOOZE_KEY = 'backup-reminder-snooze';
+
+/** Раз в неделю напоминает сохранить копию прогресса в файл */
+function BackupReminder() {
+  const { data, loaded } = useProgress();
+  const [snoozed, setSnoozed] = useState(() => {
+    try {
+      return Number(localStorage.getItem(SNOOZE_KEY) ?? 0) > Date.now();
+    } catch {
+      return false;
+    }
+  });
+  const solved = Object.values(data.tasks).filter((t) => t.solved).length;
+  const since = data.lastBackup ? Math.floor((Date.now() - new Date(data.lastBackup).getTime()) / 86_400_000) : null;
+  if (!loaded || SANDBOX || snoozed || solved < 3 || (since !== null && since < 7)) return null;
+
+  const snooze = () => {
+    try {
+      localStorage.setItem(SNOOZE_KEY, String(Date.now() + 3 * 86_400_000));
+    } catch {
+      // не страшно — напоминание просто появится снова
+    }
+    setSnoozed(true);
+  };
+  return (
+    <div className="banner banner-soft" role="status">
+      <span>
+        💾 {since === null ? 'Копия прогресса ещё не сохранена.' : `Последняя копия прогресса — ${since} ${plural(since, 'день', 'дня', 'дней')} назад.`} Сохрани её в файл, чтобы ничего не потерять и
+        продолжать на другом устройстве.
+      </span>
+      <span className="banner-actions">
+        <a className="btn btn-small btn-primary" href={href('settings')}>
+          Сохранить
+        </a>
+        <button className="btn btn-small btn-ghost" onClick={snooze}>
+          Позже
+        </button>
+      </span>
+    </div>
+  );
+}
+
 export function HomePage() {
   const { data, loaded } = useProgress();
   const pct = coursePercent(data);
@@ -58,6 +101,8 @@ export function HomePage() {
         <h1>{fresh ? 'Добро пожаловать!' : 'С возвращением!'}</h1>
         <p className="lead">Цель: джуниор аналитик данных к январю. Осталось {plan.daysLeft} {plural(plan.daysLeft, 'день', 'дня', 'дней')}.</p>
       </div>
+
+      <BackupReminder />
 
       {fresh && (
         <div className="card welcome">

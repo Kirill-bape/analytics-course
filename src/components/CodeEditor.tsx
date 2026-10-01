@@ -1,15 +1,18 @@
 // Редактор кода на CodeMirror 6: подсветка SQL, автодополнение названий
 // таблиц и столбцов, Ctrl+Enter — запустить, Ctrl+Shift+Enter — проверить.
+// На телефоне и планшете над клавиатурой появляется панель быстрых символов (KeyboardBar).
 
 import { useEffect, useRef } from 'react';
 import { EditorView, keymap, placeholder as placeholderExt } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
 import { basicSetup } from 'codemirror';
+import { cursorCharLeft, cursorCharRight } from '@codemirror/commands';
 import { sql, PostgreSQL } from '@codemirror/lang-sql';
 import { python } from '@codemirror/lang-python';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import { tables } from '../content';
+import { clearActiveInput, needsSpaceBefore, setActiveInput, type InputTarget } from '../keyboard';
 
 export interface EditorApi {
   getSelection: () => string;
@@ -63,6 +66,21 @@ export function CodeEditor({ value, onChange, onRun, onCheck, readOnly, placehol
   callbacks.current = { onChange, onRun, onCheck };
 
   useEffect(() => {
+    // Куда вставляет символы панель над экранной клавиатурой
+    const target: InputTarget = {
+      kind: language,
+      insert: (text, opts) => {
+        const { from } = v.state.selection.main;
+        const prev = v.state.sliceDoc(Math.max(0, from - 1), from);
+        v.dispatch(v.state.replaceSelection(opts?.word && needsSpaceBefore(prev) ? ` ${text}` : text), { scrollIntoView: true });
+      },
+      move: (delta) => {
+        for (let i = 0; i < Math.abs(delta); i++) (delta < 0 ? cursorCharLeft : cursorCharRight)(v);
+      },
+      run: callbacks.current.onRun ? () => callbacks.current.onRun?.() : undefined,
+      check: callbacks.current.onCheck ? () => callbacks.current.onCheck?.() : undefined,
+      blur: () => v.contentDOM.blur(),
+    };
     const v = new EditorView({
       parent: host.current!,
       state: EditorState.create({
@@ -84,8 +102,14 @@ export function CodeEditor({ value, onChange, onRun, onCheck, readOnly, placehol
           EditorState.readOnly.of(Boolean(readOnly)),
           EditorView.editable.of(!readOnly),
           placeholder ? placeholderExt(placeholder) : [],
+          // Экранная клавиатура телефона не должна исправлять код и ставить заглавные буквы
+          EditorView.contentAttributes.of({ autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false', translate: 'no' }),
           EditorView.updateListener.of((u) => {
             if (u.docChanged) callbacks.current.onChange?.(u.state.doc.toString());
+            if (u.focusChanged && !readOnly) {
+              if (u.view.hasFocus) setActiveInput(target);
+              else clearActiveInput(target);
+            }
           }),
         ],
       }),
@@ -101,6 +125,7 @@ export function CodeEditor({ value, onChange, onRun, onCheck, readOnly, placehol
       };
     }
     return () => {
+      clearActiveInput(target);
       v.destroy();
       view.current = null;
     };

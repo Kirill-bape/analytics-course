@@ -8,3 +8,9 @@ progress.json.tmp
 # Секреты (API-ключи) — никогда не публикуем
 .env
 .env.*
+# Ключ подписи Android-приложения — хранится только у тебя и в секретах GitHub
+*.p12
+*.jks
+*.keystore
+# Временные файлы Android-сборки
+android/app/release/

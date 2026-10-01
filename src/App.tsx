@@ -6,6 +6,7 @@ import { CoursePage } from './pages/CoursePage';
 import { TopicPage } from './pages/TopicPage';
 import { PlanPage } from './pages/PlanPage';
 import { DevPage } from './pages/DevPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { ensureDb } from './sql/engine';
 
 export function App() {
@@ -33,6 +34,9 @@ export function App() {
       break;
     case 'plan':
       page = <PlanPage />;
+      break;
+    case 'settings':
+      page = <SettingsPage />;
       break;
     case 'dev':
       page = <DevPage />;

@@ -82,7 +82,7 @@ export function PythonTask({ task, taskKey, tp, fail, succeed, saveDraft }: Task
           </button>
         )}
       </div>
-      <div className="shortcut-hint">
+      <div className={`shortcut-hint${py.state === 'ready' ? ' kbd-only' : ''}`}>
         {py.state === 'error'
           ? `Python не запустился: ${py.message}`
           : loading

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Путь аналитика</string>
+    <string name="title_activity_main">Путь аналитика</string>
+    <string name="package_name">ru.putanalitika.app</string>
+    <string name="custom_url_scheme">ru.putanalitika.app</string>
+</resources>

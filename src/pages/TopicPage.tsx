@@ -71,7 +71,7 @@ export function TopicPage({ moduleId, topicId }: { moduleId: string; topicId: st
       </div>
 
       <article className="lesson card">
-        <Markdown source={topic.lesson} runnable />
+        <Markdown key={topic.key} source={topic.lesson} runnable />
       </article>
 
       <h2 id="practice" className="practice-title">

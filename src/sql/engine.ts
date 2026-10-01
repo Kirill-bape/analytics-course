@@ -1,9 +1,9 @@
 // Движок SQL: база данных DuckDB, которая работает прямо в браузере.
 // Все файлы DuckDB лежат в проекте (node_modules), интернет не нужен.
+// Используется вариант «eh» — его поддерживают все браузеры с 2022 года
+// (Chrome, Safari на iPad и Mac, Samsung Internet, Firefox, Edge).
 
 import * as duckdb from '@duckdb/duckdb-wasm';
-import mvpWasm from '@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url';
-import mvpWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url';
 import ehWasm from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url';
 import ehWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url';
 import { Type, type DataType, type Table } from 'apache-arrow';
@@ -26,10 +26,7 @@ export class FriendlyError extends Error {
   }
 }
 
-const BUNDLES: duckdb.DuckDBBundles = {
-  mvp: { mainModule: mvpWasm, mainWorker: mvpWorker },
-  eh: { mainModule: ehWasm, mainWorker: ehWorker },
-};
+const BUNDLE: duckdb.DuckDBBundle = { mainModule: ehWasm, mainWorker: ehWorker, pthreadWorker: null };
 
 // ---------------------------------------------------------------------------
 // Состояние базы (для индикатора «База загружается / готова»)
@@ -59,14 +56,17 @@ let dbPromise: Promise<Db> | null = null;
 
 async function createDb(): Promise<Db> {
   setStatus({ state: 'loading' });
-  const bundle = await duckdb.selectBundle(BUNDLES);
+  if (!(await duckdb.getPlatformFeatures()).wasmExceptions) {
+    throw new FriendlyError('Этот браузер слишком старый для встроенной базы данных. Обнови браузер (Chrome, Safari, Samsung Internet) до последней версии.');
+  }
+  const bundle = BUNDLE;
   const worker = new Worker(bundle.mainWorker!);
   const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
   await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
   await db.open({ query: { castBigIntToDouble: true, castDecimalToDouble: true } });
   const conn = await db.connect();
   for (const t of tables) {
-    const res = await fetch(`${import.meta.env.BASE_URL}data/${t.file}`);
+    const res = await fetch(new URL(`${import.meta.env.BASE_URL}data/${t.file}`, document.baseURI));
     if (!res.ok) throw new Error(`Не удалось загрузить файл данных ${t.file}`);
     const fileName = `${t.name}.csv`;
     await db.registerFileBuffer(fileName, new Uint8Array(await res.arrayBuffer()));

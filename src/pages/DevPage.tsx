@@ -157,6 +157,8 @@ export function DevPage() {
       const blocks = [...topic.lesson.matchAll(/```(sql|python)\n([\s\S]*?)```/g)].map((m) => ({ lang: m[1], code: m[2] }));
       for (const [i, b] of blocks.entries()) {
         const row: Row = { task: `${topic.key} пример ${i + 1} (${b.lang})`, size: '', status: 'ok', notes: [] };
+        // Пример, который начинается с «-- ⛔» или «# ⛔», нарочно показывает ошибку
+        const expectError = /^\s*(--|#)\s*⛔/.test(b.code);
         try {
           if (b.lang === 'sql') {
             const r = await runQuery(b.code);
@@ -167,9 +169,16 @@ export function DevPage() {
             row.size = r.display?.kind === 'table' ? `${r.display.total}×${r.display.columns.length}` : r.figures.length ? `${r.figures.length} граф.` : '';
             row.notes.push((r.stdout + ' ' + (r.display?.kind === 'text' ? r.display.text : '')).slice(0, 300));
           }
+          if (expectError) {
+            row.status = 'fail';
+            row.notes.push('пример помечен ⛔ (должен показывать ошибку), но выполнился без ошибки');
+          }
         } catch (e) {
-          row.status = 'fail';
-          row.notes.push(String((e as Error).message ?? e).slice(-300));
+          if (expectError) row.notes.push(`ожидаемая ошибка: ${String((e as Error).message ?? e).slice(0, 200)}`);
+          else {
+            row.status = 'fail';
+            row.notes.push(String((e as Error).message ?? e).slice(-300));
+          }
         }
         out.push(row);
         setRows([...out]);

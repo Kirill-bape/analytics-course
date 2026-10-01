@@ -1,8 +1,9 @@
 // Сетка электронной таблицы: ячейки, строка формул, «протянуть вниз».
 
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { HyperFormula } from 'hyperformula';
 import { addrName, cell, colName, ERROR_HELP, fillDown, rawForEdit, shown, toEngine } from './formulas';
+import { clearActiveInput, setActiveInput, type InputTarget } from '../keyboard';
 
 interface Props {
   hf: HyperFormula;
@@ -23,6 +24,7 @@ export function SheetGrid({ hf, rows, cols, lastDataRow, widths, locked, onChang
   const [, setVersion] = useState(0);
   const [hint, setHint] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const scrollBox = useRef<HTMLDivElement>(null);
   const editingFormula = useRef(false);
 
   const select = (row: number, col: number) => {
@@ -78,6 +80,57 @@ export function SheetGrid({ hf, rows, cols, lastDataRow, widths, locked, onChang
     select(row, col);
   };
 
+  // Панель быстрых символов над экранной клавиатурой вставляет текст в строку формул
+  const editRef = useRef(edit);
+  editRef.current = edit;
+  const commitRef = useRef(commit);
+  commitRef.current = commit;
+  const target = useMemo<InputTarget>(
+    () => ({
+      kind: 'sheet',
+      insert: (text) => {
+        const el = input.current;
+        if (!el) return;
+        const v = editRef.current;
+        const start = el.selectionStart ?? v.length;
+        const end = el.selectionEnd ?? start;
+        editingFormula.current = true;
+        setEdit(v.slice(0, start) + text + v.slice(end));
+        requestAnimationFrame(() => el.setSelectionRange(start + text.length, start + text.length));
+      },
+      move: (delta) => {
+        const el = input.current;
+        if (!el) return;
+        const p = Math.max(0, Math.min(el.value.length, (el.selectionStart ?? 0) + delta));
+        el.setSelectionRange(p, p);
+      },
+      enter: () => commitRef.current(true),
+      blur: () => input.current?.blur(),
+    }),
+    [],
+  );
+  useEffect(() => () => clearActiveInput(target), [target]);
+
+  // Выбранная ячейка всегда видна внутри таблицы (важно на узком экране телефона).
+  // Прокручиваем только саму таблицу, а не всю страницу.
+  useEffect(() => {
+    const box = scrollBox.current;
+    const td = box?.querySelector<HTMLElement>('.sheet-cell.selected');
+    if (!box || !td) return;
+    const rowHeader = box.querySelector<HTMLElement>('tbody th')?.offsetWidth ?? 0;
+    const colHeader = box.querySelector<HTMLElement>('thead th')?.offsetHeight ?? 0;
+    const { offsetLeft: left, offsetTop: top, offsetWidth: w, offsetHeight: h } = td;
+    if (left - rowHeader < box.scrollLeft) box.scrollLeft = left - rowHeader;
+    else if (left + w > box.scrollLeft + box.clientWidth) {
+      // Останавливаемся ровно на границе столбца, чтобы слева не торчал его обрезанный край
+      const need = left + w - box.clientWidth;
+      const starts = [...box.querySelectorAll<HTMLElement>('thead th')].slice(1).map((th) => th.offsetLeft - rowHeader);
+      box.scrollLeft = starts.find((s) => s >= need) ?? need;
+    }
+    if (top - colHeader < box.scrollTop) box.scrollTop = top - colHeader;
+    else if (top + h > box.scrollTop + box.clientHeight) box.scrollTop = top + h - box.clientHeight;
+  }, [sel]);
+
   const selShown = shown(hf, sel.row, sel.col);
 
   return (
@@ -93,8 +146,15 @@ export function SheetGrid({ hf, rows, cols, lastDataRow, widths, locked, onChang
           autoCorrect="off"
           spellCheck={false}
           placeholder={locked(sel.row, sel.col) ? 'Исходные данные' : 'Число, текст или формула: =СУММ(B2:B10)'}
-          onFocus={() => (editingFormula.current = true)}
-          onBlur={() => (editingFormula.current = false)}
+          enterKeyHint="done"
+          onFocus={() => {
+            editingFormula.current = true;
+            setActiveInput(target);
+          }}
+          onBlur={() => {
+            editingFormula.current = false;
+            clearActiveInput(target);
+          }}
           onChange={(e) => {
             editingFormula.current = true;
             setEdit(e.target.value);
@@ -112,7 +172,7 @@ export function SheetGrid({ hf, rows, cols, lastDataRow, widths, locked, onChang
           ✓
         </button>
       </div>
-      <div className="sheet-scroll">
+      <div className="sheet-scroll" ref={scrollBox}>
         <table className="sheet-table">
           <colgroup>
             <col style={{ width: 36 }} />

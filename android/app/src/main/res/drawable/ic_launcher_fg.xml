@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Создано scripts/make-icons.mjs — не редактируй вручную -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M35.04,56.4h4.32a2.64,2.64 0 0 1 2.64,2.64v13.92a2.64,2.64 0 0 1 -2.64,2.64h-4.32a2.64,2.64 0 0 1 -2.64,-2.64v-13.92a2.64,2.64 0 0 1 2.64,-2.64zM51.84,44.4h4.32a2.64,2.64 0 0 1 2.64,2.64v25.92a2.64,2.64 0 0 1 -2.64,2.64h-4.32a2.64,2.64 0 0 1 -2.64,-2.64v-25.92a2.64,2.64 0 0 1 2.64,-2.64zM68.64,32.4h4.32a2.64,2.64 0 0 1 2.64,2.64v37.92a2.64,2.64 0 0 1 -2.64,2.64h-4.32a2.64,2.64 0 0 1 -2.64,-2.64v-37.92a2.64,2.64 0 0 1 2.64,-2.64z" />
+</vector>

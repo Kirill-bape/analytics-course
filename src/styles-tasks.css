@@ -418,3 +418,146 @@
   background: var(--surface);
   color: var(--text);
 }
+
+/* ============================================================
+   Панель быстрых символов над экранной клавиатурой
+   ============================================================ */
+.kbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px 6px;
+  padding: 6px calc(6px + env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) calc(6px + env(safe-area-inset-left));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 18px rgba(20, 24, 40, 0.1);
+}
+.kbar.raised {
+  padding-bottom: 6px;
+}
+.kbar-row {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.kbar-row::-webkit-scrollbar {
+  display: none;
+}
+.kbar-symbols {
+  grid-column: 1 / -1;
+}
+.kbar-actions {
+  display: flex;
+  gap: 5px;
+}
+.kkey {
+  flex: 0 0 auto;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font: 600 1.05rem/1 var(--font-mono);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.kkey:active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.kkey.word {
+  font-size: 0.82rem;
+  color: var(--code-keyword);
+}
+.kkey.ctl {
+  color: var(--text-muted);
+}
+.kkey.act {
+  min-width: 44px;
+}
+.kkey.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+@media (prefers-color-scheme: dark) {
+  .kkey.primary {
+    color: #11132a;
+  }
+}
+
+/* ============================================================
+   Настройки
+   ============================================================ */
+.settings-section h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.6em;
+}
+.settings-section p {
+  margin: 0.5em 0;
+}
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 6px;
+}
+.settings-help {
+  margin-top: 12px;
+}
+.settings-help summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+}
+.settings-help ol {
+  margin: 8px 0;
+  padding-left: 22px;
+}
+.settings-help li {
+  margin: 4px 0;
+}
+.feedback-info {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+.offline-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+.offline-progress .progress-bar {
+  flex: 1 1 200px;
+}
+.install-list {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+.install-list li {
+  margin: 8px 0;
+}
+.install-list li.current {
+  font-size: 1.02rem;
+}
+.about-links {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  overflow-wrap: anywhere;
+}
+.about-links li {
+  margin: 4px 0;
+}

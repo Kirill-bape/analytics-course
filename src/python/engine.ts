@@ -67,8 +67,13 @@ let readyPromise: Promise<void> | null = null;
 let nextId = 1;
 const pending = new Map<number, { resolve: (m: WorkerOut) => void; onStart: () => void }>();
 
+/** Полный адрес файла приложения (работает и на GitHub Pages в подпапке, и в APK) */
+const appUrl = (path: string) => new URL(`${import.meta.env.BASE_URL}${path}`, document.baseURI).href;
+
 async function indexURL(): Promise<string> {
-  const local = `${location.origin}${import.meta.env.BASE_URL}pyodide/`;
+  const local = appUrl('pyodide/');
+  // В собранном приложении Python всегда лежит рядом (и доступен без интернета)
+  if (import.meta.env.PROD) return local;
   try {
     const res = await fetch(`${local}pyodide-lock.json`, { method: 'HEAD' });
     if (res.ok) return local;
@@ -82,7 +87,7 @@ async function indexURL(): Promise<string> {
 function dataFiles(): DataFile[] {
   return tables.map((t) => ({
     table: t.name,
-    url: `${location.origin}${import.meta.env.BASE_URL}data/${t.file}`,
+    url: appUrl(`data/${t.file}`),
     fileName: `${t.name}.csv`,
     dateCols: t.columns.filter((c) => c.type === 'DATE').map((c) => c.name),
   }));

@@ -93,7 +93,7 @@ export function SqlTask({ task, taskKey, tp, fail, succeed, saveDraft }: TaskBod
           </button>
         )}
       </div>
-      <div className="shortcut-hint">Ctrl+Enter — запустить · Ctrl+Shift+Enter — проверить · выдели часть кода, чтобы запустить только её</div>
+      <div className="shortcut-hint kbd-only">Ctrl+Enter — запустить · Ctrl+Shift+Enter — проверить · выдели часть кода, чтобы запустить только её</div>
       <Feedback state={feedback} usedSolution={tp.usedSolution} />
       {result && task.chart && <Chart spec={task.chart} columns={result.columns} rows={result.rows} />}
       {result && <ResultTable result={result} />}
