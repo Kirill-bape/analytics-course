@@ -30,9 +30,9 @@ android {
             release {
                 storeFile file(keystorePath)
                 storeType 'pkcs12'
-                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')?.trim()
                 keyAlias System.getenv('ANDROID_KEY_ALIAS') ?: 'put-analitika'
-                keyPassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyPassword System.getenv('ANDROID_KEYSTORE_PASSWORD')?.trim()
             }
         }
     }

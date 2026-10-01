@@ -95,27 +95,49 @@ jobs:
       - name: Ключ подписи
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.p12"
-            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
-          else
+          if [ -z "$KEYSTORE_BASE64" ]; then
             echo "::warning::Секрет ANDROID_KEYSTORE_BASE64 не задан — APK подписан временным ключом и не встанет поверх прошлой версии."
+            exit 0
           fi
+          # Пробелы и переносы строк могли попасть в секрет при копировании — убираем их
+          KEY=$(printf '%s' "$KEYSTORE_BASE64" | tr -d ' \r\n\t')
+          PASS=$(printf '%s' "$KEYSTORE_PASSWORD" | tr -d ' \r\n\t')
+          echo "Длина ключа: ${#KEY} символов (ожидается около 5800), длина пароля: ${#PASS} (ожидается 24)"
+          if ! printf '%s' "$KEY" | base64 -d > "$RUNNER_TEMP/release.p12" 2>/dev/null; then
+            echo "::error title=Ключ подписи::Секрет ANDROID_KEYSTORE_BASE64 не похож на ключ (длина ${#KEY}). Вставь в него целиком содержимое файла ANDROID_KEYSTORE_BASE64.txt."
+            exit 1
+          fi
+          export PASS
+          if ! openssl pkcs12 -in "$RUNNER_TEMP/release.p12" -passin env:PASS -noout 2>/dev/null; then
+            echo "::error title=Пароль ключа::Ключ прочитан, но пароль ANDROID_KEYSTORE_PASSWORD к нему не подходит (длина пароля ${#PASS}). Вставь в секрет содержимое файла ANDROID_KEYSTORE_PASSWORD.txt."
+            exit 1
+          fi
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
+          echo "::add-mask::$PASS"
+          echo "ANDROID_KEYSTORE_PASSWORD=$PASS" >> "$GITHUB_ENV"
+          echo "Ключ подписи в порядке ✓"
 
       - name: Сборка APK
         working-directory: android
         env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           APP_VERSION_CODE: ${{ github.run_number }}
           APP_VERSION_NAME: 1.0.${{ github.run_number }}
         run: |
+          set -o pipefail
           chmod +x gradlew
-          if [ -n "$ANDROID_KEYSTORE_PATH" ]; then
-            ./gradlew assembleRelease --no-daemon
+          TASK=assembleDebug
+          if [ -n "$ANDROID_KEYSTORE_PATH" ]; then TASK=assembleRelease; fi
+          if ! ./gradlew "$TASK" --no-daemon 2>&1 | tee "$RUNNER_TEMP/gradle.log"; then
+            # Короткое описание ошибки — видно на странице сборки без открытия журнала
+            MSG=$(grep -A 20 "What went wrong" "$RUNNER_TEMP/gradle.log" | head -30 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::error title=Сборка APK не удалась::${MSG:-подробности в журнале шага}"
+            exit 1
+          fi
+          if [ "$TASK" = assembleRelease ]; then
             cp app/build/outputs/apk/release/app-release.apk ../put-analitika.apk
           else
-            ./gradlew assembleDebug --no-daemon
             cp app/build/outputs/apk/debug/app-debug.apk ../put-analitika.apk
           fi
           ls -la ../put-analitika.apk
