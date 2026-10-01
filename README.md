@@ -9,8 +9,8 @@
 | Устройство | Как открыть |
 |---|---|
 | **Компьютер (Windows)** | двойной клик по `start.bat` — см. ниже |
-| **Телефон Samsung / Android** | приложение APK: скачать по ссылке на странице «Настройки» или в разделе Releases на GitHub |
-| **iPad, iPhone** | сайт на GitHub Pages в Safari → «Поделиться» → «На экран „Домой"» |
+| **Телефон Samsung / Android** | приложение: [скачать APK](https://github.com/Kirill-bape/analytics-course/releases/latest/download/put-analitika.apk) |
+| **iPad, iPhone** | сайт <https://kirill-bape.github.io/analytics-course/> в Safari → «Поделиться» → «На экран „Домой"» |
 | **MacBook** | тот же сайт в Safari → «Файл» → «Добавить в Dock» |
 
 После первого открытия сайт сам скачивает всё нужное (около 85 МБ, лучше по Wi-Fi) и дальше работает без интернета, включая базу данных и Python. В APK всё уже внутри.

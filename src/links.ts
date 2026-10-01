@@ -1,7 +1,6 @@
 // Адреса опубликованного приложения на GitHub.
-// Пока проект не опубликован, строки пустые — ссылки в приложении просто не показываются.
 
-export const GITHUB_USER: string = '';
+export const GITHUB_USER: string = 'Kirill-bape';
 export const REPO_NAME = 'analytics-course';
 
 const base = GITHUB_USER ? `https://github.com/${GITHUB_USER}/${REPO_NAME}` : '';
