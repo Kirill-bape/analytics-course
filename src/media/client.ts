@@ -144,7 +144,17 @@ export function connectServer(server: MediaServer | null) {
   refreshCatalog();
 }
 
-if (typeof window !== 'undefined' && state.server) refreshCatalog();
+if (typeof window !== 'undefined') {
+  if (state.server) refreshCatalog();
+  // Если компьютер был выключен или видеосервер ещё не запустился — пробуем снова
+  const retry = () => {
+    if (state.server && (state.status === 'error' || state.status === 'off')) refreshCatalog();
+  };
+  setInterval(retry, 30_000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') retry();
+  });
+}
 
 /** Материалы курсов для урока (null — видеотека не подключена) */
 export function useLessonMedia(topicKey: string | undefined): LessonMedia | null {

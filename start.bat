@@ -14,6 +14,11 @@ if not exist node_modules (
   )
 )
 
+rem Видеотека: видео купленных курсов для приложения на этом компьютере и на телефоне
+if exist media.config.json (
+  start "Видеотека" /min cmd /k "chcp 65001 >nul & node scripts\media-server.mjs"
+)
+
 echo.
 echo Запускаю приложение. Браузер откроется сам.
 echo Не закрывай это окно, пока занимаешься. Чтобы остановить приложение, закрой окно.

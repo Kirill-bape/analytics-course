@@ -8,6 +8,7 @@ import { plural } from '../sql/compare';
 import { ANDROID, canShareFiles, IOS, isStandalone, MAC, NATIVE, SAFARI, saveTextFile, shareTextFile, type SaveResult } from '../platform';
 import { getPwa, promptInstall, storageInfo, subscribePwa } from '../pwa';
 import { APK_URL, REPO_URL, SITE_URL } from '../links';
+import { LibrarySettings } from '../components/media/LibrarySettings';
 
 type Msg = { kind: 'ok' | 'error' | 'info'; text: string } | null;
 
@@ -277,6 +278,7 @@ export function SettingsPage() {
         <p className="lead">Перенос прогресса между устройствами, работа без интернета и установка.</p>
       </div>
       <ProgressSection />
+      <LibrarySettings />
       <OfflineSection />
       <InstallSection />
       <AboutSection />

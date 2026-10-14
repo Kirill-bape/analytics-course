@@ -788,3 +788,28 @@
   color: var(--text-2);
   margin-top: 4px;
 }
+.library-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+.library-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.library-form .number-input {
+  width: 100%;
+  max-width: 360px;
+}
+.topic-videos {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}

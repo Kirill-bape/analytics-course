@@ -11,6 +11,8 @@ const config: CapacitorConfig = {
   android: {
     // Отладку через компьютер разрешаем только в отладочных сборках
     webContentsDebuggingEnabled: false,
+    // Видео курсов идут с компьютера по домашней сети (http://192.168.…:3700)
+    allowMixedContent: true,
   },
   plugins: {
     // Приложение рисуется до краёв экрана, а отступы под «чёлку» и полоску жестов

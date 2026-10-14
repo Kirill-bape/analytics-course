@@ -93,11 +93,36 @@ export function TopicPage({ moduleId, topicId }: { moduleId: string; topicId: st
     );
   }
   if (!topic.ready) {
+    const hasMedia = media && (media.videos.length || media.theory.length || media.practice.length);
     return (
-      <div className="page">
-        <h1>{topic.title}</h1>
-        <p className="lead">Эта тема ещё готовится и скоро появится.</p>
-        <a href={href('course')}>Вернуться к списку тем</a>
+      <div className="page topic-page">
+        <nav className="breadcrumbs">
+          <a href={href('course', module.id)}>
+            <ChevronLeft size={16} aria-hidden /> {module.title}
+          </a>
+        </nav>
+        <div className="page-head topic-head">
+          <ModuleTile moduleId={module.id} size={52} />
+          <div>
+            <h1>{topic.title}</h1>
+            <p className="lead" style={{ marginTop: 6 }}>
+              {hasMedia
+                ? 'Мой урок с объяснением и заданиями для этой темы ещё в работе. Пока здесь видео и материалы из твоих курсов.'
+                : 'Эта тема ещё готовится и скоро появится.'}
+            </p>
+          </div>
+        </div>
+        {media && media.videos.length > 0 && (
+          <section id="video" className="lesson-section">
+            <h2 className="lesson-section-title">
+              <CirclePlay size={26} aria-hidden /> Видео
+            </h2>
+            <LessonVideos videos={media.videos} />
+          </section>
+        )}
+        {media && <LessonMaterials items={media.theory} title="Теория: конспекты и материалы курсов" />}
+        {media && <LessonMaterials items={media.practice} title="Практика: задания и данные из курсов" />}
+        {!hasMedia && <a href={href('course')}>Вернуться к списку тем</a>}
       </div>
     );
   }

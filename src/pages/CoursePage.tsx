@@ -1,14 +1,17 @@
 import { useEffect } from 'react';
-import { Check, ChevronRight } from 'lucide-react';
+import { Check, ChevronRight, CirclePlay } from 'lucide-react';
 import { modules } from '../content';
 import { href } from '../router';
 import { useProgress } from '../progress';
 import { topicStats } from '../stats';
 import { ModuleTile, ProgressRing } from '../components/ui';
 import { plural } from '../sql/compare';
+import { useMedia } from '../media/client';
 
 export function CoursePage({ anchor }: { anchor?: string }) {
   const { data } = useProgress();
+  const media = useMedia();
+  const videosOf = (key: string) => (media.server && media.catalog?.lessons[key]?.videos.length) || 0;
 
   useEffect(() => {
     if (anchor) document.getElementById(`module-${anchor}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -26,7 +29,7 @@ export function CoursePage({ anchor }: { anchor?: string }) {
         </p>
       </div>
       {modules.map((m, mi) => {
-        const readyCount = m.topics.filter((t) => t.ready).length;
+        const readyCount = m.topics.filter((t) => t.ready || videosOf(t.key)).length;
         const st = m.topics.reduce(
           (acc, t) => {
             const s = topicStats(t, data);
@@ -60,6 +63,8 @@ export function CoursePage({ anchor }: { anchor?: string }) {
               {m.topics.map((t, ti) => {
                 const s = topicStats(t, data);
                 const part = s.total ? Math.round((s.solved / s.total) * 100) : 0;
+                const videos = videosOf(t.key);
+                const open = t.ready || videos > 0;
                 const content = (
                   <>
                     <span className="topic-num">{ti + 1}</span>
@@ -70,19 +75,24 @@ export function CoursePage({ anchor }: { anchor?: string }) {
                       {s.done && <Check size={14} strokeWidth={3} aria-hidden />}
                     </span>
                     <span className="topic-name">{t.title}</span>
+                    {videos > 0 && (
+                      <span className="topic-count topic-videos" title={`Видео из курсов: ${videos}`}>
+                        <CirclePlay size={13} aria-hidden /> {videos}
+                      </span>
+                    )}
                     {t.ready ? (
                       <span className="topic-count">
                         {s.solved}/{s.total}
                       </span>
                     ) : (
-                      <span className="badge">скоро</span>
+                      !videos && <span className="badge">скоро</span>
                     )}
-                    {t.ready && <ChevronRight size={18} className="topic-chevron" aria-hidden />}
+                    {open && <ChevronRight size={18} className="topic-chevron" aria-hidden />}
                   </>
                 );
                 return (
                   <li key={t.id}>
-                    {t.ready ? (
+                    {open ? (
                       <a className="topic-row" href={href('topic', m.id, t.id)}>
                         {content}
                       </a>

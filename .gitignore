@@ -14,3 +14,5 @@ progress.json.tmp
 *.keystore
 # Временные файлы Android-сборки
 android/app/release/
+# Настройки видеотеки (пути к купленным курсам на этом компьютере)
+media.config.json
