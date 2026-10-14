@@ -11,7 +11,11 @@ import { useMedia } from '../media/client';
 export function CoursePage({ anchor }: { anchor?: string }) {
   const { data } = useProgress();
   const media = useMedia();
-  const videosOf = (key: string) => (media.server && media.catalog?.lessons[key]?.videos.length) || 0;
+  // Сколько видео в теме: из основных курсов, а если их нет — из дополнительных
+  const videosOf = (key: string) => {
+    const list = (media.server && media.catalog?.lessons[key]?.videos) || [];
+    return list.filter((v) => v.tier !== 'extra').length || list.length;
+  };
 
   useEffect(() => {
     if (anchor) document.getElementById(`module-${anchor}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });

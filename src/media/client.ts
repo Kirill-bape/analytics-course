@@ -22,6 +22,10 @@ export interface MediaVideo {
   size: number;
   description?: string;
   chapters?: MediaChapter[];
+  /** main — один из трёх основных курсов, extra — дополнительный */
+  tier?: 'main' | 'extra';
+  /** Формат, в котором видео отдаёт компьютер (mp4 — играет везде) */
+  fmt?: string;
 }
 
 export type MediaDocKind = 'pdf' | 'doc' | 'slides' | 'notebook' | 'data' | 'code' | 'page' | 'text' | 'archive' | 'book' | 'other';
@@ -36,6 +40,7 @@ export interface MediaDoc {
   size: number;
   /** Для заданий из курсов: техническое задание, данные, критерии, формат ответа */
   brief?: string;
+  tier?: 'main' | 'extra';
 }
 
 export interface LessonMedia {
@@ -48,7 +53,7 @@ export interface MediaCatalog {
   version: number;
   generatedAt: string;
   lessons: Record<string, LessonMedia>;
-  courses: { id: string; title: string; videos: number; hours: number }[];
+  courses: { id: string; title: string; tier?: 'main' | 'extra'; videos: number; hours: number }[];
 }
 
 // ---------------------------------------------------------------------------

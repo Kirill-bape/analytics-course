@@ -15,7 +15,8 @@ import { pathToFileURL } from 'node:url';
 
 const PROJECT = join(import.meta.dirname, '..');
 const config = JSON.parse(readFileSync(join(PROJECT, 'media.config.json'), 'utf8'));
-const { route, COURSES, COURSE_ORDER } = await import(pathToFileURL(config.map).href);
+const { route, COURSES, COURSE_ORDER, PRIMARY = [] } = await import(pathToFileURL(config.map).href);
+const tier = (courseName) => (PRIMARY.includes(courseName) ? 'main' : 'extra');
 const course = JSON.parse(readFileSync(join(PROJECT, 'content', 'course.json'), 'utf8'));
 
 const lessonTitle = {};
@@ -145,7 +146,9 @@ for (const { rel, size } of all) {
   if (isVideo) {
     const duration = durations[rel] || transcriptDuration(id);
     const note = notes[id] ?? {};
-    const item = { id, title: note.title ?? cleanTitle(file), course: courseName, section, duration, size };
+    const remuxed = existsSync(join(config.data, 'video-mp4', `${id}.mp4`));
+    const fmt = ext === '.mp4' || ext === '.m4v' || remuxed ? 'mp4' : ext.replace('.', '');
+    const item = { id, title: note.title ?? cleanTitle(file), course: courseName, tier: tier(courseName), section, duration, size, fmt };
     if (note.description) item.description = note.description;
     if (note.chapters?.length) item.chapters = note.chapters;
     lesson(r.key).videos.push(item);
@@ -162,7 +165,7 @@ for (const { rel, size } of all) {
     continue;
   }
   const block = r.block ?? (['data', 'code', 'notebook', 'archive'].includes(kind) || PRACTICE_NAME.test(file) ? 'practice' : 'theory');
-  const item = { id, title: docTitle(file), course: courseName, section, kind, ext: ext.replace('.', '') || 'файл', size };
+  const item = { id, title: docTitle(file), course: courseName, tier: tier(courseName), section, kind, ext: ext.replace('.', '') || 'файл', size };
   lesson(r.key)[block].push(item);
   files[id] = { path: rel };
   report.push([rel, ...where, block === 'practice' ? 'Практика' : 'Теория', 'Вписано']);
@@ -170,8 +173,10 @@ for (const { rel, size } of all) {
 
 // Порядок внутри урока: курсы по важности, внутри курса — по разделам и номерам
 const order = (c) => {
+  const p = PRIMARY.indexOf(c);
+  if (p >= 0) return p;
   const i = COURSE_ORDER.indexOf(c);
-  return i < 0 ? 99 : i;
+  return 10 + (i < 0 ? 99 : i);
 };
 const natural = (a, b) => a.localeCompare(b, 'ru', { numeric: true });
 for (const l of Object.values(lessons)) {
@@ -192,7 +197,7 @@ for (const l of Object.values(lessons)) {
 }
 
 const courses = Object.entries(courseStats)
-  .map(([title, s]) => ({ id: idOf(title), title, videos: s.videos, hours: Math.round(s.seconds / 360) / 10 }))
+  .map(([title, s]) => ({ id: idOf(title), title, tier: tier(title), videos: s.videos, hours: Math.round(s.seconds / 360) / 10 }))
   .sort((a, b) => order(a.title) - order(b.title));
 
 const catalog = { version: 1, generatedAt: new Date().toISOString(), lessons, courses };

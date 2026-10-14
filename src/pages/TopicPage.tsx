@@ -117,7 +117,7 @@ export function TopicPage({ moduleId, topicId }: { moduleId: string; topicId: st
             <h2 className="lesson-section-title">
               <CirclePlay size={26} aria-hidden /> Видео
             </h2>
-            <LessonVideos videos={media.videos} />
+            <LessonVideos videos={media.videos} topic={topic.title} />
           </section>
         )}
         {media && <LessonMaterials items={media.theory} title="Теория: конспекты и материалы курсов" />}
@@ -137,7 +137,7 @@ export function TopicPage({ moduleId, topicId }: { moduleId: string; topicId: st
 
   const sections: Section[] = [
     { id: 'theory', label: 'Теория', icon: <BookOpenText size={18} aria-hidden /> },
-    ...(videos.length ? [{ id: 'video', label: 'Видео', icon: <CirclePlay size={18} aria-hidden />, count: videos.length }] : []),
+    ...(videos.length ? [{ id: 'video', label: 'Видео', icon: <CirclePlay size={18} aria-hidden />, count: videos.filter((v) => v.tier !== 'extra').length || videos.length }] : []),
     { id: 'practice', label: 'Практика', icon: <ListChecks size={18} aria-hidden />, count: topic.tasks.length },
   ];
 
@@ -175,7 +175,7 @@ export function TopicPage({ moduleId, topicId }: { moduleId: string; topicId: st
           <h2 className="lesson-section-title">
             <CirclePlay size={26} aria-hidden /> Видео
           </h2>
-          <LessonVideos videos={videos} />
+          <LessonVideos videos={videos} topic={topic.title} />
         </section>
       )}
 
