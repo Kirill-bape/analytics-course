@@ -199,6 +199,7 @@ function VideoGroups({ videos, topic, playing, setPlaying, firstOpen }: { videos
                             {formatDuration(v.duration) || 'длительность уточняется'}
                             {v.chapters?.length ? ` · ${v.chapters.length} ${plural(v.chapters.length, 'раздел', 'раздела', 'разделов')}` : ''}
                             {off.saved[v.id] ? ' · на телефоне' : ''}
+                            {v.damaged ? ' · файл частично повреждён, местами может прерываться' : ''}
                           </span>
                           {v.description && <span className="video-desc">{v.description}</span>}
                           {w > 0 && w < 1 && (

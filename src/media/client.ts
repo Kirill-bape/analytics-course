@@ -26,6 +26,8 @@ export interface MediaVideo {
   tier?: 'main' | 'extra';
   /** Формат, в котором видео отдаёт компьютер (mp4 — играет везде) */
   fmt?: string;
+  /** Файл частично недокачан: примерно столько процентов пусто (местами может прерываться) */
+  damaged?: number;
 }
 
 export type MediaDocKind = 'pdf' | 'doc' | 'slides' | 'notebook' | 'data' | 'code' | 'page' | 'text' | 'archive' | 'book' | 'other';

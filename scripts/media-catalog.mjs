@@ -9,7 +9,7 @@
 // Запуск: node scripts/media-catalog.mjs
 
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -62,6 +62,40 @@ function transcriptDuration(id) {
   }
 }
 
+// Недокачанные видео: внутри файла большие участки из одних нулей (оборвалось
+// копирование или скачивание). Берём пробы по 4 КБ через каждый мегабайт.
+function emptyShare(full, size) {
+  const fd = openSync(full, 'r');
+  const buf = Buffer.alloc(4096);
+  let zero = 0;
+  let total = 0;
+  let headZero = false;
+  try {
+    for (let off = 0; off < size; off += 1 << 20) {
+      const n = readSync(fd, buf, 0, buf.length, off);
+      total += 1;
+      if (!buf.subarray(0, n).some((b) => b)) {
+        zero += 1;
+        if (off === 0) headZero = true;
+      }
+    }
+  } finally {
+    closeSync(fd);
+  }
+  return { share: zero / Math.max(total, 1), headZero };
+}
+
+// Видео, которое не смогла прочитать расшифровка (испорченный файл)
+function unreadable(id) {
+  const f = join(transcriptsDir, `${id}.json.err`);
+  if (!existsSync(f)) return false;
+  try {
+    return /Invalid data|End of file/i.test(JSON.parse(readFileSync(f, 'utf8')).error);
+  } catch {
+    return false;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Обход папки с курсами
 // ---------------------------------------------------------------------------
@@ -98,6 +132,7 @@ const files = {};
 const report = [];
 const unknownKeys = new Set();
 const courseStats = {};
+const damagedCount = {};
 
 function lesson(key) {
   return (lessons[key] ??= { videos: [], theory: [], practice: [] });
@@ -144,11 +179,18 @@ for (const { rel, size } of all) {
   courseStats[courseName] ??= { videos: 0, seconds: 0 };
 
   if (isVideo) {
+    const { share, headZero } = emptyShare(join(config.root, rel), size);
+    if (headZero || share > 0.2 || unreadable(id)) {
+      report.push([rel, ...where, 'Видео', `Не включено: файл повреждён — недокачан (пусто около ${Math.round(share * 100)}% файла), не воспроизводится`]);
+      damagedCount[courseName] = (damagedCount[courseName] ?? 0) + 1;
+      continue;
+    }
     const duration = durations[rel] || transcriptDuration(id);
     const note = notes[id] ?? {};
     const remuxed = existsSync(join(config.data, 'video-mp4', `${id}.mp4`));
     const fmt = ext === '.mp4' || ext === '.m4v' || remuxed ? 'mp4' : ext.replace('.', '');
     const item = { id, title: note.title ?? cleanTitle(file), course: courseName, tier: tier(courseName), section, duration, size, fmt };
+    if (share > 0.02) item.damaged = Math.round(share * 100);
     if (note.description) item.description = note.description;
     if (note.chapters?.length) item.chapters = note.chapters;
     lesson(r.key).videos.push(item);
@@ -212,4 +254,5 @@ const vids = Object.values(lessons).reduce((s, l) => s + l.videos.length, 0);
 console.log(`Уроков с материалами: ${Object.keys(lessons).length}`);
 console.log(`Видео вписано: ${vids}, документов в «Теории»: ${Object.values(lessons).reduce((s, l) => s + l.theory.length, 0)}, в «Практике»: ${Object.values(lessons).reduce((s, l) => s + l.practice.length, 0)}`);
 console.log(`Не разобрано: ${count((r) => r[4].startsWith('НЕ РАЗОБРАНО'))}, не включено: ${count((r) => r[4].startsWith('Не включено'))}, дублей: ${count((r) => r[4].startsWith('Дубль'))}`);
+if (Object.keys(damagedCount).length) console.log('Повреждённых видео пропущено:', Object.entries(damagedCount).map(([c, n]) => `${c} — ${n}`).join('; '));
 if (unknownKeys.size) console.log('Уроков нет в course.json:', [...unknownKeys].join(', '));
