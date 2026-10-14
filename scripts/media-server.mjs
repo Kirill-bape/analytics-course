@@ -136,9 +136,9 @@ const server = createServer((req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  // Адреса в домашней сети (без служебных виртуальных сетей Windows)
+  // Адреса в домашней сети (без служебных виртуальных сетей Windows и VPN-программ)
   const ips = Object.entries(networkInterfaces())
-    .filter(([name]) => !/vEthernet|WSL|VirtualBox|VMware|Hyper-V|Loopback/i.test(name))
+    .filter(([name]) => !/vEthernet|WSL|VirtualBox|VMware|Hyper-V|Loopback|xray|v2ray|happ|clash|vpn|wireguard|outline|\btun|\btap/i.test(name))
     .flatMap(([, list]) => list ?? [])
     .filter((i) => i.family === 'IPv4' && !i.internal)
     .map((i) => i.address);
