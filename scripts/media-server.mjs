@@ -80,6 +80,15 @@ function resolve(id) {
   return existsSync(p) ? p : null;
 }
 
+// Адреса этого компьютера в домашней сети (без служебных виртуальных сетей Windows и VPN-программ)
+function lanAddresses() {
+  return Object.entries(networkInterfaces())
+    .filter(([name]) => !/vEthernet|WSL|VirtualBox|VMware|Hyper-V|Loopback|xray|v2ray|happ|clash|vpn|wireguard|outline|\btun|\btap/i.test(name))
+    .flatMap(([, list]) => list ?? [])
+    .filter((i) => i.family === 'IPv4' && !i.internal)
+    .map((i) => `http://${i.address}:${PORT}`);
+}
+
 const isLocal = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
 
 function send(res, status, body, type = 'text/plain; charset=utf-8') {
@@ -97,6 +106,12 @@ const server = createServer((req, res) => {
 
   if (url.pathname === '/api/ping') return send(res, 200, JSON.stringify({ ok: true, app: 'put-analitika-media' }), 'application/json');
   if (!isLocal(req) && url.searchParams.get('k') !== config.key) return send(res, 401, 'Нужен код доступа');
+
+  // Адрес и код для телефона — их показывают настройки приложения на этом компьютере
+  if (url.pathname === '/api/phone') {
+    if (!isLocal(req)) return send(res, 403, 'Только с этого компьютера');
+    return send(res, 200, JSON.stringify({ addresses: lanAddresses(), key: config.key }), 'application/json');
+  }
 
   if (url.pathname === '/api/catalog') {
     if (url.searchParams.has('reload')) load();
@@ -135,30 +150,29 @@ const server = createServer((req, res) => {
   createReadStream(path).pipe(res);
 });
 
+function showPhoneInfo() {
+  console.log('  Чтобы смотреть с телефона: «Настройки» → «Видеотека курсов» в приложении, ввести:');
+  for (const a of lanAddresses()) console.log(`    адрес: ${a}`);
+  console.log(`    код доступа: ${config.key}`);
+  console.log('');
+}
+
 server.listen(PORT, '0.0.0.0', () => {
-  // Адреса в домашней сети (без служебных виртуальных сетей Windows и VPN-программ)
-  const ips = Object.entries(networkInterfaces())
-    .filter(([name]) => !/vEthernet|WSL|VirtualBox|VMware|Hyper-V|Loopback|xray|v2ray|happ|clash|vpn|wireguard|outline|\btun|\btap/i.test(name))
-    .flatMap(([, list]) => list ?? [])
-    .filter((i) => i.family === 'IPv4' && !i.internal)
-    .map((i) => i.address);
   const nVideos = catalog ? JSON.parse(catalog).courses.reduce((s, c) => s + c.videos, 0) : 0;
   console.log('');
   console.log('  Видеотека «Путь аналитика» запущена.');
   console.log(`  В каталоге: ${nVideos} видео.`);
   console.log('');
-  console.log('  Чтобы смотреть с телефона: «Настройки» → «Видеотека» в приложении, ввести:');
-  for (const ip of ips) console.log(`    адрес: http://${ip}:${PORT}`);
-  console.log(`    код доступа: ${config.key}`);
-  console.log('');
+  showPhoneInfo();
   console.log('  Не закрывай это окно, пока смотришь видео.');
 });
 
 server.on('error', (e) => {
   if (e.code === 'EADDRINUSE') {
     console.log('');
-    console.log('  Видеотека уже запущена (её открыло другое окно), второй раз запускать не нужно.');
-    console.log('  Это окно можно закрыть.');
+    console.log('  Видеотека уже работает (её запустило другое окно), второй раз запускать не нужно.');
+    console.log('');
+    showPhoneInfo();
   } else {
     console.log('  Видеотека не запустилась:', e.message);
   }

@@ -1,7 +1,7 @@
 // «Настройки» → «Видеотека»: подключение к компьютеру, где лежат купленные курсы.
 
-import { useState } from 'react';
-import { CircleCheck, CirclePlay, Download, ExternalLink, Link2, RefreshCw, Trash2, TriangleAlert, Unlink, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CircleCheck, CirclePlay, Download, ExternalLink, Link2, RefreshCw, Smartphone, Trash2, TriangleAlert, Unlink, X } from 'lucide-react';
 import { connectServer, refreshCatalog, useMedia } from '../../media/client';
 import { canDownload, cancelQueue, openInPhonePlayer, removeAll, removeVideo, savedBytes, useOffline } from '../../media/offline';
 import { plural } from '../../sql/compare';
@@ -14,6 +14,40 @@ function normalizeUrl(raw: string): string {
   if (!/^https?:\/\//i.test(u)) u = `http://${u}`;
   if (/^http:\/\/[^/:]+$/i.test(u)) u += ':3700';
   return u;
+}
+
+/** На компьютере: адрес и код, которые нужно ввести на телефоне */
+function PhoneConnect({ url }: { url: string }) {
+  const [info, setInfo] = useState<{ addresses: string[]; key: string } | null>(null);
+  useEffect(() => {
+    fetch(`${url}/api/phone`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setInfo)
+      .catch(() => setInfo(null));
+  }, [url]);
+  if (!info?.addresses.length) return null;
+  return (
+    <div className="phone-connect">
+      <div className="phone-connect-title">
+        <Smartphone size={18} aria-hidden /> Подключить телефон
+      </div>
+      <p className="small muted">
+        На телефоне открой «Настройки» → «Видеотека курсов» и впиши эти данные. Телефон должен быть подключён к домашнему Wi-Fi.
+      </p>
+      <dl>
+        <dt>Адрес</dt>
+        <dd>
+          {info.addresses.map((a) => (
+            <code key={a}>{a}</code>
+          ))}
+        </dd>
+        <dt>Код доступа</dt>
+        <dd>
+          <code className="phone-code">{info.key}</code>
+        </dd>
+      </dl>
+    </div>
+  );
 }
 
 export function LibrarySettings() {
@@ -91,6 +125,7 @@ export function LibrarySettings() {
           </div>
         </div>
       )}
+      {isLocalApp && m.server && m.status === 'ok' && <PhoneConnect url={m.server.url} />}
       {isLocalApp && m.server && (
         <div className="settings-actions">
           <button className="btn btn-secondary" onClick={() => refreshCatalog()}>

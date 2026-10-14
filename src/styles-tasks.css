@@ -853,6 +853,44 @@ button.icon-btn:hover {
   justify-content: center;
   margin: 4px 0 12px;
 }
+.phone-connect {
+  margin: 12px 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+}
+.phone-connect-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  color: var(--accent-text);
+}
+.phone-connect p {
+  margin: 6px 0 10px;
+}
+.phone-connect dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 0;
+  align-items: baseline;
+}
+.phone-connect dt {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.phone-connect dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.phone-code {
+  font-size: 1.3rem;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
 .saved-list {
   list-style: none;
   margin: 8px 0 0;
