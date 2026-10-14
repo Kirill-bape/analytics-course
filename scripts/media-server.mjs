@@ -153,3 +153,13 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log('');
   console.log('  Не закрывай это окно, пока смотришь видео.');
 });
+
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE') {
+    console.log('');
+    console.log('  Видеотека уже запущена (её открыло другое окно), второй раз запускать не нужно.');
+    console.log('  Это окно можно закрыть.');
+  } else {
+    console.log('  Видеотека не запустилась:', e.message);
+  }
+});
