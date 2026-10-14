@@ -6,7 +6,7 @@ import { Chart } from '../Chart';
 import { Feedback, type FeedbackState } from './Feedback';
 import type { TaskBodyProps } from './types';
 import { joinText } from '../../content';
-import { getDbStatus, runQuery, subscribeDb, type QueryResult } from '../../sql/engine';
+import { getDbStatus, runQuery, runSandbox, subscribeDb, type QueryResult } from '../../sql/engine';
 import { explainError } from '../../sql/errors';
 import { expectedResult } from '../../sql/expected';
 import { compareResults, customMistakes, styleNotes } from '../../sql/compare';
@@ -31,6 +31,8 @@ export function SqlTask({ task, taskKey, tp, fail, succeed, saveDraft }: TaskBod
 
   // Если база ещё загружается, запрос просто подождёт её
   const ready = db.state !== 'error' && !busy;
+  // В заданиях на CREATE / INSERT / UPDATE команды выполняются в песочнице
+  const exec = (sql: string) => (task.sandbox ? runSandbox(sql) : runQuery(sql));
 
   const run = async () => {
     if (!ready) return;
@@ -38,7 +40,7 @@ export function SqlTask({ task, taskKey, tp, fail, succeed, saveDraft }: TaskBod
     setBusy(true);
     setFeedback(null);
     try {
-      setResult(await runQuery(sql));
+      setResult(await exec(sql));
     } catch (e) {
       setResult(null);
       setFeedback({ kind: 'error', error: explainError(e, sql) });
@@ -54,7 +56,7 @@ export function SqlTask({ task, taskKey, tp, fail, succeed, saveDraft }: TaskBod
     try {
       let user: QueryResult;
       try {
-        user = await runQuery(code);
+        user = await exec(code);
         setResult(user);
       } catch (e) {
         setResult(null);
@@ -62,7 +64,7 @@ export function SqlTask({ task, taskKey, tp, fail, succeed, saveDraft }: TaskBod
         fail(code);
         return;
       }
-      const expected = await expectedResult(taskKey, solution);
+      const expected = await expectedResult(taskKey, solution, task.sandbox);
       const outcome = compareResults(user, expected, task, code, solution, 'sql');
       if (outcome.ok) {
         succeed(code);

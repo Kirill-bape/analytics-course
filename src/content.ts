@@ -88,6 +88,8 @@ export interface TaskDef {
   selfTest?: TaskSelfTest;
   /** SQL: показать результат графиком */
   chart?: ChartSpec;
+  /** SQL: можно менять базу (CREATE, INSERT, UPDATE…) — команды выполняются в песочнице и потом отменяются */
+  sandbox?: boolean;
 
   // Python
   /** Что проверять: переменную result (по умолчанию), вывод print или график */

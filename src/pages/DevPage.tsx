@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { allTopics, joinText, modules, taskKey, type TaskDef } from '../content';
-import { formatCell, runQuery } from '../sql/engine';
+import { changesData, formatCell, runQuery, runSandbox } from '../sql/engine';
 import { compareResults } from '../sql/compare';
 import { expectedResult } from '../sql/expected';
 import { runPython } from '../python/engine';
@@ -31,12 +31,13 @@ async function checkTask(key: string, task: TaskDef): Promise<Row> {
 
   if (type === 'sql') {
     const solution = joinText(task.solution);
-    const exp = await expectedResult(key, solution);
+    const exec = (sql: string) => (task.sandbox ? runSandbox(sql) : runQuery(sql));
+    const exp = await expectedResult(key, solution, task.sandbox);
     row.size = `${exp.rows.length}×${exp.columns.length}`;
     if (!exp.rows.length) bad('эталон вернул 0 строк');
     for (const code of variants(task.selfTest?.correct)) {
       try {
-        const c = compareResults(await runQuery(code), exp, task, code, solution, 'sql');
+        const c = compareResults(await exec(code), exp, task, code, solution, 'sql');
         if (!c.ok) bad(`правильный вариант НЕ принят: ${code} → ${c.title}`);
       } catch (e) {
         bad(`правильный вариант упал: ${code} → ${String(e)}`);
@@ -44,7 +45,7 @@ async function checkTask(key: string, task: TaskDef): Promise<Row> {
     }
     for (const code of variants(task.selfTest?.wrong)) {
       try {
-        const c = compareResults(await runQuery(code), exp, task, code, solution, 'sql');
+        const c = compareResults(await exec(code), exp, task, code, solution, 'sql');
         if (c.ok) bad(`ошибочный вариант ПРИНЯТ: ${code}`);
         else row.notes.push(`✗ ${code} → ${c.title} ${c.details.join(' | ')}`);
       } catch (e) {
@@ -161,7 +162,7 @@ export function DevPage() {
         const expectError = /^\s*(--|#)\s*⛔/.test(b.code);
         try {
           if (b.lang === 'sql') {
-            const r = await runQuery(b.code);
+            const r = await (changesData(b.code) ? runSandbox(b.code) : runQuery(b.code));
             row.size = `${r.rows.length}×${r.columns.length}`;
             row.notes.push(`${r.columns.join(' | ')}  →  ${(r.rows[0] ?? []).map(formatCell).join(' | ')}`);
           } else {

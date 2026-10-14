@@ -168,6 +168,83 @@ async function execute(sql: string, timeoutMs: number): Promise<QueryResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Песочница: можно создавать и менять таблицы, но база не меняется
+// ---------------------------------------------------------------------------
+const WRITE = new Set(['CREATE', 'INSERT', 'UPDATE', 'DELETE', 'ALTER', 'DROP', 'TRUNCATE']);
+
+/** Есть ли в тексте команды, которые меняют базу (CREATE, INSERT, UPDATE…) */
+export function changesData(sql: string): boolean {
+  return splitStatements(sql).some((s) => WRITE.has(firstKeyword(s)));
+}
+
+/**
+ * Выполняет несколько команд подряд — в том числе CREATE, INSERT, UPDATE, DELETE —
+ * и показывает результат последней. Всё идёт внутри транзакции, которая в конце
+ * отменяется (ROLLBACK): учебная база остаётся такой же, как была, а каждый запуск
+ * начинается с чистого листа.
+ */
+export function runSandbox(sql: string, timeoutMs = 20000): Promise<QueryResult> {
+  const job = queue.then(() => executeSandbox(sql, timeoutMs));
+  queue = job.catch(() => undefined);
+  return job;
+}
+
+async function executeSandbox(sql: string, timeoutMs: number): Promise<QueryResult> {
+  const statements = splitStatements(sql);
+  if (statements.length === 0) {
+    throw new FriendlyError('Редактор пуст — напиши команды, например `CREATE TABLE notes (id INTEGER, text VARCHAR);`');
+  }
+  if (statements.length > 30) throw new FriendlyError('Слишком много команд за один запуск (больше 30). Оставь только нужные.');
+  for (const st of statements) {
+    const kw = firstKeyword(st);
+    if (!READ_ONLY.has(kw) && !WRITE.has(kw)) {
+      throw new FriendlyError(
+        `Команда \`${kw || '?'}\` в учебной песочнице недоступна. Здесь можно создавать таблицы (\`CREATE\`), ` +
+          'добавлять строки (`INSERT`), менять (`UPDATE`) и удалять их (`DELETE`), менять и удалять таблицы (`ALTER`, `DROP`) и, конечно, читать (`SELECT`).',
+      );
+    }
+  }
+
+  const { conn } = await ensureDb();
+  const t0 = performance.now();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new FriendlyError('timeout')), timeoutMs);
+  });
+  let restarted = false;
+  try {
+    await conn.query('BEGIN TRANSACTION');
+  } catch {
+    // осталась незакрытая транзакция — закрываем её и начинаем заново
+    await conn.query('ROLLBACK').catch(() => undefined);
+    await conn.query('BEGIN TRANSACTION');
+  }
+  try {
+    let last: Table | null = null;
+    for (const st of statements) last = (await Promise.race([conn.query(st), timeout])) as Table;
+    const { columns, rows } = tableToRows(last!);
+    return { columns, rows, ms: Math.round(performance.now() - t0) };
+  } catch (err) {
+    if (err instanceof FriendlyError && err.message === 'timeout') {
+      await restartDb();
+      restarted = true;
+      throw new FriendlyError(`Команды выполнялись дольше ${timeoutMs / 1000} секунд и были остановлены. Проверь, нет ли лишнего перемножения таблиц.`);
+    }
+    if (/out of memory/i.test(String((err as Error)?.message))) {
+      await restartDb();
+      restarted = true;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+    if (!restarted) {
+      // Отменяем всё, что сделали команды. Если не вышло — перезапускаем базу с чистыми данными
+      await conn.query('ROLLBACK').catch(() => restartDb());
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Перевод результата из формата Arrow в простые значения
 // ---------------------------------------------------------------------------
 function tableToRows(table: Table): { columns: string[]; rows: Cell[][] } {

@@ -6,7 +6,7 @@ import { CodeEditor } from './CodeEditor';
 import { ResultTable } from './ResultTable';
 import { Chart, chartFromComment } from './Chart';
 import { ErrorBox } from './ErrorBox';
-import { getDbStatus, runQuery, subscribeDb, type QueryResult } from '../sql/engine';
+import { changesData, getDbStatus, runQuery, runSandbox, subscribeDb, type QueryResult } from '../sql/engine';
 import { explainError, type ExplainedError } from '../sql/errors';
 
 export function SqlExample({ code }: { code: string }) {
@@ -20,7 +20,8 @@ export function SqlExample({ code }: { code: string }) {
     setBusy(true);
     setError(null);
     try {
-      setResult(await runQuery(value));
+      // Пример с CREATE / INSERT / UPDATE выполняется в песочнице: база после него не меняется
+      setResult(await (changesData(value) ? runSandbox(value) : runQuery(value)));
     } catch (e) {
       setResult(null);
       setError(explainError(e, value));
