@@ -187,9 +187,11 @@ for (const { rel, size } of all) {
     }
     const duration = durations[rel] || transcriptDuration(id);
     const note = notes[id] ?? {};
-    const remuxed = existsSync(join(config.data, 'video-mp4', `${id}.mp4`));
+    // Переупакованная копия в MP4 (её делает remux.mjs в папке data) — её и отдаёт видеосервер
+    const mp4 = join(config.data, 'video-mp4', `${id}.mp4`);
+    const remuxed = existsSync(mp4);
     const fmt = ext === '.mp4' || ext === '.m4v' || remuxed ? 'mp4' : ext.replace('.', '');
-    const item = { id, title: note.title ?? cleanTitle(file), course: courseName, tier: tier(courseName), section, duration, size, fmt };
+    const item = { id, title: note.title ?? cleanTitle(file), course: courseName, tier: tier(courseName), section, duration, size: remuxed ? statSync(mp4).size : size, fmt };
     if (share > 0.02) item.damaged = Math.round(share * 100);
     if (note.description) item.description = note.description;
     if (note.chapters?.length) item.chapters = note.chapters;
