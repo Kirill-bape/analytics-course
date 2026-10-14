@@ -1,0 +1,231 @@
+{
+  "tasks": [
+    {
+      "id": "primary-key",
+      "title": "Что такое первичный ключ",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "В таблице `orders` первичный ключ — `order_id`. Что это значит?",
+      "options": [
+        {
+          "text": "У каждого заказа свой номер: значения не повторяются и не бывают пустыми",
+          "correct": true,
+          "explain": "Именно так: по `order_id` можно однозначно найти один заказ, поэтому другие таблицы ссылаются на заказ по этому номеру."
+        },
+        {
+          "text": "Это самый важный столбец, поэтому он стоит первым",
+          "explain": "Порядок столбцов ни на что не влияет. Ключ — это правило «значения уникальны и не пустые», а не место в таблице."
+        },
+        {
+          "text": "По этому столбцу таблица всегда отсортирована",
+          "explain": "Строки в базе не хранятся в гарантированном порядке. Нужен порядок — пиши `ORDER BY`."
+        },
+        {
+          "text": "Значения в столбце могут повторяться, но не бывают пустыми",
+          "explain": "Повторы запрещены: иначе по номеру нашлось бы несколько заказов."
+        }
+      ],
+      "hints": [
+        "Ключ нужен, чтобы по одному значению найти ровно одну строку. Что для этого должно выполняться?"
+      ]
+    },
+    {
+      "id": "orders-passport",
+      "title": "Паспорт таблицы заказов",
+      "difficulty": 1,
+      "prompt": [
+        "Посмотри, из каких столбцов состоит таблица `orders` и какого они типа.",
+        "",
+        "Возьми данные из служебной таблицы `information_schema.columns` и выведи два столбца: `column_name` и `data_type`. Столбцы должны идти в том же порядке, что и в самой таблице."
+      ],
+      "starter": "SELECT column_name, data_type\nFROM information_schema.columns\n",
+      "solution": "SELECT column_name, data_type\nFROM information_schema.columns\nWHERE table_name = 'orders'\nORDER BY ordinal_position;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Нужен фильтр по таблице: `WHERE table_name = 'orders'`.",
+        "Порядок столбцов хранится в `ordinal_position` — отсортируй по нему."
+      ],
+      "explanation": "Так выглядит «паспорт» любой таблицы. В незнакомой базе это первое, что стоит посмотреть: какие есть столбцы и что в них можно хранить.",
+      "selfTest": {
+        "correct": [
+          "SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'main' AND table_name = 'orders' ORDER BY ordinal_position"
+        ],
+        "wrong": [
+          "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'order_items' ORDER BY ordinal_position",
+          "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'orders' ORDER BY column_name"
+        ]
+      }
+    },
+    {
+      "id": "date-columns",
+      "title": "Где в базе хранятся даты",
+      "difficulty": 2,
+      "prompt": [
+        "Для отчётов по времени нужно знать, в каких таблицах вообще есть даты.",
+        "",
+        "Найди **все столбцы типа `DATE`** во всей базе. Выведи `table_name` и `column_name`, отсортируй по имени таблицы, а внутри таблицы — по имени столбца."
+      ],
+      "solution": "SELECT table_name, column_name\nFROM information_schema.columns\nWHERE data_type = 'DATE'\nORDER BY table_name, column_name;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Тип столбца лежит в `data_type`. Фильтр по таблице здесь не нужен: ищем по всей базе.",
+        "`WHERE data_type = 'DATE'` и сортировка по двум столбцам: `ORDER BY table_name, column_name`."
+      ],
+      "explanation": "Получилось 7 столбцов в 5 таблицах: заказы, покупатели, операторы, выпуск продукции и участники A/B-теста. Их можно анализировать по дням и месяцам.\n\nЗдесь все даты случайно содержат в названии слово `date`, но в чужих базах так бывает не всегда: столбец может называться `created`, `dt` или `day`. Поиск по типу `data_type` надёжнее.",
+      "selfTest": {
+        "correct": [
+          "SELECT table_name, column_name FROM information_schema.columns WHERE data_type IN ('DATE') ORDER BY 1, 2"
+        ],
+        "wrong": [
+          "SELECT table_name, column_name FROM information_schema.columns WHERE data_type = 'DATE' AND table_name = 'orders' ORDER BY table_name, column_name",
+          "SELECT table_name, column_name FROM information_schema.columns WHERE data_type = 'DATE' ORDER BY column_name, table_name"
+        ]
+      }
+    },
+    {
+      "id": "key-check",
+      "title": "Подходит ли столбец в ключи",
+      "difficulty": 2,
+      "prompt": [
+        "Коллега предлагает считать первичным ключом таблицы `orders` столбец `customer_id`. Проверь это на данных.",
+        "",
+        "Выведи одной строкой два числа: `rows_cnt` — сколько всего строк в `orders`, и `customers_cnt` — сколько в ней **разных** `customer_id`."
+      ],
+      "solution": "SELECT COUNT(*)                    AS rows_cnt,\n       COUNT(DISTINCT customer_id) AS customers_cnt\nFROM orders;",
+      "checkColumnNames": true,
+      "hints": [
+        "Строки считает `COUNT(*)`, разные значения — `COUNT(DISTINCT столбец)`.",
+        "Не забудь назвать столбцы через `AS`: `rows_cnt` и `customers_cnt`."
+      ],
+      "explanation": "Строк намного больше, чем разных покупателей: один покупатель делает много заказов. Значит, `customer_id` в `orders` повторяется и первичным ключом быть не может. Это **внешний ключ**: он ссылается на таблицу `customers`.",
+      "selfTest": {
+        "wrong": [
+          "SELECT COUNT(*) AS rows_cnt, COUNT(customer_id) AS customers_cnt FROM orders",
+          "SELECT COUNT(DISTINCT order_id) AS rows_cnt, COUNT(DISTINCT customer_id) AS customers_cnt FROM customers"
+        ]
+      }
+    },
+    {
+      "id": "foreign-key",
+      "title": "Ссылка на товар",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "В таблице `order_items` (позиции заказов) есть столбец `product_id`. Что это за столбец?",
+      "options": [
+        {
+          "text": "Внешний ключ: он хранит номер товара из таблицы `products` и показывает, какой товар купили",
+          "correct": true,
+          "explain": "Да. Название, цена и бренд хранятся один раз в `products`, а позиция заказа просто ссылается на товар по номеру."
+        },
+        {
+          "text": "Первичный ключ таблицы `order_items`",
+          "explain": "Один и тот же товар покупают много раз, поэтому `product_id` в позициях повторяется. Первичный ключ позиций — `item_id`."
+        },
+        {
+          "text": "Копия всей строки о товаре",
+          "explain": "Хранится только номер. Ради этого и делят данные на таблицы: сведения о товаре лежат в одном месте."
+        }
+      ],
+      "hints": [
+        "Может ли один и тот же товар встретиться в разных заказах? А что тогда с повторами в этом столбце?"
+      ]
+    },
+    {
+      "id": "text-vs-number",
+      "title": "Текст или число",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Номера заказов выгрузили из Excel, и они сохранились как **текст**. Какой номер окажется первым после сортировки по возрастанию: `'9'`, `'10'` или `'100'`?",
+      "options": [
+        {
+          "text": "'10'",
+          "correct": true,
+          "explain": "Верно. Текст сравнивается по символам: `1` идёт раньше `9`, поэтому оба номера на «1» оказываются впереди. А `'10'` короче и совпадает с началом `'100'` — короткая строка идёт раньше, как «кот» перед «котёнком». Итоговый порядок: `'10'`, `'100'`, `'9'`."
+        },
+        {
+          "text": "'9'",
+          "explain": "Так было бы с числами. Но текст сравнивается по символам: `1` идёт раньше `9`, поэтому оба номера на «1» окажутся впереди."
+        },
+        {
+          "text": "'100'",
+          "explain": "Близко: номера на «1» действительно впереди. Но `'10'` — это начало `'100'`, а более короткая строка идёт раньше."
+        }
+      ],
+      "hints": [
+        "Текст сравнивается как слова в словаре: сначала первый символ, при равенстве — второй и так далее. А что, если одна строка — начало другой?"
+      ]
+    },
+    {
+      "id": "order-code",
+      "title": "Код заказа для отчёта",
+      "difficulty": 2,
+      "prompt": [
+        "Менеджеры просят выгрузку, где у заказа понятный код и месяц.",
+        "",
+        "Выведи для **5 заказов с самыми маленькими номерами** три столбца:",
+        "- `order_id`;",
+        "- `order_code` — текст вида `ORD-100001`;",
+        "- `month` — месяц заказа **текстом** в виде `2025-01`.",
+        "",
+        "Отсортируй по `order_id`."
+      ],
+      "solution": "SELECT order_id,\n       'ORD-' || order_id                   AS order_code,\n       LEFT(CAST(order_date AS VARCHAR), 7) AS month\nFROM orders\nORDER BY order_id\nLIMIT 5;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Склеить текст и число помогает `||`: `'ORD-' || order_id`.",
+        "Дату сначала преврати в текст: `CAST(order_date AS VARCHAR)` даёт `2025-01-15`. Месяц — это первые 7 символов: `LEFT(…, 7)`.",
+        "Пять первых заказов — `ORDER BY order_id LIMIT 5`."
+      ],
+      "explanation": "`month` здесь — текст, а не дата. Для подписей в отчёте это удобно, но считать по нему разницу дат уже нельзя. Для расчётов оставляй даты датами, а в текст превращай только в самом конце.",
+      "selfTest": {
+        "correct": [
+          "SELECT order_id, CONCAT('ORD-', order_id) AS order_code, strftime(order_date, '%Y-%m') AS month FROM orders ORDER BY order_id LIMIT 5",
+          "SELECT order_id, 'ORD-' || CAST(order_id AS VARCHAR) AS order_code, SUBSTRING(order_date::VARCHAR, 1, 7) AS month FROM orders ORDER BY order_id LIMIT 5"
+        ],
+        "wrong": [
+          "SELECT order_id, 'ORD-' || order_id AS order_code, EXTRACT(MONTH FROM order_date) AS month FROM orders ORDER BY order_id LIMIT 5",
+          "SELECT order_id, 'ORD-' || order_id AS order_code, LEFT(CAST(order_date AS VARCHAR), 7) AS month FROM orders ORDER BY order_id DESC LIMIT 5"
+        ]
+      }
+    },
+    {
+      "id": "full-stars",
+      "title": "Ровно четыре звезды",
+      "difficulty": 3,
+      "prompt": [
+        "На сайте рейтинг товара показывают **полными звёздами**: дробная часть отбрасывается. Рейтинг 4.7 — это 4 звезды, 3.9 — 3 звезды.",
+        "",
+        "Сколько товаров показываются с **ровно 4 звёздами**? Выведи одно число."
+      ],
+      "solution": "SELECT COUNT(*) AS products_cnt\nFROM products\nWHERE FLOOR(rating) = 4;",
+      "hints": [
+        "Вспомни ловушку из урока: `CAST(4.7 AS INTEGER)` даёт 5, а не 4.",
+        "Отбросить дробную часть (округлить вниз) помогает `FLOOR(rating)`.",
+        "Можно и без функций: 4 полные звезды — это рейтинг от 4 включительно до 5 не включая."
+      ],
+      "mistakes": [
+        {
+          "pattern": "CAST\\s*\\(\\s*rating\\s+AS\\s+INT|rating\\s*::\\s*INT|ROUND\\s*\\(\\s*rating",
+          "flags": "i",
+          "message": "`CAST` и `ROUND` округляют до ближайшего целого: 4.7 станет 5, а 3.6 — 4. А звёзды на сайте отбрасывают дробную часть. Нужно округление вниз — `FLOOR`."
+        }
+      ],
+      "explanation": "Через `CAST` получилось бы 36 товаров вместо 109: в счёт попали бы рейтинги от 3.5 до 4.4. Такие ошибки не видны глазом — запрос работает, число выглядит правдоподобно. Поэтому всегда думай, **как именно** округляется значение.",
+      "selfTest": {
+        "correct": [
+          "SELECT COUNT(*) FROM products WHERE rating >= 4 AND rating < 5",
+          "SELECT COUNT(*) FROM products WHERE TRUNC(rating) = 4",
+          "SELECT COUNT(*) FROM products WHERE CAST(FLOOR(rating) AS INTEGER) = 4"
+        ],
+        "wrong": [
+          "SELECT COUNT(*) FROM products WHERE CAST(rating AS INTEGER) = 4",
+          "SELECT COUNT(*) FROM products WHERE ROUND(rating) = 4",
+          "SELECT COUNT(*) FROM products WHERE rating >= 4"
+        ]
+      }
+    }
+  ]
+}
