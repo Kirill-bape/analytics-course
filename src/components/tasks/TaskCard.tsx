@@ -2,6 +2,8 @@
 // Само задание (редактор, тест, таблица…) рисует компонент нужного типа.
 
 import { useCallback, type ComponentType } from 'react';
+import { Check, KeyRound, Lightbulb } from 'lucide-react';
+import { Difficulty } from '../ui';
 import { CodeEditor } from '../CodeEditor';
 import { MarkdownText } from '../Markdown';
 import { joinText, taskKey, type TaskDef, type TaskType, type Topic } from '../../content';
@@ -92,15 +94,12 @@ export function TaskCard({ topic, task, index }: { topic: Topic; task: TaskDef; 
   return (
     <section className={`task-card${tp.solved ? ' solved' : ''}`} id={`task-${task.id}`}>
       <header className="task-head">
-        <div className="task-number">{tp.solved ? '✓' : index + 1}</div>
+        <div className="task-number">{tp.solved ? <Check size={20} strokeWidth={3} aria-label="Решено" /> : index + 1}</div>
         <div className="task-title">
           <h3>{task.title}</h3>
           <div className="task-sub">
-            <span className="difficulty" title="Сложность">
-              {'★'.repeat(task.difficulty)}
-              <span className="dim">{'★'.repeat(3 - task.difficulty)}</span>
-            </span>
-            <span className="badge badge-type">{TYPE_LABEL[type]}</span>
+            <Difficulty level={task.difficulty} />
+            <span className="badge badge-accent">{TYPE_LABEL[type]}</span>
             {tp.solved && <span className="badge badge-success">{tp.usedSolution ? 'Решено с решением' : 'Решено'}</span>}
             {!tp.solved && tp.attempts > 0 && (
               <span className="badge">
@@ -123,7 +122,7 @@ export function TaskCard({ topic, task, index }: { topic: Topic; task: TaskDef; 
         <div className="task-help">
           {task.hints.length > 0 && (
             <button className="btn btn-ghost btn-small" onClick={() => updateTask(key, (p) => ({ ...p, hintsShown: p.hintsShown + 1 }))} disabled={hintsLeft <= 0}>
-              💡 {hintsLeft > 0 ? `Подсказка (${tp.hintsShown + 1} из ${task.hints.length})` : 'Подсказок больше нет'}
+              <Lightbulb size={17} aria-hidden /> {hintsLeft > 0 ? `Подсказка (${tp.hintsShown + 1} из ${task.hints.length})` : 'Подсказок больше нет'}
             </button>
           )}
           {hasSolution && !tp.solutionShown && (
@@ -133,7 +132,7 @@ export function TaskCard({ topic, task, index }: { topic: Topic; task: TaskDef; 
               title={solutionUnlocked ? '' : 'Решение открывается после нескольких попыток'}
               onClick={() => updateTask(key, (p) => ({ ...p, solutionShown: true }))}
             >
-              🔑 {solutionUnlocked ? 'Показать решение' : `Решение — через ${left} ${plural(left, 'попытку', 'попытки', 'попыток')}`}
+              <KeyRound size={17} aria-hidden /> {solutionUnlocked ? 'Показать решение' : `Решение — через ${left} ${plural(left, 'попытку', 'попытки', 'попыток')}`}
             </button>
           )}
         </div>
@@ -152,7 +151,7 @@ export function TaskCard({ topic, task, index }: { topic: Topic; task: TaskDef; 
 
       {tp.solutionShown && !tp.solved && (type === 'sql' || type === 'python' || type === 'sheet') && (
         <div className="solution">
-          <div className="solution-label">🔑 Решение. Не копируй — перепиши его сам и нажми «Проверить», так оно лучше запомнится.</div>
+          <div className="solution-label"><KeyRound size={18} aria-hidden /> Решение. Не копируй — перепиши его сам и нажми «Проверить», так оно лучше запомнится.</div>
           <SolutionView task={task} />
         </div>
       )}

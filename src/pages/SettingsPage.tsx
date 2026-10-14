@@ -1,6 +1,7 @@
 // Настройки: перенос прогресса между устройствами, офлайн-режим, установка приложения.
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { CircleCheck, Download, FolderOpen, HardDriveDownload, Hourglass, Info, Send, Share, Smartphone, TriangleAlert, Wifi } from 'lucide-react';
 import { makeBackup, parseBackup, SANDBOX, useProgress } from '../progress';
 import { taskTotals } from '../stats';
 import { plural } from '../sql/compare';
@@ -85,7 +86,9 @@ function ProgressSection() {
 
   return (
     <section className="card settings-section">
-      <h2>💾 Мой прогресс</h2>
+      <h2>
+        <HardDriveDownload size={22} aria-hidden /> Мой прогресс
+      </h2>
       {SANDBOX && <p className="banner banner-accent">Тестовый режим (?sandbox): прогресс не сохраняется на устройстве.</p>}
       <p>
         Прогресс хранится в памяти этого устройства.{' '}
@@ -100,19 +103,19 @@ function ProgressSection() {
       </p>
       <div className="settings-actions">
         <button className="btn btn-primary" onClick={onSave} disabled={busy || !loaded}>
-          💾 Сохранить прогресс в файл
+          <Download size={18} aria-hidden /> Сохранить прогресс в файл
         </button>
         <button className="btn btn-secondary" onClick={() => fileInput.current?.click()} disabled={busy || !loaded}>
-          📂 Загрузить из файла
+          <FolderOpen size={18} aria-hidden /> Загрузить из файла
         </button>
         {share && !NATIVE && (
           <button className="btn btn-secondary" onClick={onShare} disabled={busy || !loaded}>
-            📤 Отправить…
+            <Send size={17} aria-hidden /> Отправить…
           </button>
         )}
         {NATIVE && (
           <button className="btn btn-secondary" onClick={onShare} disabled={busy || !loaded}>
-            📤 Отправить в Telegram, на почту…
+            <Send size={17} aria-hidden /> Отправить в Telegram, на почту…
           </button>
         )}
         <input ref={fileInput} type="file" hidden onChange={(e) => onFile(e.target.files?.[0])} />
@@ -144,12 +147,14 @@ function OfflineSection() {
 
   return (
     <section className="card settings-section">
-      <h2>📶 Работа без интернета</h2>
-      {o.kind === 'native' && <p>✅ Всё нужное уже внутри приложения: уроки, база данных и Python работают без интернета.</p>}
-      {o.kind === 'ready' && <p>✅ Приложение полностью скачано на устройство: уроки, база данных и Python работают без интернета.</p>}
+      <h2>
+        <Wifi size={22} aria-hidden /> Работа без интернета
+      </h2>
+      {o.kind === 'native' && <p className="status-ok"><CircleCheck size={18} aria-hidden /> Всё нужное уже внутри приложения: уроки, база данных и Python работают без интернета.</p>}
+      {o.kind === 'ready' && <p className="status-ok"><CircleCheck size={18} aria-hidden /> Приложение полностью скачано на устройство: уроки, база данных и Python работают без интернета.</p>}
       {o.kind === 'preparing' && (
         <>
-          <p>⏳ Скачиваю приложение на устройство, чтобы оно работало без интернета. Это нужно один раз: около 85 МБ, лучше по Wi-Fi. Можно заниматься, не дожидаясь конца.</p>
+          <p className="status-ok"><Hourglass size={18} aria-hidden /> Скачиваю приложение на устройство, чтобы оно работало без интернета. Это нужно один раз: около 85 МБ, лучше по Wi-Fi. Можно заниматься, не дожидаясь конца.</p>
           {o.total > 0 && (
             <div className="offline-progress">
               <div className="progress-bar">
@@ -162,7 +167,7 @@ function OfflineSection() {
           )}
         </>
       )}
-      {o.kind === 'error' && <p className="warn-text">⚠️ {o.message}</p>}
+      {o.kind === 'error' && <p className="warn-text status-ok"><TriangleAlert size={18} aria-hidden /> {o.message}</p>}
       {o.kind === 'unsupported' && <p>Этот браузер не умеет работать без интернета. Открой приложение в Chrome, Safari или Samsung Internet.</p>}
       {o.kind === 'dev' && (
         <p className="muted">
@@ -172,7 +177,7 @@ function OfflineSection() {
       {storage.usage !== undefined && o.kind !== 'dev' && (
         <p className="muted small">
           Занято на устройстве: {fmtMb(storage.usage)}.{' '}
-          {storage.persisted ? 'Данные защищены от автоматической очистки ✓' : 'Браузер может удалить данные, если на устройстве закончится место, — поэтому сохраняй копию прогресса в файл.'}
+          {storage.persisted ? 'Данные защищены от автоматической очистки.' : 'Браузер может удалить данные, если на устройстве закончится место, — поэтому сохраняй копию прогресса в файл.'}
         </p>
       )}
     </section>
@@ -186,23 +191,25 @@ function InstallSection() {
 
   return (
     <section className="card settings-section">
-      <h2>📲 Установить как приложение</h2>
+      <h2>
+        <Smartphone size={22} aria-hidden /> Установить как приложение
+      </h2>
       {standalone ? (
-        <p>✅ Приложение установлено и открыто со своего значка.</p>
+        <p className="status-ok"><CircleCheck size={18} aria-hidden /> Приложение установлено и открыто со своего значка.</p>
       ) : (
         <>
           <p className="muted">Значок появится на главном экране или в Dock, а приложение будет открываться в своём окне — как обычная программа.</p>
           {pwa.canInstall && (
             <div className="settings-actions">
               <button className="btn btn-primary" onClick={() => promptInstall()}>
-                📲 Установить приложение
+                <Smartphone size={18} aria-hidden /> Установить приложение
               </button>
             </div>
           )}
           <ul className="install-list">
             {(IOS || (!ANDROID && !MAC)) && (
               <li className={IOS ? 'current' : undefined}>
-                <b>iPad и iPhone</b> (Safari): кнопка «Поделиться» <span aria-hidden>⎋</span> → «На экран „Домой"» → «Добавить».
+                <b>iPad и iPhone</b> (Safari): кнопка «Поделиться» <Share size={15} style={{ verticalAlign: '-2px' }} aria-label="значок Поделиться" /> → «На экран „Домой"» → «Добавить».
               </li>
             )}
             {(MAC || (!ANDROID && !IOS)) && (
@@ -231,7 +238,9 @@ function InstallSection() {
 function AboutSection() {
   return (
     <section className="card settings-section">
-      <h2>ℹ️ О приложении</h2>
+      <h2>
+        <Info size={22} aria-hidden /> О приложении
+      </h2>
       <p className="muted small">
         «Путь аналитика», версия {__APP_VERSION__}
         {__BUILD_TIME__ && <> от {new Date(__BUILD_TIME__).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</>}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Check } from 'lucide-react';
 import { Feedback, type FeedbackState } from './Feedback';
 import type { TaskBodyProps } from './types';
 import type { TaskDef } from '../../content';
@@ -97,7 +98,7 @@ export function NumberTask({ task, taskKey, tp, showSolution, fail, succeed }: T
         />
         {task.unit && <span className="number-unit">{task.unit}</span>}
         <button className="btn btn-primary" onClick={check} disabled={!value.trim()}>
-          ✓ Проверить
+          <Check size={18} strokeWidth={2.6} aria-hidden /> Проверить
         </button>
       </div>
       <Feedback state={feedback} usedSolution={tp.usedSolution} />

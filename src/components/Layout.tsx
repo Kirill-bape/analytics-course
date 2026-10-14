@@ -4,6 +4,7 @@
 // • телефон и внешний экран раскладушки — меню внизу экрана.
 
 import { useState, useSyncExternalStore, type ReactNode } from 'react';
+import { BookOpen, CalendarDays, Database, Flame, Gift, House, SlidersHorizontal, type LucideIcon } from 'lucide-react';
 import { href } from '../router';
 import { getDbStatus, restartDb, subscribeDb } from '../sql/engine';
 import { useProgress } from '../progress';
@@ -14,14 +15,14 @@ import { SchemaPanel } from './SchemaPanel';
 import { KeyboardBar } from './KeyboardBar';
 import { plural } from '../sql/compare';
 
-type NavItem = { id: string; label: string; short?: string; icon: string };
+type NavItem = { id: string; label: string; icon: LucideIcon };
 
 const NAV: NavItem[] = [
-  { id: '', label: 'Главная', icon: '🏠' },
-  { id: 'course', label: 'Курс', icon: '📚' },
-  { id: 'plan', label: 'План', icon: '🗓️' },
+  { id: '', label: 'Главная', icon: House },
+  { id: 'course', label: 'Курс', icon: BookOpen },
+  { id: 'plan', label: 'План', icon: CalendarDays },
 ];
-const SETTINGS: NavItem = { id: 'settings', label: 'Настройки', icon: '⚙️' };
+const SETTINGS: NavItem = { id: 'settings', label: 'Настройки', icon: SlidersHorizontal };
 
 function offlineText(o: OfflineState): string | null {
   if (o.kind === 'preparing') return o.total ? `Готовлю офлайн-режим: ${Math.floor((o.done / o.total) * 100)} %` : 'Готовлю офлайн-режим…';
@@ -76,7 +77,9 @@ function Banners() {
     <>
       {pwa.updateReady && (
         <div className="banner banner-accent" role="status">
-          <span>🎁 Вышла новая версия курса.</span>
+          <span>
+            <Gift size={20} aria-hidden /> Вышла новая версия курса.
+          </span>
           <button className="btn btn-small btn-primary" onClick={applyUpdate}>
             Обновить
           </button>
@@ -108,7 +111,7 @@ export function Layout({ route, children }: { route: string[]; children: ReactNo
   const navLink = (n: NavItem, cls: string) => (
     <a key={n.id} href={href(n.id)} className={`${cls}${section === n.id ? ' active' : ''}`} aria-current={section === n.id ? 'page' : undefined}>
       <span className="nav-icon" aria-hidden>
-        {n.icon}
+        <n.icon size={22} strokeWidth={section === n.id ? 2.2 : 1.9} />
       </span>
       <span className="nav-label">{n.label}</span>
     </a>
@@ -116,7 +119,7 @@ export function Layout({ route, children }: { route: string[]; children: ReactNo
   const schemaButton = (cls: string) => (
     <button className={cls} onClick={() => setSchemaOpen(true)}>
       <span className="nav-icon" aria-hidden>
-        🗂
+        <Database size={22} strokeWidth={1.9} />
       </span>
       <span className="nav-label">
         <span className="long">Схема данных</span>
@@ -164,7 +167,7 @@ export function Layout({ route, children }: { route: string[]; children: ReactNo
           <div className="mini-stat">
             <span>Серия</span>
             <b>
-              🔥 {streak.current} {plural(streak.current, 'день', 'дня', 'дней')}
+              <Flame size={15} color="var(--warn)" aria-hidden /> {streak.current} {plural(streak.current, 'день', 'дня', 'дней')}
             </b>
           </div>
         </div>
@@ -192,7 +195,7 @@ export function Layout({ route, children }: { route: string[]; children: ReactNo
       </nav>
 
       <button className="schema-fab" onClick={() => setSchemaOpen(true)}>
-        🗂 Схема данных
+        <Database size={18} aria-hidden /> Схема данных
       </button>
       <SchemaPanel open={schemaOpen} onClose={() => setSchemaOpen(false)} />
       <KeyboardBar />

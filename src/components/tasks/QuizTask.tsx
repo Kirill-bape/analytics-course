@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Check } from 'lucide-react';
 import { MarkdownText, mdInline } from '../Markdown';
 import { Feedback, type FeedbackState } from './Feedback';
 import type { TaskBodyProps } from './types';
@@ -62,7 +63,7 @@ export function QuizTask({ task, tp, showSolution, fail, succeed }: TaskBodyProp
       </div>
       <div className="task-actions">
         <button className="btn btn-primary" onClick={check} disabled={!chosen.length}>
-          ✓ Проверить ответ
+          <Check size={18} strokeWidth={2.6} aria-hidden /> Проверить ответ
         </button>
       </div>
       <Feedback state={feedback} usedSolution={tp.usedSolution} />

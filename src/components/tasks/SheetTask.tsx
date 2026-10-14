@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { HyperFormula } from 'hyperformula';
+import { Check, RotateCcw } from 'lucide-react';
 import { SheetGrid } from '../../sheet/SheetGrid';
 import { addrName, buildSheet, cell, ERROR_HELP, fillDown, numericValue, parseAddr, parseRange, rawForEdit, toEngine, toRussian, type Raw } from '../../sheet/formulas';
 import { Feedback, type FeedbackState } from './Feedback';
@@ -191,7 +192,7 @@ export function SheetTask({ task, tp, fail, succeed, saveDraft }: TaskBodyProps)
       />
       <div className="task-actions">
         <button className="btn btn-primary" onClick={check}>
-          ✓ Проверить
+          <Check size={18} strokeWidth={2.6} aria-hidden /> Проверить
         </button>
         {Object.keys(userCells).length > 0 && (
           <button
@@ -203,7 +204,7 @@ export function SheetTask({ task, tp, fail, succeed, saveDraft }: TaskBodyProps)
               setResetKey((k) => k + 1);
             }}
           >
-            ↺ Очистить мои формулы
+            <RotateCcw size={16} aria-hidden /> Очистить мои формулы
           </button>
         )}
       </div>

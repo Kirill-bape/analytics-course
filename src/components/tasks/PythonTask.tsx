@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { Check, Play, RotateCcw } from 'lucide-react';
 import { CodeEditor } from '../CodeEditor';
 import { PyOutput } from '../PyOutput';
 import { Feedback, type FeedbackState } from './Feedback';
@@ -64,21 +65,21 @@ export function PythonTask({ task, taskKey, tp, fail, succeed, saveDraft }: Task
   };
 
   const loading = py.state === 'loading' || py.state === 'idle';
-  const label = busy ? (loading ? py.message ?? 'Запускаю Python…' : 'Выполняется…') : '✓ Проверить';
+  const label = busy ? (loading ? py.message ?? 'Запускаю Python…' : 'Выполняется…') : <><Check size={18} strokeWidth={2.6} aria-hidden /> Проверить</>;
 
   return (
     <>
       <CodeEditor value={code} onChange={setCode} onRun={doRun} onCheck={doCheck} language="python" />
       <div className="task-actions">
         <button className="btn btn-secondary" onClick={doRun} disabled={busy} title="Ctrl+Enter">
-          ▶ Запустить
+          <Play size={17} fill="currentColor" aria-hidden /> Запустить
         </button>
         <button className="btn btn-primary" onClick={doCheck} disabled={busy} title="Ctrl+Shift+Enter">
           {label}
         </button>
         {code !== starter && (
           <button className="btn btn-ghost" onClick={() => setCode(starter)} title="Вернуть начальный код">
-            ↺ Сначала
+            <RotateCcw size={16} aria-hidden /> Сначала
           </button>
         )}
       </div>

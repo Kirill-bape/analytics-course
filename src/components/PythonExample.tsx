@@ -1,6 +1,7 @@
 // «Живой» пример на Python в уроке.
 
 import { useState, useSyncExternalStore } from 'react';
+import { Play, RotateCcw } from 'lucide-react';
 import { CodeEditor } from './CodeEditor';
 import { ErrorBox } from './ErrorBox';
 import { PyOutput } from './PyOutput';
@@ -34,11 +35,11 @@ export function PythonExample({ code }: { code: string }) {
       <CodeEditor value={value} onChange={setValue} onRun={go} compact language="python" />
       <div className="example-actions">
         <button className="btn btn-small btn-primary" onClick={go} disabled={busy}>
-          {busy ? (loading ? (py.message ?? 'Запускаю Python…') : 'Выполняется…') : '▶ Запустить пример'}
+          {busy ? (loading ? (py.message ?? 'Запускаю Python…') : 'Выполняется…') : <><Play size={15} fill="currentColor" aria-hidden /> Запустить пример</>}
         </button>
         {value !== code && (
           <button className="btn btn-small btn-ghost" onClick={() => setValue(code)}>
-            ↺ Вернуть как было
+            <RotateCcw size={15} aria-hidden /> Вернуть как было
           </button>
         )}
         {(run || error) && (

@@ -1,3 +1,4 @@
+import { Check, Rocket } from 'lucide-react';
 import { plan } from '../content';
 import { href } from '../router';
 import { useProgress } from '../progress';
@@ -33,7 +34,9 @@ export function PlanPage() {
           )}
           {st.state === 'ontrack' && (
             <>
-              <h2>Идёшь по графику ✓</h2>
+              <h2>
+                <Check size={26} strokeWidth={2.6} aria-hidden /> Идёшь по графику
+              </h2>
               <p>
                 По плану к сегодняшнему дню: {st.expected} {plural(st.expected, 'задание', 'задания', 'заданий')}. Решено: {st.solved}.
               </p>
@@ -41,7 +44,9 @@ export function PlanPage() {
           )}
           {st.state === 'ahead' && (
             <>
-              <h2>Опережаешь план 🚀</h2>
+              <h2>
+                <Rocket size={24} aria-hidden /> Опережаешь план
+              </h2>
               <p>
                 Решено {st.solved}, это на {st.ahead} больше, чем нужно к концу сегодняшнего дня. Отличный темп!
               </p>
@@ -50,7 +55,7 @@ export function PlanPage() {
         </div>
         <div className="plan-today">
           <div className="stat-label">На сегодня</div>
-          <div className="stat-value">{st.todayGoal > 0 ? st.todayGoal : '✓'}</div>
+          <div className="stat-value">{st.todayGoal > 0 ? st.todayGoal : <Check size={28} strokeWidth={2.6} aria-label="Выполнено" />}</div>
           <div className="small muted">
             {st.todayGoal > 0 ? `${plural(st.todayGoal, 'задание', 'задания', 'заданий')} осталось` : 'план выполнен'}
           </div>
@@ -64,7 +69,7 @@ export function PlanPage() {
           const late = w.state === 'past' && !done && w.topics.length > 0;
           return (
             <div key={w.index} className={`week ${w.state}${done ? ' done' : ''}${late ? ' late' : ''}`}>
-              <div className="week-marker">{done ? '✓' : w.index + 1}</div>
+              <div className="week-marker">{done ? <Check size={18} strokeWidth={3} aria-label="Неделя пройдена" /> : w.index + 1}</div>
               <div className="week-body card">
                 <div className="week-head">
                   <div>
@@ -92,7 +97,7 @@ export function PlanPage() {
                       const s = topicStats(t, data);
                       return (
                         <li key={t.key} className={s.done ? 'done' : ''}>
-                          <span className="topic-status small-status">{s.done ? '✓' : ''}</span>
+                          <span className="topic-status small-status">{s.done && <Check size={12} strokeWidth={3} aria-hidden />}</span>
                           {t.ready ? <a href={href('topic', t.moduleId, t.id)}>{t.title}</a> : <span className="muted">{t.title}</span>}
                           {!t.ready && <span className="badge">скоро</span>}
                         </li>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Check, Play, RotateCcw } from 'lucide-react';
 import { CodeEditor, type EditorApi } from '../CodeEditor';
 import { ResultTable } from '../ResultTable';
 import { Chart } from '../Chart';
@@ -82,14 +83,14 @@ export function SqlTask({ task, taskKey, tp, fail, succeed, saveDraft }: TaskBod
       <CodeEditor value={code} onChange={setCode} onRun={run} onCheck={check} apiRef={editor} />
       <div className="task-actions">
         <button className="btn btn-secondary" onClick={run} disabled={!ready} title="Ctrl+Enter">
-          ▶ Запустить
+          <Play size={17} fill="currentColor" aria-hidden /> Запустить
         </button>
         <button className="btn btn-primary" onClick={check} disabled={!ready} title="Ctrl+Shift+Enter">
-          {busy ? 'Выполняется…' : db.state === 'loading' ? 'База загружается…' : '✓ Проверить'}
+          {busy ? 'Выполняется…' : db.state === 'loading' ? 'База загружается…' : <><Check size={18} strokeWidth={2.6} aria-hidden /> Проверить</>}
         </button>
         {code !== starter && (
           <button className="btn btn-ghost" onClick={() => setCode(starter)} title="Вернуть начальный код">
-            ↺ Сначала
+            <RotateCcw size={16} aria-hidden /> Сначала
           </button>
         )}
       </div>

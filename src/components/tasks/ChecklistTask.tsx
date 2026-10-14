@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Check } from 'lucide-react';
 import { mdInline } from '../Markdown';
 import type { TaskBodyProps } from './types';
 
@@ -34,10 +35,10 @@ export function ChecklistTask({ task, tp, succeed, saveDraft }: TaskBodyProps) {
       </ul>
       <div className="task-actions">
         {tp.solved ? (
-          <span className="badge badge-success">✓ Этап завершён</span>
+          <span className="badge badge-success"><Check size={14} strokeWidth={3} aria-hidden /> Этап завершён</span>
         ) : (
           <button className="btn btn-primary" disabled={!all} onClick={() => succeed(JSON.stringify(done))}>
-            {all ? '✓ Этап готов' : `Отмечено ${done.filter(Boolean).length} из ${items.length}`}
+            {all ? <><Check size={18} strokeWidth={2.6} aria-hidden /> Этап готов</> : `Отмечено ${done.filter(Boolean).length} из ${items.length}`}
           </button>
         )}
       </div>

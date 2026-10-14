@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { ArrowRight, Check, Flame, HardDriveDownload, Rocket, Target, TrendingUp } from 'lucide-react';
 import { modules } from '../content';
 import { href } from '../router';
 import { SANDBOX, todayKey, useProgress } from '../progress';
 import { coursePercent, nextStep, planStatus, streakInfo, taskTotals, topicStats } from '../stats';
 import { plural } from '../sql/compare';
+import { IconTile, ModuleTile, ProgressRing } from '../components/ui';
 
 function Heatmap({ activeDays }: { activeDays: string[] }) {
   const active = new Set(activeDays);
@@ -67,8 +69,11 @@ function BackupReminder() {
   return (
     <div className="banner banner-soft" role="status">
       <span>
-        💾 {since === null ? 'Копия прогресса ещё не сохранена.' : `Последняя копия прогресса — ${since} ${plural(since, 'день', 'дня', 'дней')} назад.`} Сохрани её в файл, чтобы ничего не потерять и
-        продолжать на другом устройстве.
+        <HardDriveDownload size={20} color="var(--accent)" aria-hidden />
+        <span>
+          {since === null ? 'Копия прогресса ещё не сохранена.' : `Последняя копия прогресса — ${since} ${plural(since, 'день', 'дня', 'дней')} назад.`} Сохрани её в
+          файл, чтобы ничего не потерять и продолжать на другом устройстве.
+        </span>
       </span>
       <span className="banner-actions">
         <a className="btn btn-small btn-primary" href={href('settings')}>
@@ -82,6 +87,15 @@ function BackupReminder() {
   );
 }
 
+function greeting(fresh: boolean): string {
+  if (fresh) return 'Добро пожаловать!';
+  const h = new Date().getHours();
+  if (h < 5) return 'Доброй ночи!';
+  if (h < 12) return 'Доброе утро!';
+  if (h < 18) return 'Привет! Продолжим?';
+  return 'Добрый вечер!';
+}
+
 export function HomePage() {
   const { data, loaded } = useProgress();
   const pct = coursePercent(data);
@@ -92,14 +106,21 @@ export function HomePage() {
   const nextStats = next ? topicStats(next, data) : null;
   const nextModule = next ? modules.find((m) => m.id === next.moduleId) : null;
   const fresh = loaded && totals.solved === 0;
-  const dateStr = new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+  const dateRaw = new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+  const dateStr = dateRaw.charAt(0).toUpperCase() + dateRaw.slice(1);
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div className="eyebrow">{dateStr}</div>
-        <h1>{fresh ? 'Добро пожаловать!' : 'С возвращением!'}</h1>
-        <p className="lead">Цель: джуниор аналитик данных к январю. Осталось {plan.daysLeft} {plural(plan.daysLeft, 'день', 'дня', 'дней')}.</p>
+      <div className="home-head">
+        <div>
+          <div className="eyebrow">
+            {dateStr}
+          </div>
+          <h1>{greeting(fresh)}</h1>
+        </div>
+        <span className="streak-pill" title="Серия дней занятий">
+          <Flame size={18} aria-hidden /> {streak.current}
+        </span>
       </div>
 
       <BackupReminder />
@@ -124,69 +145,80 @@ export function HomePage() {
         </div>
       )}
 
-      {next && nextStats && nextModule && (
-        <a className="card continue" href={href('topic', next.moduleId, next.id)}>
-          <div>
-            <div className="eyebrow">
-              {nextStats.started ? 'Продолжить' : 'Следующая тема'} · {nextModule.icon} {nextModule.title}
-            </div>
-            <h2>{next.title}</h2>
-            <div className="muted">
-              Решено {nextStats.solved} из {nextStats.total} {plural(nextStats.total, 'задания', 'заданий', 'заданий')}
-            </div>
-          </div>
-          <span className="btn btn-primary">{nextStats.started ? 'Продолжить →' : 'Начать →'}</span>
-        </a>
-      )}
-
-      <div className="stats-grid">
-        <div className="card stat">
-          <div className="stat-label">Курс пройден</div>
-          <div className="stat-value">{pct.toFixed(1)}%</div>
-          <div className="progress-bar">
-            <div style={{ width: `${pct}%` }} />
-          </div>
-        </div>
-        <div className="card stat">
-          <div className="stat-label">Заданий решено</div>
-          <div className="stat-value">
-            {totals.solved} <span className="stat-of">из {totals.total}</span>
-          </div>
-          <div className="muted small">в готовых модулях</div>
-        </div>
-        <div className="card stat">
-          <div className="stat-label">Серия дней</div>
-          <div className="stat-value">🔥 {streak.current}</div>
-          <div className="muted small">
-            {streak.studiedToday ? 'Сегодняшнее занятие засчитано ✓' : 'Реши задание, чтобы продлить серию'}
-            <br />
-            Лучшая: {streak.best} · всего дней: {streak.totalDays}
-          </div>
-        </div>
-        <a className={`card stat plan-${plan.state}`} href={href('plan')}>
-          <div className="stat-label">План</div>
-          <div className="stat-value small-value">
-            {plan.state === 'behind' && `Отставание: ${plan.behind} ${plural(plan.behind, 'задание', 'задания', 'заданий')}`}
-            {plan.state === 'ontrack' && 'Идёшь по графику ✓'}
-            {plan.state === 'ahead' && `Опережаешь на ${plan.ahead} 🚀`}
-          </div>
-          <div className="muted small">
-            {plan.todayGoal > 0
-              ? `Сегодня по плану: ещё ${plan.todayGoal} ${plural(plan.todayGoal, 'задание', 'задания', 'заданий')}`
-              : 'План на сегодня выполнен 🎉'}
-          </div>
-        </a>
-      </div>
-
       <div className="two-col">
-        <div className="card">
-          <h3>Дни занятий</h3>
-          <Heatmap activeDays={data.activeDays} />
-          <p className="muted small">Один день отдыха в неделю серию не прерывает.</p>
+        <div>
+          {next && nextStats && nextModule && (
+            <div className="card continue">
+              <div className="continue-main">
+                <ProgressRing value={nextStats.total ? nextStats.solved / nextStats.total : 0}>
+                  {nextStats.solved}/{nextStats.total}
+                </ProgressRing>
+                <div className="continue-text">
+                  <span className="continue-eyebrow">
+                    {nextModule.title} · тема {nextModule.topics.indexOf(next) + 1}
+                  </span>
+                  <span className="continue-title">{next.title}</span>
+                  <span className="small muted">
+                    {nextStats.started
+                      ? `Осталось ${nextStats.total - nextStats.solved} ${plural(nextStats.total - nextStats.solved, 'задание', 'задания', 'заданий')}`
+                      : `${nextStats.total} ${plural(nextStats.total, 'задание', 'задания', 'заданий')} · новая тема`}
+                  </span>
+                </div>
+              </div>
+              <a className="btn btn-primary btn-block" href={href('topic', next.moduleId, next.id)}>
+                {nextStats.started ? 'Продолжить' : 'Начать тему'} <ArrowRight size={20} aria-hidden />
+              </a>
+            </div>
+          )}
+
+          <div className="stats-grid">
+            <div className="card stat">
+              <IconTile icon={TrendingUp} tone="indigo" size={34} />
+              <div className="stat-value">{pct.toFixed(pct > 0 && pct < 10 ? 1 : 0)}%</div>
+              <div className="stat-label">Курс пройден</div>
+            </div>
+            <div className="card stat">
+              <IconTile icon={Check} tone="green" size={34} />
+              <div className="stat-value">
+                {totals.solved} <span className="stat-of">/ {totals.total}</span>
+              </div>
+              <div className="stat-label">Заданий решено</div>
+            </div>
+            <div className="card stat">
+              <IconTile icon={Flame} tone="orange" size={34} />
+              <div className="stat-value">
+                {streak.current} <span className="stat-of">{plural(streak.current, 'день', 'дня', 'дней')}</span>
+              </div>
+              <div className="stat-label">{streak.studiedToday ? 'Сегодня засчитано' : `Серия · лучшая ${streak.best}`}</div>
+            </div>
+            <a className={`card stat plan-${plan.state}`} href={href('plan')}>
+              <IconTile icon={plan.state === 'ahead' ? Rocket : Target} tone={plan.state === 'behind' ? 'orange' : 'teal'} size={34} />
+              <div className="stat-value">
+                {plan.state === 'behind' ? `−${plan.behind}` : plan.state === 'ahead' ? `+${plan.ahead}` : <Check size={26} aria-label="По графику" />}
+              </div>
+              <div className="stat-label">
+                {plan.todayGoal > 0 ? `Сегодня по плану: ещё ${plan.todayGoal}` : 'План на сегодня выполнен'}
+              </div>
+            </a>
+          </div>
+
+          <div className="card">
+            <h3>Дни занятий</h3>
+            <Heatmap activeDays={data.activeDays} />
+            <p className="muted small" style={{ margin: 0 }}>
+              Один день отдыха в неделю серию не прерывает. Всего дней занятий: {streak.totalDays}.
+            </p>
+          </div>
         </div>
-        <div className="card">
-          <h3>Модули</h3>
-          <div className="module-list">
+
+        <div>
+          <div className="section-title">
+            <h2>Модули</h2>
+            <a className="small" href={href('course')} style={{ fontWeight: 800 }}>
+              Все {modules.length}
+            </a>
+          </div>
+          <div className="card module-list">
             {modules.map((m) => {
               const ready = m.topics.filter((t) => t.ready);
               const s = m.topics.reduce(
@@ -199,18 +231,16 @@ export function HomePage() {
               const p = s.total ? (s.solved / s.total) * 100 : 0;
               return (
                 <a key={m.id} className="module-row" href={href('course', m.id)}>
-                  <span className="module-icon">{m.icon}</span>
-                  <span className="module-name">{m.title}</span>
-                  {ready.length ? (
-                    <span className="module-progress">
-                      <span className="progress-bar thin">
-                        <span style={{ width: `${p}%` }} />
-                      </span>
-                      <span className="small muted">{p.toFixed(0)}%</span>
+                  <ModuleTile moduleId={m.id} size={42} />
+                  <span className="module-row-body">
+                    <span className="module-row-top">
+                      <span>{m.title}</span>
+                      <span className="pct">{ready.length ? `${p.toFixed(0)}%` : 'скоро'}</span>
                     </span>
-                  ) : (
-                    <span className="badge">скоро</span>
-                  )}
+                    <span className={`progress-bar${p >= 100 ? ' success' : ''}`}>
+                      <span style={{ width: `${p}%` }} />
+                    </span>
+                  </span>
                 </a>
               );
             })}

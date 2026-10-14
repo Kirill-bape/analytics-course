@@ -1,6 +1,7 @@
 // Панель «Схема данных»: какие таблицы и столбцы есть в базе.
 
 import { useState } from 'react';
+import { ArrowRight, ChevronDown, ChevronRight, Database, X } from 'lucide-react';
 import { tableGroups, tables } from '../content';
 
 const LINKS: Record<string, [string, string][]> = {
@@ -24,9 +25,11 @@ export function SchemaPanel({ open, onClose }: { open: boolean; onClose: () => v
       <div className={`drawer-backdrop${open ? ' open' : ''}`} onClick={onClose} />
       <aside className={`drawer${open ? ' open' : ''}`} aria-hidden={!open}>
         <div className="drawer-head">
-          <h2>🗂 Схема данных</h2>
+          <h2>
+            <Database size={24} aria-hidden /> Схема данных
+          </h2>
           <button className="btn btn-ghost btn-small" onClick={onClose} aria-label="Закрыть">
-            ✕
+            <X size={20} aria-hidden />
           </button>
         </div>
         <p className="muted small">
@@ -42,7 +45,7 @@ export function SchemaPanel({ open, onClose }: { open: boolean; onClose: () => v
                   <button className="schema-table-head" onClick={() => setExpanded(expanded === t.name ? null : t.name)}>
                     <span className="schema-name">{t.name}</span>
                     <span className="muted">{t.title}</span>
-                    <span className="chev">{expanded === t.name ? '▾' : '▸'}</span>
+                    <span className="chev">{expanded === t.name ? <ChevronDown size={18} aria-hidden /> : <ChevronRight size={18} aria-hidden />}</span>
                   </button>
                   {expanded === t.name && (
                     <div className="schema-body">
@@ -69,7 +72,7 @@ export function SchemaPanel({ open, onClose }: { open: boolean; onClose: () => v
                 <b>Связи:</b>
                 {LINKS[g.id].map(([a, b]) => (
                   <div key={a}>
-                    <code>{a}</code> → <code>{b}</code>
+                    <code>{a}</code> <ArrowRight size={14} style={{ verticalAlign: '-2px' }} aria-hidden /> <code>{b}</code>
                   </div>
                 ))}
               </div>

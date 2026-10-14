@@ -1,6 +1,7 @@
 // Сетка электронной таблицы: ячейки, строка формул, «протянуть вниз».
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Check } from 'lucide-react';
 import type { HyperFormula } from 'hyperformula';
 import { addrName, cell, colName, ERROR_HELP, fillDown, rawForEdit, shown, toEngine } from './formulas';
 import { clearActiveInput, setActiveInput, type InputTarget } from '../keyboard';
@@ -168,8 +169,8 @@ export function SheetGrid({ hf, rows, cols, lastDataRow, widths, locked, onChang
             }
           }}
         />
-        <button className="btn btn-small btn-primary" onClick={() => commit(false)} title="Ввести (Enter)">
-          ✓
+        <button className="btn btn-small btn-primary" onClick={() => commit(false)} title="Ввести (Enter)" aria-label="Ввести">
+          <Check size={18} strokeWidth={2.6} aria-hidden />
         </button>
       </div>
       <div className="sheet-scroll" ref={scrollBox}>
