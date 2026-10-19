@@ -1,0 +1,188 @@
+{
+  "tasks": [
+    {
+      "id": "aarrr-stage",
+      "title": "Какой это этап AARRR",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Метрика: «доля клиентов, сделавших второй заказ в течение 60 дней после первого». К какому этапу AARRR она относится?",
+      "options": [
+        {
+          "text": "Retention — удержание",
+          "correct": true,
+          "explain": "Возвращается ли клиент после первого опыта — это удержание."
+        },
+        {
+          "text": "Acquisition — привлечение",
+          "explain": "Привлечение — это откуда и сколько людей приходит, ещё до первой покупки."
+        },
+        {
+          "text": "Activation — активация",
+          "explain": "Активация — первая ценность, например первый заказ. Второй заказ — уже удержание."
+        },
+        {
+          "text": "Referral — рекомендации",
+          "explain": "Рекомендации — когда клиент приводит других."
+        }
+      ],
+      "hints": [
+        "Речь о повторном действии после первого опыта."
+      ]
+    },
+    {
+      "id": "leaky-bucket",
+      "title": "Дырявое ведро",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Только 8% новых клиентов делают второй заказ, тогда как у конкурентов — 30%. Маркетинг просит удвоить бюджет на рекламу. Что посоветовать?",
+      "options": [
+        {
+          "text": "Сначала разобраться с удержанием: пока почти все новые клиенты не возвращаются, дополнительная реклама в основном сжигает деньги",
+          "correct": true,
+          "explain": "Это «дырявое ведро». Улучшение удержания увеличивает LTV — и та же реклама начинает окупаться лучше."
+        },
+        {
+          "text": "Удвоить рекламу: больше новых — больше выручки",
+          "explain": "Выручка вырастет, но при низком удержании каждый клиент может приносить меньше, чем стоит его привлечение."
+        },
+        {
+          "text": "Отключить рекламу совсем",
+          "explain": "Слишком резко: привлечение нужно, вопрос в приоритетах и окупаемости."
+        },
+        {
+          "text": "Поднять цены",
+          "explain": "Это не решает проблему удержания и может её усугубить."
+        }
+      ],
+      "hints": [
+        "Что будет с новыми клиентами после первого заказа?"
+      ]
+    },
+    {
+      "id": "first-basket",
+      "title": "Ищем ага-момент: размер первой корзины",
+      "difficulty": 3,
+      "prompt": [
+        "Проверь, связан ли размер **первого доставленного** заказа клиента с тем, вернётся ли он (сделает 2+ доставленных заказов).",
+        "",
+        "Столбцы: `first_basket` (`'1 товар'` или `'2+ товара'` — сумма `quantity` в первом заказе), `clients`, `returned_pct` (до 1 знака). Сортировка по `first_basket`. Первый заказ — самый ранний по дате, при равенстве — с меньшим `order_id`."
+      ],
+      "starter": "WITH first_orders AS (\n    SELECT customer_id, order_id\n    FROM (\n        SELECT customer_id, order_id,\n               ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date, order_id) AS rn\n        FROM orders\n        WHERE status = 'delivered'\n    ) t\n    WHERE rn = 1\n),\nfirst_size AS (\n    \n),\nrepeat AS (\n    SELECT customer_id, COUNT(*) >= 2 AS returned\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n)\nSELECT \n",
+      "solution": "WITH first_orders AS (\n    SELECT customer_id, order_id\n    FROM (\n        SELECT customer_id, order_id,\n               ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date, order_id) AS rn\n        FROM orders\n        WHERE status = 'delivered'\n    ) t\n    WHERE rn = 1\n),\nfirst_size AS (\n    SELECT f.customer_id, SUM(oi.quantity) AS items\n    FROM first_orders f\n    JOIN order_items oi ON oi.order_id = f.order_id\n    GROUP BY f.customer_id\n),\nrepeat AS (\n    SELECT customer_id, COUNT(*) >= 2 AS returned\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n)\nSELECT CASE WHEN fs.items >= 2 THEN '2+ товара' ELSE '1 товар' END AS first_basket,\n       COUNT(*) AS clients,\n       ROUND(100.0 * AVG(CASE WHEN r.returned THEN 1 ELSE 0 END), 1) AS returned_pct\nFROM first_size fs\nJOIN repeat r ON r.customer_id = fs.customer_id\nGROUP BY first_basket\nORDER BY first_basket;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "`first_size`: соедини первые заказы с `order_items` и просуммируй `quantity` по клиенту.",
+        "В итоге раздели клиентов по `items >= 2` и посчитай долю `returned`."
+      ],
+      "explanation": "Если доли заметно различаются — это кандидат в ага-момент. Но связь не доказывает причину: следующий шаг — эксперимент, который подталкивает к большей первой корзине.",
+      "selfTest": {
+        "correct": [
+          "WITH fo AS (SELECT customer_id, order_id FROM orders WHERE status = 'delivered' QUALIFY ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date, order_id) = 1), fs AS (SELECT fo.customer_id, SUM(quantity) AS items FROM fo JOIN order_items USING (order_id) GROUP BY 1), rp AS (SELECT customer_id, COUNT(*) AS n FROM orders WHERE status = 'delivered' GROUP BY 1) SELECT IF(items >= 2, '2+ товара', '1 товар') AS first_basket, COUNT(*) AS clients, ROUND(100.0 * AVG((n >= 2)::INT), 1) AS returned_pct FROM fs JOIN rp USING (customer_id) GROUP BY 1 ORDER BY 1"
+        ],
+        "wrong": [
+          "WITH fs AS (SELECT o.customer_id, SUM(oi.quantity) AS items FROM orders o JOIN order_items oi USING (order_id) WHERE o.status = 'delivered' GROUP BY 1), rp AS (SELECT customer_id, COUNT(*) AS n FROM orders WHERE status = 'delivered' GROUP BY 1) SELECT IF(items >= 2, '2+ товара', '1 товар') AS first_basket, COUNT(*) AS clients, ROUND(100.0 * AVG((n >= 2)::INT), 1) AS returned_pct FROM fs JOIN rp USING (customer_id) GROUP BY 1 ORDER BY 1"
+        ]
+      }
+    },
+    {
+      "id": "channel-retention",
+      "title": "Какой канал приводит возвращающихся",
+      "difficulty": 2,
+      "prompt": "Для клиентов с хотя бы одним доставленным заказом посчитай по каналу привлечения (`acquisition_channel`): `clients` и `returned_pct` — долю сделавших 2+ доставленных заказов (до 1 знака). Сортировка по `returned_pct` по убыванию.",
+      "starter": "WITH c AS (\n    SELECT customer_id, COUNT(*) AS orders\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n)\nSELECT cu.acquisition_channel,\n       \nFROM c\nJOIN customers cu ON cu.customer_id = c.customer_id\nGROUP BY cu.acquisition_channel\nORDER BY returned_pct DESC;",
+      "solution": "WITH c AS (\n    SELECT customer_id, COUNT(*) AS orders\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n)\nSELECT cu.acquisition_channel,\n       COUNT(*) AS clients,\n       ROUND(100.0 * AVG(CASE WHEN c.orders >= 2 THEN 1 ELSE 0 END), 1) AS returned_pct\nFROM c\nJOIN customers cu ON cu.customer_id = c.customer_id\nGROUP BY cu.acquisition_channel\nORDER BY returned_pct DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Доля вернувшихся — среднее индикатора `CASE WHEN c.orders >= 2 THEN 1 ELSE 0 END`."
+      ],
+      "explanation": "Если канал приводит много клиентов, но они редко возвращаются, его настоящая стоимость выше, чем кажется по цене первого заказа. Удержание по каналам — важный вход для решения о бюджете.",
+      "selfTest": {
+        "correct": [
+          "SELECT acquisition_channel, COUNT(*) AS clients, ROUND(100.0 * COUNT(*) FILTER (WHERE n > 1) / COUNT(*), 1) AS returned_pct FROM (SELECT customer_id, COUNT(*) AS n FROM orders WHERE status = 'delivered' GROUP BY 1) c JOIN customers USING (customer_id) GROUP BY 1 ORDER BY 3 DESC"
+        ],
+        "wrong": [
+          "SELECT acquisition_channel, COUNT(*) AS clients, ROUND(100.0 * COUNT(*) FILTER (WHERE n > 1) / COUNT(*), 1) AS returned_pct FROM (SELECT customer_id, COUNT(*) AS n FROM orders GROUP BY 1) c JOIN customers USING (customer_id) GROUP BY 1 ORDER BY 3 DESC"
+        ]
+      }
+    },
+    {
+      "id": "ice",
+      "title": "Считаем ICE",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Гипотеза «подсказывать сопутствующие товары в первом заказе». Оценки: Impact — **7**, Confidence — **5**, Ease — **8**. Чему равен ICE?",
+      "answer": 280,
+      "hints": [
+        "ICE = Impact × Confidence × Ease."
+      ],
+      "selfTest": {
+        "correct": [
+          "280"
+        ],
+        "wrong": [
+          "20"
+        ]
+      }
+    },
+    {
+      "id": "growth-loop",
+      "title": "Петля роста",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Какой из механизмов — петля роста, а не просто разовая активность?",
+      "options": [
+        {
+          "text": "Покупатели оставляют отзывы → страницы с отзывами находят в поиске → новые посетители покупают и тоже оставляют отзывы",
+          "correct": true,
+          "explain": "Результат цикла (отзывы) становится входом следующего (трафик из поиска) — рост сам себя подпитывает."
+        },
+        {
+          "text": "Разовая рассылка со скидкой по базе",
+          "explain": "Даёт всплеск продаж, но не запускает самоподдерживающийся цикл."
+        },
+        {
+          "text": "Баннер на главной странице",
+          "explain": "Это один элемент интерфейса, а не цикл."
+        },
+        {
+          "text": "Участие в выставке",
+          "explain": "Разовое событие привлечения."
+        }
+      ],
+      "hints": [
+        "В петле выход одного цикла становится входом следующего."
+      ]
+    },
+    {
+      "id": "aha-causal",
+      "title": "Ага-момент или совпадение",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Клиенты, добавившие товар в «избранное» в первую неделю, возвращаются вдвое чаще. Продакт хочет показывать всем навязчивое окно «Добавь в избранное!». Что сказать?",
+      "options": [
+        {
+          "text": "Это связь, а не доказанная причина: «избранное» чаще используют и так заинтересованные люди. Нужно A/B-тестом проверить, поднимет ли окно удержание",
+          "correct": true,
+          "explain": "Навязанное действие может не дать того же эффекта, что добровольное. Эксперимент покажет, есть ли причинная связь."
+        },
+        {
+          "text": "Отличная идея: раз избранное удваивает удержание, заставим всех",
+          "explain": "Это вывод о причине из простой связи. Возможно, эффекта не будет, а навязчивое окно раздражит."
+        },
+        {
+          "text": "Нужно убрать «избранное»",
+          "explain": "Нет оснований: связь с удержанием положительная."
+        },
+        {
+          "text": "Нужно посчитать корреляцию ещё раз",
+          "explain": "Пересчёт не превратит связь в причину."
+        }
+      ],
+      "hints": [
+        "Кто добровольно пользуется «избранным» в первую неделю?"
+      ]
+    }
+  ]
+}

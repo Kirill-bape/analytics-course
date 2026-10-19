@@ -1,0 +1,206 @@
+{
+  "tasks": [
+    {
+      "id": "cpa-chain",
+      "title": "Цена заказа из рекламы",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Рекламная кампания: **200 000** показов, CTR **1,5%**, стоимость клика **25 ₽**, конверсия клика в заказ **3%**. Сколько стоит один заказ (CPA)?",
+      "answer": 833.33,
+      "tolerance": 0.5,
+      "unit": "₽",
+      "hints": [
+        "CPA = CPC / CR.",
+        "25 / 0,03"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 0.75,
+          "message": "Нужно не умножать, а делить цену клика на конверсию: на один заказ приходится 1 / 0,03 ≈ 33 клика."
+        }
+      ],
+      "explanation": "Показы и CTR нужны, чтобы посчитать число заказов: 200 000 × 1,5% = 3 000 кликов, из них 90 заказов. Расходы 3 000 × 25 = 75 000 ₽, CPA = 75 000 / 90 ≈ 833 ₽ — то же самое.",
+      "selfTest": {
+        "correct": [
+          "833,33",
+          "833"
+        ],
+        "wrong": [
+          "0,75"
+        ]
+      }
+    },
+    {
+      "id": "roas-romi",
+      "title": "ROAS или ROMI",
+      "difficulty": 2,
+      "type": "number",
+      "prompt": "На рекламу потратили **500 000 ₽**, она принесла заказов на **1 600 000 ₽** выручки. Маржинальная прибыль — **25%** от выручки. Чему равен ROMI в процентах?",
+      "answer": -20,
+      "unit": "%",
+      "hints": [
+        "Прибыль от заказов: 1 600 000 × 0,25 = 400 000 ₽.",
+        "ROMI = (400 000 − 500 000) / 500 000 × 100"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 220,
+          "message": "Это ROMI по выручке. Окупаемость считают по прибыли: из выручки ещё нужно оплатить товары и доставку."
+        },
+        {
+          "value": 320,
+          "message": "Это ROAS — выручка на рубль рекламы. ROMI учитывает маржу и сами расходы."
+        }
+      ],
+      "explanation": "ROAS 320% выглядит прекрасно, а ROMI −20%: кампания в минусе по первым заказам. Она может окупиться, только если привлечённые клиенты будут возвращаться — это проверяют по LTV.",
+      "selfTest": {
+        "correct": [
+          "-20"
+        ],
+        "wrong": [
+          "220"
+        ]
+      }
+    },
+    {
+      "id": "cac-by-channel",
+      "title": "CAC по каналам",
+      "difficulty": 2,
+      "prompt": [
+        "Расходы по каналам за первое полугодие 2026 заданы в CTE `spend`. Новые клиенты канала — зарегистрированные с 1 января 2026, у которых есть хотя бы один доставленный заказ.",
+        "",
+        "Столбцы: `channel`, `cost`, `clients`, `cac` (до целого). Только каналы с расходами больше нуля. Сортировка по `cac` по убыванию."
+      ],
+      "starter": "WITH spend(channel, cost) AS (\n    VALUES ('ads', 2400000), ('social', 1500000), ('bloggers', 900000),\n           ('referral', 300000), ('organic', 0)\n),\nnew_clients AS (\n    SELECT c.acquisition_channel AS channel, COUNT(*) AS clients\n    FROM customers c\n    WHERE c.registration_date >= '2026-01-01'\n      AND EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id AND o.status = 'delivered')\n    GROUP BY c.acquisition_channel\n)\nSELECT \n",
+      "solution": "WITH spend(channel, cost) AS (\n    VALUES ('ads', 2400000), ('social', 1500000), ('bloggers', 900000),\n           ('referral', 300000), ('organic', 0)\n),\nnew_clients AS (\n    SELECT c.acquisition_channel AS channel, COUNT(*) AS clients\n    FROM customers c\n    WHERE c.registration_date >= '2026-01-01'\n      AND EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id AND o.status = 'delivered')\n    GROUP BY c.acquisition_channel\n)\nSELECT s.channel, s.cost, n.clients,\n       ROUND(s.cost / n.clients) AS cac\nFROM spend s\nJOIN new_clients n ON n.channel = s.channel\nWHERE s.cost > 0\nORDER BY cac DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Соедини `spend` и `new_clients` по каналу.",
+        "CAC = `s.cost / n.clients`, фильтр `s.cost > 0`."
+      ],
+      "explanation": "Канал с самым дорогим клиентом не обязательно худший: если его клиенты возвращаются чаще, LTV может оправдать цену. Следующий шаг — сравнить CAC с LTV по каналам.",
+      "selfTest": {
+        "correct": [
+          "WITH spend(channel, cost) AS (\n    VALUES ('ads', 2400000), ('social', 1500000), ('bloggers', 900000),\n           ('referral', 300000), ('organic', 0)\n) SELECT channel, cost, COUNT(*) AS clients, ROUND(cost / COUNT(*)) AS cac FROM spend JOIN customers c ON c.acquisition_channel = spend.channel WHERE cost > 0 AND c.registration_date >= '2026-01-01' AND c.customer_id IN (SELECT customer_id FROM orders WHERE status = 'delivered') GROUP BY channel, cost ORDER BY cac DESC"
+        ],
+        "wrong": [
+          "WITH spend(channel, cost) AS (\n    VALUES ('ads', 2400000), ('social', 1500000), ('bloggers', 900000),\n           ('referral', 300000), ('organic', 0)\n) SELECT channel, cost, COUNT(*) AS clients, ROUND(cost / COUNT(*)) AS cac FROM spend JOIN customers c ON c.acquisition_channel = spend.channel WHERE cost > 0 AND c.registration_date >= '2026-01-01' GROUP BY channel, cost ORDER BY cac DESC"
+        ]
+      }
+    },
+    {
+      "id": "promo-report",
+      "title": "Отчёт по промокодам",
+      "difficulty": 2,
+      "prompt": [
+        "По доставленным заказам с промокодом посчитай для каждого кода:",
+        "- `orders`, `revenue` (сумма `amount`, до целого);",
+        "- `discount_pct` — доля скидки в сумме **до** скидки: `SUM(discount) / SUM(amount + discount) × 100`, до 1 знака.",
+        "",
+        "Сортировка по `revenue` по убыванию."
+      ],
+      "starter": "SELECT promo_code,\n       \nFROM orders\nWHERE status = 'delivered' AND promo_code IS NOT NULL\nGROUP BY promo_code\nORDER BY revenue DESC;",
+      "solution": "SELECT promo_code,\n       COUNT(*) AS orders,\n       ROUND(SUM(amount)) AS revenue,\n       ROUND(100.0 * SUM(discount) / SUM(amount + discount), 1) AS discount_pct\nFROM orders\nWHERE status = 'delivered' AND promo_code IS NOT NULL\nGROUP BY promo_code\nORDER BY revenue DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Сумма до скидки — `amount + discount`."
+      ],
+      "explanation": "Коды с фиксированной скидкой (например, на 500 ₽) дают большую долю скидки на маленьких заказах, процентные — одинаковую. Дальше стоит проверить, кого привлёк каждый код и вернулись ли эти клиенты.",
+      "selfTest": {
+        "correct": [
+          "SELECT promo_code, COUNT(order_id) AS orders, ROUND(SUM(amount)) AS revenue, ROUND(100 * SUM(discount) / (SUM(amount) + SUM(discount)), 1) AS discount_pct FROM orders WHERE status = 'delivered' AND promo_code IS NOT NULL GROUP BY 1 ORDER BY 3 DESC"
+        ],
+        "wrong": [
+          "SELECT promo_code, COUNT(*) AS orders, ROUND(SUM(amount)) AS revenue, ROUND(100.0 * SUM(discount) / SUM(amount), 1) AS discount_pct FROM orders WHERE status = 'delivered' AND promo_code IS NOT NULL GROUP BY 1 ORDER BY 3 DESC"
+        ]
+      }
+    },
+    {
+      "id": "promo-new-clients",
+      "title": "Кого привлекают промокоды",
+      "difficulty": 3,
+      "prompt": [
+        "Для каждого промокода посчитай, какая доля доставленных заказов с ним была **первым заказом** клиента (самый ранний заказ клиента любого статуса).",
+        "",
+        "Столбцы: `promo_code`, `orders`, `first_order_pct` (до 1 знака). Сортировка по `first_order_pct` по убыванию."
+      ],
+      "starter": "WITH firsts AS (\n    SELECT customer_id, MIN(order_date) AS first_date\n    FROM orders\n    GROUP BY customer_id\n)\nSELECT o.promo_code,\n       \nFROM orders o\nJOIN firsts f ON f.customer_id = o.customer_id\nWHERE o.status = 'delivered' AND o.promo_code IS NOT NULL\nGROUP BY o.promo_code\nORDER BY first_order_pct DESC;",
+      "solution": "WITH firsts AS (\n    SELECT customer_id, MIN(order_date) AS first_date\n    FROM orders\n    GROUP BY customer_id\n)\nSELECT o.promo_code,\n       COUNT(*) AS orders,\n       ROUND(100.0 * AVG(CASE WHEN o.order_date = f.first_date THEN 1 ELSE 0 END), 1) AS first_order_pct\nFROM orders o\nJOIN firsts f ON f.customer_id = o.customer_id\nWHERE o.status = 'delivered' AND o.promo_code IS NOT NULL\nGROUP BY o.promo_code\nORDER BY first_order_pct DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Заказ — первый, если его дата совпадает с `f.first_date`.",
+        "Доля: `AVG(CASE WHEN o.order_date = f.first_date THEN 1 ELSE 0 END)`."
+      ],
+      "explanation": "Код вроде WELCOME10 должен привлекать новичков — у него доля первых заказов высокая. Если «акционный» код в основном используют старые клиенты, он может просто дарить скидку тем, кто купил бы и так.",
+      "selfTest": {
+        "correct": [
+          "WITH o2 AS (SELECT *, order_date = MIN(order_date) OVER (PARTITION BY customer_id) AS is_first FROM orders) SELECT promo_code, COUNT(*) AS orders, ROUND(100.0 * COUNT(*) FILTER (WHERE is_first) / COUNT(*), 1) AS first_order_pct FROM o2 WHERE status = 'delivered' AND promo_code IS NOT NULL GROUP BY 1 ORDER BY 3 DESC"
+        ],
+        "wrong": [
+          "WITH firsts AS (SELECT customer_id, MIN(order_date) AS first_date FROM orders WHERE promo_code IS NOT NULL GROUP BY 1) SELECT o.promo_code, COUNT(*) AS orders, ROUND(100.0 * AVG(CASE WHEN o.order_date = f.first_date THEN 1 ELSE 0 END), 1) AS first_order_pct FROM orders o JOIN firsts f USING (customer_id) WHERE o.status = 'delivered' AND o.promo_code IS NOT NULL GROUP BY 1 ORDER BY 3 DESC"
+        ]
+      }
+    },
+    {
+      "id": "incrementality",
+      "title": "Инкрементальность",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Реклама по запросу с названием магазина показывает CPA 150 ₽ — лучший результат среди каналов. Почему этот показатель может вводить в заблуждение?",
+      "options": [
+        {
+          "text": "Люди, которые ищут магазин по названию, уже решили купить: без рекламы они пришли бы по бесплатной ссылке. Реальный прирост от рекламы может быть близок к нулю",
+          "correct": true,
+          "explain": "Это вопрос инкрементальности. Проверить её можно паузой рекламы по брендовым запросам и наблюдением за общими продажами."
+        },
+        {
+          "text": "CPA 150 ₽ — это слишком дорого",
+          "explain": "Дело не в цифре, а в том, что она не показывает дополнительный эффект рекламы."
+        },
+        {
+          "text": "CPA нельзя считать для поиска",
+          "explain": "Считать можно, вопрос в интерпретации."
+        },
+        {
+          "text": "Ничем: низкий CPA — всегда хорошо",
+          "explain": "Низкий CPA за заказы, которые случились бы и так, — потраченные зря деньги."
+        }
+      ],
+      "hints": [
+        "Купили бы эти люди без рекламы?"
+      ]
+    },
+    {
+      "id": "budget-marginal",
+      "title": "Куда добавить бюджет",
+      "difficulty": 3,
+      "type": "quiz",
+      "prompt": "Средний ROMI канала A — 80%, канала B — 40%. Но тест показал: дополнительные 100 000 ₽ в канал A принесли ROMI 5% (канал насытился), а в канал B — 35%. Куда добавить следующий бюджет?",
+      "options": [
+        {
+          "text": "В канал B: решение принимают по отдаче следующего рубля, а не по среднему результату канала",
+          "correct": true,
+          "explain": "Средний ROMI A высокий за счёт первых, самых дешёвых клиентов. Дополнительные деньги там почти не окупаются, а в B — ещё работают."
+        },
+        {
+          "text": "В канал A: у него средний ROMI вдвое выше",
+          "explain": "Средний показатель не говорит, как сработают дополнительные деньги. Тест показал, что A насытился."
+        },
+        {
+          "text": "Поровну",
+          "explain": "Нет причин делить поровну, когда известно, где следующий рубль работает лучше."
+        },
+        {
+          "text": "Никуда: ROMI 35% слишком мал",
+          "explain": "Положительный ROMI означает прибыль. Вопрос в том, где она выше."
+        }
+      ],
+      "hints": [
+        "Какую отдачу даст именно следующий рубль?"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,198 @@
+{
+  "tasks": [
+    {
+      "id": "pareto",
+      "title": "Проверка Парето",
+      "difficulty": 2,
+      "prompt": "Какую долю выручки доставленных заказов приносят **20% клиентов** с самой большой выручкой? Раздели клиентов на 5 групп по выручке (`NTILE(5)`), и в ответе дай долю верхней группы: `top20_share_pct` (до 1 знака).",
+      "starter": "WITH c AS (\n    SELECT customer_id, SUM(amount) AS revenue\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n),\nq AS (\n    SELECT revenue, NTILE(5) OVER (ORDER BY revenue DESC) AS bucket\n    FROM c\n)\nSELECT \nFROM q;",
+      "solution": "WITH c AS (\n    SELECT customer_id, SUM(amount) AS revenue\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n),\nq AS (\n    SELECT revenue, NTILE(5) OVER (ORDER BY revenue DESC) AS bucket\n    FROM c\n)\nSELECT ROUND(100.0 * SUM(revenue) FILTER (WHERE bucket = 1) / SUM(revenue), 1) AS top20_share_pct\nFROM q;",
+      "checkColumnNames": true,
+      "hints": [
+        "При сортировке по убыванию группа `bucket = 1` — это топ-20%.",
+        "`SUM(revenue) FILTER (WHERE bucket = 1) / SUM(revenue)`"
+      ],
+      "explanation": "Если доля близка к 60–80%, бизнес сильно зависит от небольшой группы клиентов. Их удержание — приоритет: потеря нескольких процентов этих клиентов ударит по выручке сильнее, чем потеря половины остальных.",
+      "selfTest": {
+        "correct": [
+          "WITH c AS (SELECT customer_id, SUM(amount) AS r FROM orders WHERE status = 'delivered' GROUP BY 1), q AS (SELECT r, NTILE(5) OVER (ORDER BY r DESC) AS b FROM c) SELECT ROUND(100.0 * (SELECT SUM(r) FROM q WHERE b = 1) / (SELECT SUM(r) FROM q), 1) AS top20_share_pct"
+        ],
+        "wrong": [
+          "WITH c AS (SELECT customer_id, SUM(amount) AS r FROM orders WHERE status = 'delivered' GROUP BY 1), q AS (SELECT r, NTILE(5) OVER (ORDER BY r) AS b FROM c) SELECT ROUND(100.0 * SUM(r) FILTER (WHERE b = 1) / SUM(r), 1) AS top20_share_pct FROM q"
+        ]
+      }
+    },
+    {
+      "id": "rfm-scores",
+      "title": "Баллы RFM",
+      "difficulty": 2,
+      "prompt": [
+        "Посчитай для клиентов баллы R, F и M от 1 до 5 через `NTILE(5)`. Для давности: чем **недавнее** последний заказ, тем **выше** балл.",
+        "",
+        "Выведи распределение по баллу **R**: столбцы `r`, `clients`, `avg_recency` (средняя давность в днях, до целого). Сортировка по `r`."
+      ],
+      "starter": "WITH rfm AS (\n    SELECT customer_id,\n           DATE '2026-06-30' - MAX(order_date) AS recency_days,\n           COUNT(*) AS frequency,\n           SUM(amount) AS monetary\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n),\nscored AS (\n    SELECT *,\n           NTILE(5) OVER (ORDER BY recency_days DESC) AS r\n    FROM rfm\n)\nSELECT \n",
+      "solution": "WITH rfm AS (\n    SELECT customer_id,\n           DATE '2026-06-30' - MAX(order_date) AS recency_days,\n           COUNT(*) AS frequency,\n           SUM(amount) AS monetary\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n),\nscored AS (\n    SELECT *,\n           NTILE(5) OVER (ORDER BY recency_days DESC) AS r\n    FROM rfm\n)\nSELECT r, COUNT(*) AS clients, ROUND(AVG(recency_days)) AS avg_recency\nFROM scored\nGROUP BY r\nORDER BY r;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Балл R уже посчитан в `scored`. Сгруппируй по нему.",
+        "`SELECT r, COUNT(*) AS clients, ROUND(AVG(recency_days)) AS avg_recency …`"
+      ],
+      "explanation": "Средняя давность падает с ростом балла: у R = 5 — самые свежие клиенты. Если бы сортировка в NTILE была обычной, баллы шли бы наоборот — частая ошибка.",
+      "selfTest": {
+        "correct": [
+          "WITH rfm AS (\n    SELECT customer_id,\n           DATE '2026-06-30' - MAX(order_date) AS recency_days,\n           COUNT(*) AS frequency,\n           SUM(amount) AS monetary\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n) SELECT r, COUNT(*) AS clients, ROUND(AVG(recency_days)) AS avg_recency FROM (SELECT recency_days, NTILE(5) OVER (ORDER BY recency_days DESC) AS r FROM rfm) GROUP BY r ORDER BY r"
+        ],
+        "wrong": [
+          "WITH rfm AS (\n    SELECT customer_id,\n           DATE '2026-06-30' - MAX(order_date) AS recency_days,\n           COUNT(*) AS frequency,\n           SUM(amount) AS monetary\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n) SELECT r, COUNT(*) AS clients, ROUND(AVG(recency_days)) AS avg_recency FROM (SELECT recency_days, NTILE(5) OVER (ORDER BY recency_days) AS r FROM rfm) GROUP BY r ORDER BY r"
+        ]
+      }
+    },
+    {
+      "id": "rfm-segments",
+      "title": "Сегменты из правил",
+      "difficulty": 3,
+      "prompt": [
+        "Раздели клиентов с доставленными заказами на сегменты простыми правилами (давность — на 30.06.2026):",
+        "- `'лучшие'` — последний заказ не позже 60 дней назад **и** заказов ≥ 4;",
+        "- `'засыпающие ценные'` — последний заказ больше 90 дней назад **и** заказов ≥ 4;",
+        "- `'новички'` — ровно 1 заказ и последний не позже 60 дней назад;",
+        "- `'остальные'` — все прочие.",
+        "",
+        "Столбцы: `segment`, `clients`, `revenue_pct` (доля выручки сегмента, %, до 1 знака). Сортировка по `revenue_pct` по убыванию."
+      ],
+      "starter": "WITH rfm AS (\n    SELECT customer_id,\n           DATE '2026-06-30' - MAX(order_date) AS recency_days,\n           COUNT(*) AS frequency,\n           SUM(amount) AS monetary\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n),\nseg AS (\n    SELECT *,\n           CASE\n               \n           END AS segment\n    FROM rfm\n)\nSELECT \n",
+      "solution": "WITH rfm AS (\n    SELECT customer_id,\n           DATE '2026-06-30' - MAX(order_date) AS recency_days,\n           COUNT(*) AS frequency,\n           SUM(amount) AS monetary\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n),\nseg AS (\n    SELECT *,\n           CASE\n               WHEN recency_days <= 60 AND frequency >= 4 THEN 'лучшие'\n               WHEN recency_days > 90 AND frequency >= 4 THEN 'засыпающие ценные'\n               WHEN frequency = 1 AND recency_days <= 60 THEN 'новички'\n               ELSE 'остальные'\n           END AS segment\n    FROM rfm\n)\nSELECT segment,\n       COUNT(*) AS clients,\n       ROUND(100.0 * SUM(monetary) / SUM(SUM(monetary)) OVER (), 1) AS revenue_pct\nFROM seg\nGROUP BY segment\nORDER BY revenue_pct DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Условия в `CASE` по порядку: `WHEN recency_days <= 60 AND frequency >= 4 THEN 'лучшие'` и т. д., в конце `ELSE 'остальные'`.",
+        "Доля выручки сегмента: `SUM(monetary) / SUM(SUM(monetary)) OVER ()`."
+      ],
+      "explanation": "Посмотри на «засыпающих ценных»: их немного, но они много тратили. Это лучшая аудитория для кампании возврата — и обязательно с контрольной группой, чтобы измерить эффект.",
+      "selfTest": {
+        "correct": [
+          "WITH rfm AS (\n    SELECT customer_id,\n           DATE '2026-06-30' - MAX(order_date) AS recency_days,\n           COUNT(*) AS frequency,\n           SUM(amount) AS monetary\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n), seg AS (SELECT monetary, CASE WHEN frequency >= 4 AND recency_days <= 60 THEN 'лучшие' WHEN frequency >= 4 AND recency_days > 90 THEN 'засыпающие ценные' WHEN frequency = 1 AND recency_days <= 60 THEN 'новички' ELSE 'остальные' END AS segment FROM rfm), t AS (SELECT segment, COUNT(*) AS clients, SUM(monetary) AS m FROM seg GROUP BY 1) SELECT segment, clients, ROUND(100.0 * m / (SELECT SUM(m) FROM t), 1) AS revenue_pct FROM t ORDER BY revenue_pct DESC"
+        ],
+        "wrong": [
+          "WITH rfm AS (\n    SELECT customer_id,\n           DATE '2026-06-30' - MAX(order_date) AS recency_days,\n           COUNT(*) AS frequency,\n           SUM(amount) AS monetary\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n), seg AS (SELECT monetary, CASE WHEN frequency >= 4 THEN 'лучшие' WHEN frequency >= 4 AND recency_days > 90 THEN 'засыпающие ценные' WHEN frequency = 1 AND recency_days <= 60 THEN 'новички' ELSE 'остальные' END AS segment FROM rfm) SELECT segment, COUNT(*) AS clients, ROUND(100.0 * SUM(monetary) / SUM(SUM(monetary)) OVER (), 1) AS revenue_pct FROM seg GROUP BY 1 ORDER BY 3 DESC"
+        ]
+      }
+    },
+    {
+      "id": "abc-products",
+      "title": "ABC-анализ товаров",
+      "difficulty": 3,
+      "prompt": [
+        "Сделай ABC-анализ товаров по выручке доставленных заказов (`quantity × price` из `order_items`): A — накопленная доля выручки ≤ 80%, B — ≤ 95%, C — остальное.",
+        "",
+        "Столбцы: `abc`, `products`, `revenue_pct` (до 1 знака). Сортировка по `abc`."
+      ],
+      "starter": "WITH p AS (\n    SELECT oi.product_id, SUM(oi.quantity * oi.price) AS revenue\n    FROM order_items oi\n    JOIN orders o ON o.order_id = oi.order_id\n    WHERE o.status = 'delivered'\n    GROUP BY oi.product_id\n),\nc AS (\n    SELECT product_id, revenue,\n           \n    FROM p\n)\nSELECT \n",
+      "solution": "WITH p AS (\n    SELECT oi.product_id, SUM(oi.quantity * oi.price) AS revenue\n    FROM order_items oi\n    JOIN orders o ON o.order_id = oi.order_id\n    WHERE o.status = 'delivered'\n    GROUP BY oi.product_id\n),\nc AS (\n    SELECT product_id, revenue,\n           SUM(revenue) OVER (ORDER BY revenue DESC) / SUM(revenue) OVER () AS cum_share\n    FROM p\n)\nSELECT CASE WHEN cum_share <= 0.8 THEN 'A' WHEN cum_share <= 0.95 THEN 'B' ELSE 'C' END AS abc,\n       COUNT(*) AS products,\n       ROUND(100.0 * SUM(revenue) / (SELECT SUM(revenue) FROM p), 1) AS revenue_pct\nFROM c\nGROUP BY abc\nORDER BY abc;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Накопленная доля: `SUM(revenue) OVER (ORDER BY revenue DESC) / SUM(revenue) OVER ()`.",
+        "Группа: `CASE WHEN cum_share <= 0.8 THEN 'A' WHEN cum_share <= 0.95 THEN 'B' ELSE 'C' END`."
+      ],
+      "explanation": "Сравни число товаров в группах. В реальных магазинах группа A обычно составляет 15–25% ассортимента; в учебных данных распределение ровнее — около 40% товаров дают 80% выручки. За наличием и ценами товаров группы A следят в первую очередь.",
+      "selfTest": {
+        "correct": [
+          "WITH p AS (SELECT product_id, SUM(quantity * oi.price) AS revenue FROM order_items oi JOIN orders o USING (order_id) WHERE o.status = 'delivered' GROUP BY 1), c AS (SELECT revenue, SUM(revenue) OVER (ORDER BY revenue DESC ROWS UNBOUNDED PRECEDING) AS cum, SUM(revenue) OVER () AS tot FROM p) SELECT CASE WHEN cum / tot <= 0.8 THEN 'A' WHEN cum / tot <= 0.95 THEN 'B' ELSE 'C' END AS abc, COUNT(*) AS products, ROUND(100.0 * SUM(revenue) / MAX(tot), 1) AS revenue_pct FROM c GROUP BY 1 ORDER BY 1"
+        ],
+        "wrong": [
+          "WITH p AS (SELECT product_id, SUM(quantity * oi.price) AS revenue FROM order_items oi JOIN orders o USING (order_id) WHERE o.status = 'delivered' GROUP BY 1), c AS (SELECT revenue, SUM(revenue) OVER (ORDER BY revenue) / SUM(revenue) OVER () AS cs FROM p) SELECT CASE WHEN cs <= 0.8 THEN 'A' WHEN cs <= 0.95 THEN 'B' ELSE 'C' END AS abc, COUNT(*) AS products, ROUND(100.0 * SUM(revenue) / (SELECT SUM(revenue) FROM p), 1) AS revenue_pct FROM c GROUP BY 1 ORDER BY 1"
+        ]
+      }
+    },
+    {
+      "id": "good-segment",
+      "title": "Хороший сегмент",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Какой сегмент лучше всего подходит для маркетинговой кампании?",
+      "options": [
+        {
+          "text": "«Клиенты, которые сделали 3+ заказа, но не покупали 60–120 дней» — 7% базы, 18% прошлой выручки",
+          "correct": true,
+          "explain": "Сегмент измерим, достаточно велик, ценен и для него понятно действие — персональное предложение вернуться."
+        },
+        {
+          "text": "«Клиенты, которым нравится наш бренд»",
+          "explain": "Не измеримо: по данным не понять, кто в него входит."
+        },
+        {
+          "text": "«Клиенты из Пскова, купившие зелёный чайник во вторник»",
+          "explain": "Слишком маленький и случайный сегмент — ради него не стоит запускать кампанию."
+        },
+        {
+          "text": "«Все клиенты»",
+          "explain": "Это не сегментация: одно сообщение для всех работает хуже."
+        }
+      ],
+      "hints": [
+        "Измерим, достаточно велик, отличается, понятно действие."
+      ]
+    },
+    {
+      "id": "ntile-ties",
+      "title": "Ловушка NTILE",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Половина клиентов сделала ровно один заказ. Аналитик ставит балл частоты через `NTILE(5) OVER (ORDER BY frequency)`. Что не так?",
+      "options": [
+        {
+          "text": "Клиенты с одинаковой частотой (1 заказ) случайно попадут в разные баллы — 1, 2 и даже 3, хотя ведут себя одинаково",
+          "correct": true,
+          "explain": "NTILE делит строки на равные по числу группы, не глядя на одинаковые значения. Для частоты удобнее пороги: 1 заказ, 2–3, 4+."
+        },
+        {
+          "text": "Ничего: NTILE всегда делит правильно",
+          "explain": "Он делит на группы равного размера, а при множестве одинаковых значений это приводит к случайному разделению одинаковых клиентов."
+        },
+        {
+          "text": "NTILE нельзя использовать с COUNT",
+          "explain": "Можно, проблема не в этом."
+        },
+        {
+          "text": "Нужно отсортировать по убыванию",
+          "explain": "Направление не спасает от одинаковых значений."
+        }
+      ],
+      "hints": [
+        "Что сделает NTILE, если у 50% строк одно и то же значение?"
+      ]
+    },
+    {
+      "id": "segment-test",
+      "title": "Проверить действие для сегмента",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "«Засыпающим ценным» клиентам разослали промокод, и 12% из них сделали заказ в течение месяца. Можно ли сказать, что промокод вернул 12% клиентов?",
+      "options": [
+        {
+          "text": "Нет: часть клиентов вернулась бы и без промокода. Нужна контрольная группа из того же сегмента без рассылки",
+          "correct": true,
+          "explain": "Эффект = доля вернувшихся с промокодом − доля вернувшихся в контроле. Если в контроле вернулись 8%, эффект — 4 п. п., а не 12%."
+        },
+        {
+          "text": "Да: 12% — это и есть эффект",
+          "explain": "Без контрольной группы неизвестно, сколько вернулось бы само."
+        },
+        {
+          "text": "Нет, потому что 12% — это мало",
+          "explain": "Дело не в размере, а в отсутствии сравнения."
+        },
+        {
+          "text": "Да, если p-value меньше 0,05",
+          "explain": "Без контрольной группы не с чем сравнивать — p-value просто не посчитать."
+        }
+      ],
+      "hints": [
+        "Сколько клиентов этого сегмента вернулось бы само?"
+      ]
+    }
+  ]
+}
