@@ -1,0 +1,218 @@
+{
+  "tasks": [
+    {
+      "id": "case1-delivered",
+      "title": "Кейс 1. Отчёт, который напугал менеджера",
+      "difficulty": 1,
+      "prompt": "Повтори отчёт менеджера: число **доставленных** заказов по месяцу оформления за апрель–июнь 2026. Столбцы: `month` (первый день месяца, `DATE`), `delivered_orders`. Сортировка по месяцу.",
+      "starter": "SELECT CAST(date_trunc('month', order_date) AS DATE) AS month,\n       \nFROM orders\nWHERE \nGROUP BY month\nORDER BY month;",
+      "solution": "SELECT CAST(date_trunc('month', order_date) AS DATE) AS month,\n       COUNT(*) AS delivered_orders\nFROM orders\nWHERE status = 'delivered' AND order_date >= '2026-04-01'\nGROUP BY month\nORDER BY month;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Условия: `status = 'delivered'` и `order_date >= '2026-04-01'`."
+      ],
+      "explanation": "Июнь действительно ниже мая почти на 20%. Но прежде чем искать причину, проверим, всё ли в данных в порядке, — это следующий шаг.",
+      "selfTest": {
+        "correct": [
+          "SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, COUNT(order_id) AS delivered_orders FROM orders WHERE status = 'delivered' AND order_date BETWEEN '2026-04-01' AND '2026-06-30' GROUP BY 1 ORDER BY 1"
+        ],
+        "wrong": [
+          "SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, COUNT(*) AS delivered_orders FROM orders WHERE order_date >= '2026-04-01' GROUP BY 1 ORDER BY 1"
+        ]
+      }
+    },
+    {
+      "id": "case1-statuses",
+      "title": "Кейс 1. Проверяем данные",
+      "difficulty": 2,
+      "prompt": [
+        "Для апреля–июня 2026 посчитай по месяцу оформления:",
+        "- `all_orders` — все заказы;",
+        "- `delivered` — доставленные;",
+        "- `in_progress` — ещё не завершённые (`shipped` и `processing`).",
+        "",
+        "Столбцы: `month`, `all_orders`, `delivered`, `in_progress`. Сортировка по месяцу."
+      ],
+      "starter": "SELECT CAST(date_trunc('month', order_date) AS DATE) AS month,\n       COUNT(*) AS all_orders,\n       \nFROM orders\nWHERE order_date >= '2026-04-01'\nGROUP BY month\nORDER BY month;",
+      "solution": "SELECT CAST(date_trunc('month', order_date) AS DATE) AS month,\n       COUNT(*) AS all_orders,\n       COUNT(*) FILTER (WHERE status = 'delivered') AS delivered,\n       COUNT(*) FILTER (WHERE status IN ('shipped', 'processing')) AS in_progress\nFROM orders\nWHERE order_date >= '2026-04-01'\nGROUP BY month\nORDER BY month;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "`COUNT(*) FILTER (WHERE status IN ('shipped', 'processing'))`."
+      ],
+      "explanation": "Всех заказов в июне лишь на 7% меньше, чем в мае, а 140 июньских заказов ещё в пути. Значит, большая часть «падения на 19%» — незрелый период: эти заказы станут доставленными в июле. Настоящий вопрос — откуда снижение на 7%, и сравнивать нужно, например, по всем оформленным заказам.",
+      "selfTest": {
+        "correct": [
+          "SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, COUNT(*) AS all_orders, SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS delivered, SUM(CASE WHEN status = 'shipped' OR status = 'processing' THEN 1 ELSE 0 END) AS in_progress FROM orders WHERE order_date >= '2026-04-01' GROUP BY 1 ORDER BY 1"
+        ],
+        "wrong": [
+          "SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, COUNT(*) AS all_orders, COUNT(*) FILTER (WHERE status = 'delivered') AS delivered, COUNT(*) FILTER (WHERE status <> 'delivered') AS in_progress FROM orders WHERE order_date >= '2026-04-01' GROUP BY 1 ORDER BY 1"
+        ]
+      }
+    },
+    {
+      "id": "case1-conclusion",
+      "title": "Кейс 1. Что ответить менеджеру",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Какой ответ менеджеру по кейсу 1 самый правильный?",
+      "options": [
+        {
+          "text": "«Падение на 19% в основном из-за того, что 140 июньских заказов ещё в доставке. По всем оформленным заказам снижение около 7% — его и будем разбирать»",
+          "correct": true,
+          "explain": "Сначала снят ложный сигнал из-за незрелых данных, потом названо реальное изменение и следующий шаг."
+        },
+        {
+          "text": "«Заказы упали на 19%, срочно нужна акция»",
+          "explain": "Вывод сделан по незрелым данным — акция может оказаться ненужной."
+        },
+        {
+          "text": "«Данные неправильные, отчёту нельзя верить»",
+          "explain": "Данные правильные, просто для свежего месяца статус «доставлен» ещё не у всех заказов. Важно правильно их читать."
+        },
+        {
+          "text": "«Ничего не изменилось»",
+          "explain": "Снижение на 7% по оформленным заказам всё же есть — его стоит разобрать."
+        }
+      ],
+      "hints": [
+        "Учти и незавершённые заказы, и реальное изменение."
+      ]
+    },
+    {
+      "id": "case2-lines",
+      "title": "Кейс 2. Выполнение плана по линиям",
+      "difficulty": 2,
+      "prompt": [
+        "Для первого полугодия 2026 (`prod_date >= '2026-01-01'`) посчитай по каждой линии:",
+        "- `fulfillment_pct` — выпуск / план × 100, округлить до 1 знака;",
+        "- `defect_pct` — брак / выпуск × 100, до 2 знаков;",
+        "- `avg_downtime` — средний простой смены в минутах, до 1 знака.",
+        "",
+        "Столбцы: `line_id`, `fulfillment_pct`, `defect_pct`, `avg_downtime`. Сортировка по выполнению плана — от худшего."
+      ],
+      "starter": "SELECT line_id,\n       \nFROM production\nWHERE prod_date >= '2026-01-01'\nGROUP BY line_id\nORDER BY fulfillment_pct;",
+      "solution": "SELECT line_id,\n       ROUND(100.0 * SUM(produced_units) / SUM(planned_units), 1) AS fulfillment_pct,\n       ROUND(100.0 * SUM(defect_units) / SUM(produced_units), 2) AS defect_pct,\n       ROUND(AVG(downtime_min), 1) AS avg_downtime\nFROM production\nWHERE prod_date >= '2026-01-01'\nGROUP BY line_id\nORDER BY fulfillment_pct;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Доли считай как отношение сумм, а не среднее отношений.",
+        "`AVG(downtime_min)` сам пропустит смены, где простой не записан."
+      ],
+      "explanation": "Линия 3 отстаёт от остальных сразу по двум причинам: простоев у неё в среднем вдвое больше, а брака — заметно больше. Рекомендация: начать с разбора причин простоев на линии 3 — это самая большая потеря.",
+      "selfTest": {
+        "correct": [
+          "SELECT line_id, ROUND(SUM(produced_units) * 100.0 / SUM(planned_units), 1) AS fulfillment_pct, ROUND(SUM(defect_units) * 100.0 / SUM(produced_units), 2) AS defect_pct, ROUND(SUM(downtime_min) / COUNT(downtime_min), 1) AS avg_downtime FROM production WHERE prod_date BETWEEN '2026-01-01' AND '2026-06-30' GROUP BY 1 ORDER BY 2"
+        ],
+        "wrong": [
+          "SELECT line_id, ROUND(100.0 * SUM(produced_units) / SUM(planned_units), 1) AS fulfillment_pct, ROUND(100.0 * SUM(defect_units) / SUM(produced_units), 2) AS defect_pct, ROUND(SUM(downtime_min) / COUNT(*), 1) AS avg_downtime FROM production WHERE prod_date >= '2026-01-01' GROUP BY 1 ORDER BY 2"
+        ]
+      }
+    },
+    {
+      "id": "case3-banner",
+      "title": "Кейс 3. Итоги эксперимента с баннером",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Подведи итоги эксперимента `banner_color` t-тестами Уэлча (B против A):",
+        "- целевая метрика — конверсия (`converted`);",
+        "- защитная — выручка на пользователя (`revenue`).",
+        "",
+        "В `result` положи список: `[разница конверсий в п. п. (B − A, ×100, до 2 знаков), p-value конверсии (до 3 знаков), разница ARPU (B − A, до 1 знака), p-value ARPU (до 3 знаков)]`."
+      ],
+      "starter": "from scipy import stats\n\nbn = ab_users[ab_users[\"experiment\"] == \"banner_color\"]\na = bn[bn[\"group_name\"] == \"A\"]\nb = bn[bn[\"group_name\"] == \"B\"]\n\nresult = ",
+      "solution": "from scipy import stats\n\nbn = ab_users[ab_users[\"experiment\"] == \"banner_color\"]\na = bn[bn[\"group_name\"] == \"A\"]\nb = bn[bn[\"group_name\"] == \"B\"]\n\np_conv = stats.ttest_ind(b[\"converted\"], a[\"converted\"], equal_var=False).pvalue\np_arpu = stats.ttest_ind(b[\"revenue\"], a[\"revenue\"], equal_var=False).pvalue\nresult = [\n    round((b[\"converted\"].mean() - a[\"converted\"].mean()) * 100, 2),\n    round(p_conv, 3),\n    round(b[\"revenue\"].mean() - a[\"revenue\"].mean(), 1),\n    round(p_arpu, 3),\n]",
+      "hints": [
+        "Два t-теста: по `converted` и по `revenue`.",
+        "Разница конверсий в процентных пунктах: `(b[\"converted\"].mean() - a[\"converted\"].mean()) * 100`."
+      ],
+      "explanation": "Конверсия выросла на какие-то доли пункта и незначимо, а выручка на пользователя даже снизилась. Решение по правилу: не раскатывать. Зато есть гипотеза: новый баннер привлекает внимание, но не к дорогим товарам.",
+      "selfTest": {
+        "correct": [
+          "from scipy.stats import ttest_ind\nbn = ab_users.query(\"experiment == 'banner_color'\")\nA = bn[bn.group_name == \"A\"]\nB = bn[bn.group_name == \"B\"]\nresult = [round(100 * (B.converted.mean() - A.converted.mean()), 2), round(ttest_ind(A.converted, B.converted, equal_var=False).pvalue, 3), round(B.revenue.mean() - A.revenue.mean(), 1), round(ttest_ind(A.revenue, B.revenue, equal_var=False).pvalue, 3)]"
+        ],
+        "wrong": [
+          "from scipy import stats\nbn = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\na = bn[bn[\"group_name\"] == \"A\"]\nb = bn[bn[\"group_name\"] == \"B\"]\nresult = [round((b.converted.mean() - a.converted.mean()) * 100, 2), round(stats.ttest_ind(b.converted, a.converted, equal_var=False).pvalue, 3), round(b.revenue.mean() - a.revenue.mean(), 1), round(stats.ttest_ind(b.revenue, a.revenue, equal_var=False).pvalue, 3)]"
+        ]
+      }
+    },
+    {
+      "id": "case3-decision",
+      "title": "Кейс 3. Решение",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "В эксперименте с баннером конверсия выросла на 0,13 п. п. (p ≈ 0,8), а выручка на пользователя снизилась на 13 ₽ (p ≈ 0,5). Правило решения: «раскатываем при значимом росте конверсии без значимого падения выручки». Что делаем?",
+      "options": [
+        {
+          "text": "Не раскатываем: рост конверсии не значим, правило не выполнено",
+          "correct": true,
+          "explain": "Разница в пределах случайного шума. Без значимого эффекта на целевую метрику раскатывать нечего — тем более что выручка не выросла."
+        },
+        {
+          "text": "Раскатываем: конверсия же выросла",
+          "explain": "Рост на 0,13 п. п. при p ≈ 0,8 — это шум. Цифра «выросла» здесь ничего не доказывает."
+        },
+        {
+          "text": "Раскатываем только на мобильных, вдруг там сработало",
+          "explain": "Выбор среза после теста — путь к случайным находкам. Это гипотеза для нового теста."
+        },
+        {
+          "text": "Продлеваем тест, пока не прокрасится",
+          "explain": "Это подглядывание. Длительность фиксируют заранее."
+        }
+      ],
+      "hints": [
+        "Выполнено ли правило решения, записанное до теста?"
+      ]
+    },
+    {
+      "id": "case4-churn",
+      "title": "Кейс 4. Ушедшие клиенты",
+      "difficulty": 3,
+      "prompt": [
+        "Определение: **ушедший клиент** сделал не меньше **двух доставленных** заказов, но последний доставленный заказ оформлен **раньше 1 апреля 2026**.",
+        "",
+        "Одной строкой выведи:",
+        "- `repeat_customers` — клиентов с двумя и более доставленными заказами;",
+        "- `churned` — из них ушедших;",
+        "- `churn_share_pct` — доля ушедших среди повторных, %, до 1 знака."
+      ],
+      "starter": "WITH c AS (\n    SELECT customer_id,\n           COUNT(*) AS orders,\n           MAX(order_date) AS last_order\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n)\nSELECT \nFROM c\nWHERE orders >= 2;",
+      "solution": "WITH c AS (\n    SELECT customer_id,\n           COUNT(*) AS orders,\n           MAX(order_date) AS last_order\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n)\nSELECT COUNT(*) AS repeat_customers,\n       COUNT(*) FILTER (WHERE last_order < '2026-04-01') AS churned,\n       ROUND(100.0 * COUNT(*) FILTER (WHERE last_order < '2026-04-01') / COUNT(*), 1) AS churn_share_pct\nFROM c\nWHERE orders >= 2;",
+      "checkColumnNames": true,
+      "hints": [
+        "Все повторные — `COUNT(*)` при условии `orders >= 2`.",
+        "Ушедшие — `COUNT(*) FILTER (WHERE last_order < '2026-04-01')`."
+      ],
+      "explanation": "Следующий шаг — понять, чем ушедшие отличаются от оставшихся: город, канал, средний чек, были ли у них отмены и возвраты. А список ушедших — готовая аудитория для кампании возврата, эффект которой стоит проверить A/B-тестом.",
+      "selfTest": {
+        "correct": [
+          "WITH c AS (SELECT customer_id, COUNT(*) AS n, MAX(order_date) AS last_order FROM orders WHERE status = 'delivered' GROUP BY 1 HAVING COUNT(*) >= 2) SELECT COUNT(*) AS repeat_customers, SUM(CASE WHEN last_order < DATE '2026-04-01' THEN 1 ELSE 0 END) AS churned, ROUND(100.0 * AVG(CASE WHEN last_order < DATE '2026-04-01' THEN 1 ELSE 0 END), 1) AS churn_share_pct FROM c"
+        ],
+        "wrong": [
+          "WITH c AS (SELECT customer_id, COUNT(*) AS n, MAX(order_date) AS last_order FROM orders GROUP BY 1 HAVING COUNT(*) >= 2) SELECT COUNT(*) AS repeat_customers, COUNT(*) FILTER (WHERE last_order < '2026-04-01') AS churned, ROUND(100.0 * COUNT(*) FILTER (WHERE last_order < '2026-04-01') / COUNT(*), 1) AS churn_share_pct FROM c"
+        ]
+      }
+    },
+    {
+      "id": "case-portfolio",
+      "title": "Оформи один кейс для портфолио",
+      "difficulty": 3,
+      "type": "checklist",
+      "prompt": "Выбери один из четырёх кейсов (или свой) и оформи его как проект для портфолио. Отмечай пункты по мере готовности.",
+      "items": [
+        "README: задача, данные, 3–5 выводов с цифрами и рекомендации",
+        "Раздел «Проверка данных»: что проверил(а) и что нашёл(ла)",
+        "Разложение метрики и шаги анализа — SQL-скрипты или ноутбук, которые выполняются сверху вниз",
+        "2–4 графика с заголовками-выводами",
+        "Ограничения анализа и что стоит проверить дальше",
+        "Опубликовал(а) на GitHub без секретов и личных данных"
+      ],
+      "hints": [
+        "Образец структуры README — в теме «Оформление и презентация»."
+      ]
+    }
+  ]
+}
