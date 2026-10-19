@@ -28,6 +28,8 @@ export interface MediaVideo {
   fmt?: string;
   /** Файл частично недокачан: примерно столько процентов пусто (местами может прерываться) */
   damaged?: number;
+  /** Длинный вебинар показан в этом уроке с нужного места: секунда, с которой начинать */
+  start?: number;
 }
 
 export type MediaDocKind = 'pdf' | 'doc' | 'slides' | 'notebook' | 'data' | 'code' | 'page' | 'text' | 'archive' | 'book' | 'other';

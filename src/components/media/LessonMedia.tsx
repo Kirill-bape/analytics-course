@@ -70,12 +70,16 @@ function Player({ video, onClose }: { video: MediaVideo; onClose: () => void }) 
     <div className="player card">
       <video
         ref={ref}
-        key={video.id + (local ? '-local' : '')}
+        key={video.id + (video.start ?? '') + (local ? '-local' : '')}
         src={local ?? fileUrl(video.id)}
         controls
         autoPlay
         playsInline
         preload="metadata"
+        onLoadedMetadata={(e) => {
+          // Вебинар добавлен в урок с нужной минуты — начинаем с неё
+          if (video.start && e.currentTarget.currentTime < 1) e.currentTarget.currentTime = video.start;
+        }}
         onError={() => setFailed(true)}
         onTimeUpdate={(e) => {
           const v = e.currentTarget;
@@ -188,8 +192,8 @@ function VideoGroups({ videos, topic, playing, setPlaying, firstOpen }: { videos
                 {list.map((v) => {
                   const w = watched[v.id] ?? 0;
                   return (
-                    <li key={v.id} className="video-item">
-                      <button type="button" className={`video-row${playing?.id === v.id ? ' active' : ''}`} onClick={() => setPlaying(v)}>
+                    <li key={`${v.id}-${v.start ?? 0}`} className="video-item">
+                      <button type="button" className={`video-row${playing?.id === v.id && playing.start === v.start ? ' active' : ''}`} onClick={() => setPlaying(v)}>
                         <span className={`video-thumb${w >= 1 ? ' watched' : ''}`} aria-hidden>
                           {w >= 1 ? <CircleCheck size={20} /> : <Play size={18} fill="currentColor" />}
                         </span>
@@ -197,6 +201,7 @@ function VideoGroups({ videos, topic, playing, setPlaying, firstOpen }: { videos
                           <span className="video-title">{v.title}</span>
                           <span className="video-meta">
                             {formatDuration(v.duration) || 'длительность уточняется'}
+                            {v.start ? ` · смотреть с ${formatDuration(v.start)}` : ''}
                             {v.chapters?.length ? ` · ${v.chapters.length} ${plural(v.chapters.length, 'раздел', 'раздела', 'разделов')}` : ''}
                             {off.saved[v.id] ? ' · на телефоне' : ''}
                             {v.damaged ? ' · файл частично повреждён, местами может прерываться' : ''}

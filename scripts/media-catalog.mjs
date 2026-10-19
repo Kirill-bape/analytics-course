@@ -50,6 +50,13 @@ if (existsSync(durFile)) {
 }
 const notesFile = join(config.data, 'video-notes.json');
 const notes = existsSync(notesFile) ? JSON.parse(readFileSync(notesFile, 'utf8')) : {};
+// Описания и таймкоды можно хранить и частями: data/notes/*.json — { "<id видео>": { … } }
+const notesDir = join(config.data, 'notes');
+if (existsSync(notesDir)) {
+  for (const f of readdirSync(notesDir).filter((n) => n.endsWith('.json')).sort()) {
+    Object.assign(notes, JSON.parse(readFileSync(join(notesDir, f), 'utf8')));
+  }
+}
 const transcriptsDir = join(config.data, 'transcripts');
 
 function transcriptDuration(id) {
@@ -133,6 +140,7 @@ const report = [];
 const unknownKeys = new Set();
 const courseStats = {};
 const damagedCount = {};
+const sortKey = new WeakMap();
 
 function lesson(key) {
   return (lessons[key] ??= { videos: [], theory: [], practice: [] });
@@ -154,6 +162,9 @@ for (const { rel, size } of all) {
     console.warn('Ошибка правила для', rel, e.message);
   }
   if (r && typeof r === 'string') r = { key: r };
+  // Заметка к видео (по расшифровке) может уточнить урок: разложить неразобранное или перенести
+  const noteLesson = notes[idOf(rel)]?.lesson;
+  if (noteLesson && (!r || r.key)) r = { ...(r ?? {}), key: noteLesson };
 
   if (!r) {
     report.push([rel, '', '', isVideo ? 'Видео' : 'Материал', 'НЕ РАЗОБРАНО — уточнить по расшифровке или содержимому']);
@@ -192,11 +203,21 @@ for (const { rel, size } of all) {
     const remuxed = existsSync(mp4);
     const fmt = ext === '.mp4' || ext === '.m4v' || remuxed ? 'mp4' : ext.replace('.', '');
     const item = { id, title: note.title ?? cleanTitle(file), course: courseName, tier: tier(courseName), section, duration, size: remuxed ? statSync(mp4).size : size, fmt };
+    // Порядок в уроке — по исходной нумерации файла в курсе, даже если название заменено
+    sortKey.set(item, `${section}/${cleanTitle(file)}`);
     if (share > 0.02) item.damaged = Math.round(share * 100);
     if (note.description) item.description = note.description;
     if (note.chapters?.length) item.chapters = note.chapters;
     lesson(r.key).videos.push(item);
-    files[id] = { path: rel, ...(VIDEO.has(ext) && ext !== '.mp4' && ext !== '.m4v' ? { mp4: `${id}.mp4` } : {}) };
+    // Длинный вебинар про несколько тем — показываем и в других уроках, с нужной минуты
+    for (const a of note.also ?? []) {
+      if (!lessonTitle[a.key]) unknownKeys.add(a.key);
+      const copy = { ...item, start: a.t, ...(a.title ? { title: a.title } : {}) };
+      sortKey.set(copy, sortKey.get(item));
+      lesson(a.key).videos.push(copy);
+      report.push([rel, moduleTitle[a.key.split('/')[0]] ?? a.key, lessonTitle[a.key] ?? a.key, 'Видео', `Также здесь, с ${Math.floor(a.t / 60)}-й минуты`]);
+    }
+    files[id] ={ path: rel, ...(VIDEO.has(ext) && ext !== '.mp4' && ext !== '.m4v' ? { mp4: `${id}.mp4` } : {}) };
     courseStats[courseName].videos += 1;
     courseStats[courseName].seconds += duration;
     report.push([rel, ...where, 'Видео', note.description ? 'Вписано, с описанием' + (note.chapters?.length ? ' и таймкодами' : '') : 'Вписано (описание будет по расшифровке)']);
@@ -225,7 +246,8 @@ const order = (c) => {
 const natural = (a, b) => a.localeCompare(b, 'ru', { numeric: true });
 for (const l of Object.values(lessons)) {
   for (const list of [l.videos, l.theory, l.practice]) {
-    list.sort((a, b) => order(a.course) - order(b.course) || natural(`${a.section}/${a.title}`, `${b.section}/${b.title}`));
+    const key = (x) => sortKey.get(x) ?? `${x.section}/${x.title}`;
+    list.sort((a, b) => order(a.course) - order(b.course) || natural(key(a), key(b)) || (a.start ?? 0) - (b.start ?? 0));
   }
 }
 
