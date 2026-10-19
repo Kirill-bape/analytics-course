@@ -1,0 +1,198 @@
+{
+  "tasks": [
+    {
+      "id": "vector-revenue",
+      "title": "Выручка без цикла",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Посчитай общую выручку по всем строкам `order_items` (количество × цена) **векторно**, без цикла: переведи столбцы в массивы NumPy, перемножь и сложи. Ответ — в `result`.",
+      "starter": "import numpy as np\n\nqty = order_items[\"quantity\"].to_numpy()\nprice = order_items[\"price\"].to_numpy()\nresult = ",
+      "solution": "import numpy as np\n\nqty = order_items[\"quantity\"].to_numpy()\nprice = order_items[\"price\"].to_numpy()\nresult = (qty * price).sum()",
+      "hints": [
+        "Массивы перемножаются поэлементно: `qty * price`.",
+        "`result = (qty * price).sum()`"
+      ],
+      "explanation": "То же самое умеет и pandas: `(order_items[\"quantity\"] * order_items[\"price\"]).sum()`. Под капотом это та же векторная операция NumPy.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\nresult = np.dot(order_items.quantity, order_items.price)"
+        ],
+        "wrong": [
+          "import numpy as np\nresult = order_items[\"price\"].to_numpy().sum()",
+          "import numpy as np\nresult = (order_items[\"quantity\"].to_numpy() + order_items[\"price\"].to_numpy()).sum()"
+        ]
+      }
+    },
+    {
+      "id": "where-top",
+      "title": "Метка через np.where",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "С помощью `np.where` пометь товары с рейтингом **от 4,7** как `\"топ\"`, остальные — `\"обычный\"`. В `result` положи число товаров каждого вида (`value_counts()`).",
+      "starter": "import numpy as np\n\nlabel = np.where()\nresult = pd.Series(label).value_counts()",
+      "solution": "import numpy as np\n\nlabel = np.where(products[\"rating\"] >= 4.7, \"топ\", \"обычный\")\nresult = pd.Series(label).value_counts()",
+      "hints": [
+        "`np.where(условие, если_да, если_нет)`.",
+        "`np.where(products[\"rating\"] >= 4.7, \"топ\", \"обычный\")`"
+      ],
+      "explanation": "Если у какого-то товара нет рейтинга (NaN), сравнение даст `False`, и товар попадёт в «обычные». Иногда это нормально, а иногда пропуски стоит пометить отдельно через `np.select`.",
+      "selfTest": {
+        "correct": [
+          "result = products.rating.ge(4.7).map({True: \"топ\", False: \"обычный\"}).value_counts()"
+        ],
+        "wrong": [
+          "import numpy as np\nresult = pd.Series(np.where(products[\"rating\"] > 4.7, \"топ\", \"обычный\")).value_counts()",
+          "import numpy as np\nresult = pd.Series(np.where(products[\"rating\"] >= 4.5, \"топ\", \"обычный\")).value_counts()"
+        ]
+      }
+    },
+    {
+      "id": "p90",
+      "title": "90-й процентиль чека",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Найди **90-й процентиль** суммы **доставленных** заказов: 90% заказов меньше этого значения. Округли до 2 знаков и положи в `result`.",
+      "starter": "import numpy as np\n\nx = orders.loc[orders[\"status\"] == \"delivered\", \"amount\"].to_numpy()\nresult = ",
+      "solution": "import numpy as np\n\nx = orders.loc[orders[\"status\"] == \"delivered\", \"amount\"].to_numpy()\nresult = round(np.percentile(x, 90), 2)",
+      "hints": [
+        "`np.percentile(массив, 90)`."
+      ],
+      "selfTest": {
+        "correct": [
+          "result = round(orders[orders.status == \"delivered\"].amount.quantile(0.9), 2)"
+        ],
+        "wrong": [
+          "import numpy as np\nresult = round(np.percentile(orders[\"amount\"], 90), 2)",
+          "import numpy as np\nx = orders.loc[orders[\"status\"] == \"delivered\", \"amount\"]\nresult = round(np.percentile(x, 10), 2)"
+        ]
+      }
+    },
+    {
+      "id": "mask-share",
+      "title": "Доля по маске",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Среди **доставленных** заказов какая доля приходится на заказы **от 20 000 ₽**? И какая доля **выручки** на них приходится? Положи в `result` список из двух долей, каждую округли до 4 знаков.",
+      "starter": "import numpy as np\n\nx = orders.loc[orders[\"status\"] == \"delivered\", \"amount\"].to_numpy()\nbig = x >= 20000\nresult = [, ]",
+      "solution": "import numpy as np\n\nx = orders.loc[orders[\"status\"] == \"delivered\", \"amount\"].to_numpy()\nbig = x >= 20000\nresult = [round(big.mean(), 4), round(x[big].sum() / x.sum(), 4)]",
+      "hints": [
+        "Доля заказов — среднее маски: `big.mean()` (True считается как 1).",
+        "Доля выручки: `x[big].sum() / x.sum()`."
+      ],
+      "explanation": "Обычно небольшая доля крупных заказов даёт непропорционально большую долю выручки. Это повод отдельно смотреть на крупных клиентов.",
+      "selfTest": {
+        "correct": [
+          "d = orders[orders.status == \"delivered\"].amount\nresult = [round((d >= 20000).sum() / len(d), 4), round(d[d >= 20000].sum() / d.sum(), 4)]"
+        ],
+        "wrong": [
+          "import numpy as np\nx = orders[\"amount\"].to_numpy()\nbig = x >= 20000\nresult = [round(big.mean(), 4), round(x[big].sum() / x.sum(), 4)]",
+          "import numpy as np\nx = orders.loc[orders[\"status\"] == \"delivered\", \"amount\"].to_numpy()\nbig = x > 20000\nresult = [round(big.mean(), 4), round(big.sum() / x.sum(), 4)]"
+        ]
+      }
+    },
+    {
+      "id": "dice-sim",
+      "title": "Симуляция: хотя бы одна шестёрка",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Симуляцией оцени вероятность того, что в **4 бросках** кубика выпадет **хотя бы одна шестёрка**.",
+        "",
+        "Сделай 100 000 опытов (`rng.integers(1, 7, size=(100_000, 4))`), найди долю опытов с шестёркой и положи в `result`, округлив до **2** знаков."
+      ],
+      "starter": "import numpy as np\n\nrng = np.random.default_rng(0)\nrolls = rng.integers(1, 7, size=(100_000, 4))\nresult = ",
+      "solution": "import numpy as np\n\nrng = np.random.default_rng(0)\nrolls = rng.integers(1, 7, size=(100_000, 4))\nresult = round((rolls == 6).any(axis=1).mean(), 2)",
+      "hints": [
+        "`rolls == 6` — маска той же формы. В каждой строке нужна хотя бы одна шестёрка: `.any(axis=1)`.",
+        "Доля True — `.mean()`."
+      ],
+      "explanation": "Точный ответ: 1 − (5/6)⁴ ≈ 0,518. Симуляция дала почти то же самое, хотя формулу мы не выводили. Так проверяют и сложные вещи, где формулы нет вовсе.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\nrng = np.random.default_rng(123)\nr = rng.integers(1, 7, size=(100000, 4))\nresult = round(((r == 6).sum(axis=1) > 0).mean(), 2)"
+        ],
+        "wrong": [
+          "import numpy as np\nrng = np.random.default_rng(0)\nr = rng.integers(1, 7, size=(100000, 4))\nresult = round((r == 6).all(axis=1).mean(), 2)",
+          "import numpy as np\nrng = np.random.default_rng(0)\nr = rng.integers(1, 7, size=(100000, 4))\nresult = round((r == 6).mean(), 2)"
+        ]
+      }
+    },
+    {
+      "id": "bootstrap-p90",
+      "title": "Бутстрап для процентиля",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Построй бутстрапом 95%-й доверительный интервал для **90-го процентиля** суммы доставленных заказов. В заготовке уже есть генератор и цикл на 500 повторов, допиши расчёт статистики для каждой выборки.",
+        "",
+        "В `result` положи список `[нижняя граница, верхняя граница]`, каждую округли до целого."
+      ],
+      "starter": "import numpy as np\n\nrng = np.random.default_rng(7)\nx = orders.loc[orders[\"status\"] == \"delivered\", \"amount\"].to_numpy()\n\nstats_ = []\nfor _ in range(500):\n    sample = rng.choice(x, size=len(x), replace=True)\n    stats_.append()\n\nlow, high = np.percentile(stats_, [2.5, 97.5])\nresult = [round(low), round(high)]",
+      "solution": "import numpy as np\n\nrng = np.random.default_rng(7)\nx = orders.loc[orders[\"status\"] == \"delivered\", \"amount\"].to_numpy()\n\nstats_ = []\nfor _ in range(500):\n    sample = rng.choice(x, size=len(x), replace=True)\n    stats_.append(np.percentile(sample, 90))\n\nlow, high = np.percentile(stats_, [2.5, 97.5])\nresult = [round(low), round(high)]",
+      "hints": [
+        "В цикле для каждой выборки считаем ту же статистику, что и для исходных данных: `np.percentile(sample, 90)`."
+      ],
+      "explanation": "Интервал показывает, насколько «шумит» 90-й процентиль на выборке такого размера. Для хвостовых статистик формулы сложны, а бутстрап работает одинаково для любой.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\nrng = np.random.default_rng(7)\nx = orders.loc[orders[\"status\"] == \"delivered\", \"amount\"].to_numpy()\nres = []\nfor i in range(500):\n    s = rng.choice(x, size=len(x), replace=True)\n    res.append(np.quantile(s, 0.9))\nresult = [round(v) for v in np.percentile(res, [2.5, 97.5])]"
+        ],
+        "wrong": [
+          "import numpy as np\nrng = np.random.default_rng(7)\nx = orders.loc[orders[\"status\"] == \"delivered\", \"amount\"].to_numpy()\nres = []\nfor i in range(500):\n    s = rng.choice(x, size=len(x), replace=True)\n    res.append(np.median(s))\nresult = [round(v) for v in np.percentile(res, [2.5, 97.5])]"
+        ]
+      }
+    },
+    {
+      "id": "norm-tail",
+      "title": "Хвост нормального распределения",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Время сборки заказа на складе распределено примерно нормально: среднее **42** минуты, стандартное отклонение **9** минут. Какая доля заказов собирается **дольше часа**? Положи в `result`, округлив до 4 знаков.",
+      "starter": "from scipy import stats\n\nresult = ",
+      "solution": "from scipy import stats\n\nresult = round(stats.norm.sf(60, loc=42, scale=9), 4)",
+      "hints": [
+        "«Больше x» — это `sf` (1 − cdf).",
+        "`stats.norm.sf(60, loc=42, scale=9)`"
+      ],
+      "explanation": "60 минут — это (60 − 42) / 9 = 2 стандартных отклонения выше среднего. По правилу 68–95–99,7 выше +2σ лежит около 2,3% значений.",
+      "selfTest": {
+        "correct": [
+          "from scipy import stats\nresult = round(1 - stats.norm.cdf((60 - 42) / 9), 4)"
+        ],
+        "wrong": [
+          "from scipy import stats\nresult = round(stats.norm.cdf(60, loc=42, scale=9), 4)",
+          "from scipy import stats\nresult = round(stats.norm.sf(60, loc=42, scale=81), 4)"
+        ]
+      }
+    },
+    {
+      "id": "axis-quiz",
+      "title": "axis=0 или axis=1",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Массив `sales` размером 12 × 5: 12 строк — месяцы, 5 столбцов — магазины. Как получить **выручку каждого магазина за год**?",
+      "options": [
+        {
+          "text": "`sales.sum(axis=0)` — сложить вдоль строк, по каждому столбцу",
+          "correct": true,
+          "explain": "`axis=0` схлопывает строки: для каждого из 5 столбцов складываются 12 месяцев. Получится 5 чисел."
+        },
+        {
+          "text": "`sales.sum(axis=1)`",
+          "explain": "Это сумма по каждой строке — выручка всех магазинов за каждый месяц, 12 чисел."
+        },
+        {
+          "text": "`sales.sum()`",
+          "explain": "Без `axis` получится одно число — выручка всех магазинов за весь год."
+        },
+        {
+          "text": "`sales.mean(axis=0)`",
+          "explain": "Это средняя месячная выручка магазина, а не годовая."
+        }
+      ],
+      "hints": [
+        "`axis` — направление, **вдоль** которого идёт сложение. Какое измерение должно исчезнуть: месяцы или магазины?"
+      ]
+    }
+  ]
+}

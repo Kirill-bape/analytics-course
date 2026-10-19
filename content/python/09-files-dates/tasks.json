@@ -1,0 +1,200 @@
+{
+  "tasks": [
+    {
+      "id": "russian-csv",
+      "title": "Выгрузка из русского Excel",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "В переменной `text` — выгрузка из Excel: столбцы разделены точкой с запятой, дроби записаны через запятую. Прочитай её в таблицу и положи в `result` **сумму выручки**, округлённую до 2 знаков.",
+      "starter": "import io\n\ntext = \"\"\"Дата;Город;Выручка\n05.03.2026;Москва;125000,50\n05.03.2026;Казань;48200,00\n06.03.2026;Москва;131990,90\n06.03.2026;Пермь;27450,30\n07.03.2026;Казань;51900,00\"\"\"\n\ndf = pd.read_csv(io.StringIO(text))\nresult = ",
+      "solution": "import io\n\ntext = \"\"\"Дата;Город;Выручка\n05.03.2026;Москва;125000,50\n05.03.2026;Казань;48200,00\n06.03.2026;Москва;131990,90\n06.03.2026;Пермь;27450,30\n07.03.2026;Казань;51900,00\"\"\"\n\ndf = pd.read_csv(io.StringIO(text), sep=\";\", decimal=\",\")\nresult = round(df[\"Выручка\"].sum(), 2)",
+      "hints": [
+        "Нужны два параметра: `sep=\";\"` и `decimal=\",\"`.",
+        "Без `decimal=\",\"` выручка прочитается как текст, и суммировать её не получится."
+      ],
+      "selfTest": {
+        "correct": [
+          "import io\ntext = \"\"\"Дата;Город;Выручка\n05.03.2026;Москва;125000,50\n05.03.2026;Казань;48200,00\n06.03.2026;Москва;131990,90\n06.03.2026;Пермь;27450,30\n07.03.2026;Казань;51900,00\"\"\"\ndf = pd.read_csv(io.StringIO(text), delimiter=\";\", decimal=\",\")\nresult = round(float(df.iloc[:, 2].sum()), 2)"
+        ],
+        "wrong": [
+          "import io\ntext = \"\"\"Дата;Город;Выручка\n05.03.2026;Москва;125000,50\n05.03.2026;Казань;48200,00\n06.03.2026;Москва;131990,90\n06.03.2026;Пермь;27450,30\n07.03.2026;Казань;51900,00\"\"\"\ndf = pd.read_csv(io.StringIO(text), sep=\";\")\nresult = round(df[\"Выручка\"].str.replace(\",\", \"\").astype(float).sum(), 2)"
+        ]
+      }
+    },
+    {
+      "id": "parse-dates",
+      "title": "Текст в даты",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "В списке `raw` — даты в формате «день.месяц.год». Преврати их в настоящие даты и положи в `result` **число дней** между самой ранней и самой поздней датой."
+      ],
+      "starter": "raw = pd.Series([\"05.03.2026\", \"28.02.2026\", \"31.12.2025\", \"01.06.2026\", \"15.01.2026\"])\n\ndates = \nresult = ",
+      "solution": "raw = pd.Series([\"05.03.2026\", \"28.02.2026\", \"31.12.2025\", \"01.06.2026\", \"15.01.2026\"])\n\ndates = pd.to_datetime(raw, format=\"%d.%m.%Y\")\nresult = (dates.max() - dates.min()).days",
+      "hints": [
+        "`pd.to_datetime(raw, format=\"%d.%m.%Y\")` — день, месяц, год.",
+        "Разница двух дат — интервал, число дней в нём — `.days`."
+      ],
+      "explanation": "Без `format` pandas прочитал бы `05.03.2026` как 3 мая: по умолчанию он ждёт американский порядок «месяц/день». Явный формат или `dayfirst=True` спасают от этой путаницы.",
+      "selfTest": {
+        "correct": [
+          "raw = pd.Series([\"05.03.2026\", \"28.02.2026\", \"31.12.2025\", \"01.06.2026\", \"15.01.2026\"])\nd = pd.to_datetime(raw, dayfirst=True)\nresult = int((d.max() - d.min()) / pd.Timedelta(days=1))"
+        ],
+        "wrong": [
+          "raw = pd.Series([\"05.03.2026\", \"28.02.2026\", \"31.12.2025\", \"01.06.2026\", \"15.01.2026\"])\nd = pd.to_datetime(raw, format=\"%m.%d.%Y\", errors=\"coerce\")\nresult = (d.max() - d.min()).days"
+        ]
+      }
+    },
+    {
+      "id": "delivery-days",
+      "title": "Сколько дней едет заказ",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Для **доставленных** заказов посчитай, сколько дней прошло от оформления (`order_date`) до доставки (`delivery_date`). В `result` положи **среднее** число дней по каждому способу оплаты, округлённое до 2 знаков.",
+      "starter": "d = orders[orders[\"status\"] == \"delivered\"].copy()\nd[\"days\"] = \n\nresult = ",
+      "solution": "d = orders[orders[\"status\"] == \"delivered\"].copy()\nd[\"days\"] = (d[\"delivery_date\"] - d[\"order_date\"]).dt.days\n\nresult = d.groupby(\"payment_method\")[\"days\"].mean().round(2)",
+      "hints": [
+        "Разница столбцов-дат и `.dt.days`: `(d[\"delivery_date\"] - d[\"order_date\"]).dt.days`.",
+        "Дальше обычная группировка: `d.groupby(\"payment_method\")[\"days\"].mean().round(2)`."
+      ],
+      "selfTest": {
+        "correct": [
+          "d = orders.query(\"status == 'delivered'\")\ndays = (d.delivery_date - d.order_date).dt.days\nresult = days.groupby(d.payment_method).mean().round(2)"
+        ],
+        "wrong": [
+          "d = orders.copy()\nd[\"days\"] = (d[\"delivery_date\"] - d[\"order_date\"]).dt.days\nresult = d.groupby(\"payment_method\")[\"days\"].mean().round(2)",
+          "d = orders[orders[\"status\"] == \"delivered\"].copy()\nd[\"days\"] = (d[\"delivery_date\"] - d[\"order_date\"]).dt.days\nresult = d.groupby(\"payment_method\")[\"days\"].median().round(2)"
+        ]
+      }
+    },
+    {
+      "id": "weekday-orders",
+      "title": "Заказы по дням недели",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Посчитай, сколько заказов оформлено в каждый день недели. В `result` положи число заказов по номеру дня (`dt.dayofweek`: 0 — понедельник), **отсортированное по номеру дня**.",
+      "starter": "result = ",
+      "solution": "result = orders[\"order_date\"].dt.dayofweek.value_counts().sort_index()",
+      "orderMatters": true,
+      "hints": [
+        "Номер дня недели — `orders[\"order_date\"].dt.dayofweek`.",
+        "Посчитай `value_counts()` и отсортируй по индексу: `.sort_index()`."
+      ],
+      "selfTest": {
+        "correct": [
+          "result = orders.groupby(orders.order_date.dt.dayofweek).size()"
+        ],
+        "wrong": [
+          "result = orders[\"order_date\"].dt.dayofweek.value_counts()",
+          "result = orders[\"order_date\"].dt.day.value_counts().sort_index()"
+        ]
+      }
+    },
+    {
+      "id": "resample-month",
+      "title": "Выручка по месяцам через resample",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Через `resample` посчитай выручку **доставленных** заказов по месяцам за **первое полугодие 2026** (январь–июнь). Положи в `result` ряд из 6 значений с метками — первыми числами месяцев (`\"MS\"`).",
+      "starter": "d = orders[(orders[\"status\"] == \"delivered\") & (orders[\"order_date\"] >= \"2026-01-01\")]\nresult = ",
+      "solution": "d = orders[(orders[\"status\"] == \"delivered\") & (orders[\"order_date\"] >= \"2026-01-01\")]\nresult = d.set_index(\"order_date\")[\"amount\"].resample(\"MS\").sum()",
+      "orderMatters": true,
+      "hints": [
+        "`resample` работает с датой в индексе: `d.set_index(\"order_date\")`.",
+        "`…[\"amount\"].resample(\"MS\").sum()`"
+      ],
+      "selfTest": {
+        "correct": [
+          "d = orders.query(\"status == 'delivered' and order_date >= '2026-01-01'\")\nresult = d.resample(\"MS\", on=\"order_date\")[\"amount\"].sum()"
+        ],
+        "wrong": [
+          "d = orders[orders[\"order_date\"] >= \"2026-01-01\"]\nresult = d.set_index(\"order_date\")[\"amount\"].resample(\"MS\").sum()",
+          "d = orders[(orders[\"status\"] == \"delivered\") & (orders[\"order_date\"] >= \"2026-01-01\")]\nresult = d.set_index(\"order_date\")[\"amount\"].resample(\"MS\").mean()"
+        ]
+      }
+    },
+    {
+      "id": "csv-roundtrip",
+      "title": "Сохранить и прочитать обратно",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Сохрани **доставленные заказы июня 2026** в файл `june.csv` в «русском» формате: разделитель `;`, дробная часть через запятую (`decimal=\",\"`), без индекса.",
+        "",
+        "Потом прочитай файл обратно и положи в `result` сумму столбца `amount` из **прочитанной** таблицы, округлённую до 2 знаков."
+      ],
+      "starter": "june = orders[(orders[\"status\"] == \"delivered\") & (orders[\"order_date\"] >= \"2026-06-01\")]\njune.to_csv(\"june.csv\", )\n\nback = pd.read_csv(\"june.csv\", )\nresult = ",
+      "solution": "june = orders[(orders[\"status\"] == \"delivered\") & (orders[\"order_date\"] >= \"2026-06-01\")]\njune.to_csv(\"june.csv\", sep=\";\", decimal=\",\", index=False)\n\nback = pd.read_csv(\"june.csv\", sep=\";\", decimal=\",\")\nresult = round(back[\"amount\"].sum(), 2)",
+      "hints": [
+        "При записи: `to_csv(\"june.csv\", sep=\";\", decimal=\",\", index=False)`.",
+        "Читать нужно с теми же параметрами: `read_csv(\"june.csv\", sep=\";\", decimal=\",\")`. Иначе дроби прочитаются как текст."
+      ],
+      "explanation": "Если прочитать файл без `decimal=\",\"`, значения вроде `737,1` станут текстом. Это частая причина ошибки «нельзя сложить строку с числом» при работе с выгрузками.",
+      "selfTest": {
+        "correct": [
+          "j = orders.query(\"status == 'delivered' and order_date >= '2026-06-01'\")\nj.to_csv(\"j.csv\", sep=\";\", decimal=\",\", index=False)\nresult = round(pd.read_csv(\"j.csv\", sep=\";\", decimal=\",\").amount.sum(), 2)"
+        ],
+        "wrong": [
+          "june = orders[orders[\"order_date\"] >= \"2026-06-01\"]\njune.to_csv(\"june.csv\", sep=\";\", decimal=\",\", index=False)\nresult = round(pd.read_csv(\"june.csv\", sep=\";\", decimal=\",\")[\"amount\"].sum(), 2)"
+        ]
+      }
+    },
+    {
+      "id": "month-report",
+      "title": "Отчёт по месяцам одной функцией",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Допиши функцию `month_report(df, month)`: для периода `month` возвращает словарь с ключами `month` (строка вида `\"2026-01\"`), `orders` (число **доставленных** заказов) и `revenue` (их сумма, округлённая до целого).",
+        "",
+        "Собери отчёт за январь–июнь 2026 в таблицу и положи её в `result`."
+      ],
+      "starter": "def month_report(df, month):\n    part = df[(df[\"order_date\"].dt.to_period(\"M\") == month) & (df[\"status\"] == \"delivered\")]\n    return {}\n\nmonths = pd.period_range(\"2026-01\", \"2026-06\", freq=\"M\")\nresult = pd.DataFrame([month_report(orders, m) for m in months])",
+      "solution": "def month_report(df, month):\n    part = df[(df[\"order_date\"].dt.to_period(\"M\") == month) & (df[\"status\"] == \"delivered\")]\n    return {\"month\": str(month), \"orders\": len(part), \"revenue\": round(part[\"amount\"].sum())}\n\nmonths = pd.period_range(\"2026-01\", \"2026-06\", freq=\"M\")\nresult = pd.DataFrame([month_report(orders, m) for m in months])",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Словарь: `{\"month\": str(month), \"orders\": len(part), \"revenue\": round(part[\"amount\"].sum())}`.",
+        "Цикл уже написан в последней строке: функция вызывается для каждого месяца, и из списка словарей получается таблица."
+      ],
+      "explanation": "Поменяй диапазон в `period_range` — и получишь отчёт за любой период без правок функции. Так и выглядит автоматизация: логика в одном месте, параметры снаружи.",
+      "selfTest": {
+        "correct": [
+          "d = orders[orders.status == \"delivered\"].copy()\nd[\"m\"] = d.order_date.dt.to_period(\"M\").astype(str)\ng = d[d.m >= \"2026-01\"].groupby(\"m\").agg(orders=(\"order_id\", \"count\"), revenue=(\"amount\", \"sum\")).reset_index().rename(columns={\"m\": \"month\"})\ng[\"revenue\"] = g[\"revenue\"].round().astype(int)\nresult = g"
+        ],
+        "wrong": [
+          "def month_report(df, month):\n    part = df[df[\"order_date\"].dt.to_period(\"M\") == month]\n    return {\"month\": str(month), \"orders\": len(part), \"revenue\": round(part[\"amount\"].sum())}\nmonths = pd.period_range(\"2026-01\", \"2026-06\", freq=\"M\")\nresult = pd.DataFrame([month_report(orders, m) for m in months])"
+        ]
+      }
+    },
+    {
+      "id": "dayfirst",
+      "title": "05.03 — это март или май?",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "В выгрузке из русской CRM дата записана как `05.03.2026`. Аналитик прочитал столбец через `pd.to_datetime(s)` без параметров и получил много заказов в мае, хотя акция шла в марте. Что исправить?",
+      "options": [
+        {
+          "text": "Указать формат: `pd.to_datetime(s, format=\"%d.%m.%Y\")` или `dayfirst=True`",
+          "correct": true,
+          "explain": "По умолчанию pandas читает такие даты как «месяц.день», поэтому 5 марта превратилось в 3 мая. Явный формат убирает двусмысленность."
+        },
+        {
+          "text": "Ничего: pandas всегда правильно угадывает формат",
+          "explain": "Угадывает не всегда: `05.03` подходит под оба порядка, и pandas выберет американский."
+        },
+        {
+          "text": "Сохранить даты как текст и не превращать их",
+          "explain": "Тогда с датами нельзя будет работать: группировать по месяцам, считать разницу."
+        },
+        {
+          "text": "Поменять местами столбцы в файле",
+          "explain": "Дело не в столбцах, а в порядке дня и месяца внутри даты."
+        }
+      ],
+      "hints": [
+        "В США пишут «месяц/день/год». Какой порядок pandas ждёт по умолчанию?"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "tasks": [
+    {
+      "id": "default-arg",
+      "title": "Скидка по умолчанию",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": [
+        "Напиши функцию `price_with_discount(price, pct=10)`: возвращает цену после скидки `pct` процентов, округлённую до 2 знаков.",
+        "",
+        "В `result` положи список из двух вызовов: цена **4 990** со скидкой по умолчанию и та же цена со скидкой **25%**."
+      ],
+      "starter": "def price_with_discount(price, pct=10):\n    return \n\nresult = [price_with_discount(4990), ]",
+      "solution": "def price_with_discount(price, pct=10):\n    return round(price * (1 - pct / 100), 2)\n\nresult = [price_with_discount(4990), price_with_discount(4990, 25)]",
+      "hints": [
+        "Цена после скидки: `price * (1 - pct / 100)`.",
+        "Второй вызов: `price_with_discount(4990, 25)` или `price_with_discount(4990, pct=25)`."
+      ],
+      "selfTest": {
+        "correct": [
+          "def price_with_discount(price, pct=10):\n    return round(price - price * pct / 100, 2)\nresult = [price_with_discount(4990), price_with_discount(pct=25, price=4990)]"
+        ],
+        "wrong": [
+          "def price_with_discount(price, pct=10):\n    return round(price * pct / 100, 2)\nresult = [price_with_discount(4990), price_with_discount(4990, 25)]",
+          "def price_with_discount(price, pct=25):\n    return round(price * (1 - pct / 100), 2)\nresult = [price_with_discount(4990), price_with_discount(4990, 25)]"
+        ]
+      }
+    },
+    {
+      "id": "return-many",
+      "title": "Три числа из одной функции",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Напиши функцию `amount_stats(series)`, которая возвращает **три** значения: минимум, максимум и среднее (среднее округли до 2 знаков).",
+        "",
+        "Вызови её для сумм **доставленных** заказов и положи в `result` кортеж из трёх чисел."
+      ],
+      "starter": "def amount_stats(series):\n    return \n\ndelivered = orders[orders[\"status\"] == \"delivered\"]\nresult = amount_stats(delivered[\"amount\"])",
+      "solution": "def amount_stats(series):\n    return series.min(), series.max(), round(series.mean(), 2)\n\ndelivered = orders[orders[\"status\"] == \"delivered\"]\nresult = amount_stats(delivered[\"amount\"])",
+      "hints": [
+        "Несколько значений возвращаются через запятую: `return a, b, c`.",
+        "`return series.min(), series.max(), round(series.mean(), 2)`"
+      ],
+      "selfTest": {
+        "correct": [
+          "def amount_stats(s):\n    lo = s.min()\n    hi = s.max()\n    avg = round(s.mean(), 2)\n    return (lo, hi, avg)\nresult = amount_stats(orders.loc[orders.status == \"delivered\", \"amount\"])"
+        ],
+        "wrong": [
+          "def amount_stats(s):\n    return s.min(), s.max(), round(s.mean(), 2)\nresult = amount_stats(orders[\"amount\"])",
+          "def amount_stats(s):\n    return s.min(), s.max(), round(s.median(), 2)\nresult = amount_stats(orders.loc[orders.status == \"delivered\", \"amount\"])"
+        ]
+      }
+    },
+    {
+      "id": "print-vs-return",
+      "title": "Почему result пустой",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Новичок написал:\n\n```py\ndef revenue(df):\n    print(df[\"amount\"].sum())\n\nresult = revenue(orders)\n```\n\nНа экране появилось правильное число, но проверка говорит, что в `result` ничего нет. Почему?",
+      "options": [
+        {
+          "text": "Функция только печатает число, но не возвращает его: нужен `return`",
+          "correct": true,
+          "explain": "Без `return` функция отдаёт `None`. Исправление: `return df[\"amount\"].sum()`."
+        },
+        {
+          "text": "Нужно писать `result == revenue(orders)`",
+          "explain": "`==` — это сравнение, а для присваивания нужен один знак `=`. Он здесь как раз верный."
+        },
+        {
+          "text": "print нельзя использовать внутри функций",
+          "explain": "Можно, но print только показывает значение, а не отдаёт его наружу."
+        },
+        {
+          "text": "Функция должна называться result",
+          "explain": "Имя функции может быть любым."
+        }
+      ],
+      "hints": [
+        "Что функция **отдаёт** наружу, если в ней нет `return`?"
+      ]
+    },
+    {
+      "id": "lambda-segment",
+      "title": "Сегменты через lambda",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "С помощью `apply` и `lambda` раздели заказы на сегменты по сумме: от **10 000** — `\"крупный\"`, от **3 000** — `\"средний\"`, иначе — `\"малый\"`.",
+        "",
+        "В `result` положи число заказов в каждом сегменте (`value_counts()`)."
+      ],
+      "starter": "segment = lambda a: \n\nresult = orders[\"amount\"].apply(segment).value_counts()",
+      "solution": "segment = lambda a: \"крупный\" if a >= 10000 else (\"средний\" if a >= 3000 else \"малый\")\n\nresult = orders[\"amount\"].apply(segment).value_counts()",
+      "hints": [
+        "В lambda можно вложить одно условное выражение в другое: `\"A\" if … else (\"B\" if … else \"C\")`.",
+        "`lambda a: \"крупный\" if a >= 10000 else (\"средний\" if a >= 3000 else \"малый\")`"
+      ],
+      "explanation": "Если lambda становится длинной, лучше обычная функция через `def`: её проще читать и проверять. А для скорости на больших данных — `pd.cut(orders[\"amount\"], [0, 3000, 10000, float(\"inf\")], right=False, labels=[…])`.",
+      "selfTest": {
+        "correct": [
+          "def seg(a):\n    if a >= 10000:\n        return \"крупный\"\n    if a >= 3000:\n        return \"средний\"\n    return \"малый\"\nresult = orders.amount.apply(seg).value_counts()"
+        ],
+        "wrong": [
+          "segment = lambda a: \"крупный\" if a > 10000 else (\"средний\" if a > 3000 else \"малый\")\nresult = orders[\"amount\"].apply(segment).value_counts().head(2)",
+          "segment = lambda a: \"крупный\" if a >= 10000 else \"малый\"\nresult = orders[\"amount\"].apply(segment).value_counts()"
+        ]
+      }
+    },
+    {
+      "id": "apply-rows",
+      "title": "Функция для строки",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Напиши функцию `delivery_label(row)` для строки таблицы `orders`:",
+        "- если статус не `\"delivered\"` — `\"не доставлен\"`;",
+        "- если доставили за **3 дня или быстрее** (разница `delivery_date − order_date`) — `\"быстро\"`;",
+        "- иначе — `\"долго\"`.",
+        "",
+        "Примени её к каждой строке (`axis=1`) и положи в `result` число заказов каждого вида (`value_counts()`)."
+      ],
+      "starter": "def delivery_label(row):\n    if row[\"status\"] != \"delivered\":\n        return \"не доставлен\"\n    days = \n    \n\nresult = orders.apply(delivery_label, axis=1).value_counts()",
+      "solution": "def delivery_label(row):\n    if row[\"status\"] != \"delivered\":\n        return \"не доставлен\"\n    days = (row[\"delivery_date\"] - row[\"order_date\"]).days\n    return \"быстро\" if days <= 3 else \"долго\"\n\nresult = orders.apply(delivery_label, axis=1).value_counts()",
+      "hints": [
+        "Разница двух дат — это `Timedelta`. Число дней — `.days`: `(row[\"delivery_date\"] - row[\"order_date\"]).days`.",
+        "Последняя строка функции: `return \"быстро\" if days <= 3 else \"долго\"`."
+      ],
+      "explanation": "Векторный вариант без `apply` работает в десятки раз быстрее: посчитать `days = (orders[\"delivery_date\"] - orders[\"order_date\"]).dt.days`, а метки поставить через `np.select`. На 15 тысячах строк разницы почти не видно, на миллионах она огромная.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\ndays = (orders.delivery_date - orders.order_date).dt.days\nlab = np.select([orders.status != \"delivered\", days <= 3], [\"не доставлен\", \"быстро\"], \"долго\")\nresult = pd.Series(lab).value_counts()"
+        ],
+        "wrong": [
+          "def f(row):\n    if row[\"status\"] != \"delivered\":\n        return \"не доставлен\"\n    days = (row[\"delivery_date\"] - row[\"order_date\"]).days\n    return \"быстро\" if days < 3 else \"долго\"\nresult = orders.apply(f, axis=1).value_counts()"
+        ]
+      }
+    },
+    {
+      "id": "class-report",
+      "title": "Свой класс отчёта",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Допиши класс `Report`: метод `total()` возвращает сумму столбца `amount` в `self.data`, а метод `avg_check()` — средний чек (сумма, делённая на число строк), округлённый до 2 знаков.",
+        "",
+        "Создай отчёт по **доставленным заказам июня 2026** и положи в `result` список `[report.total(), report.avg_check()]`."
+      ],
+      "starter": "class Report:\n    def __init__(self, title, data):\n        self.title = title\n        self.data = data\n\n    def total(self):\n        return \n\n    def avg_check(self):\n        return \n\n\njune = orders[(orders[\"status\"] == \"delivered\") & (orders[\"order_date\"] >= \"2026-06-01\")]\nreport = Report(\"Июнь 2026\", june)\nresult = [report.total(), report.avg_check()]",
+      "solution": "class Report:\n    def __init__(self, title, data):\n        self.title = title\n        self.data = data\n\n    def total(self):\n        return self.data[\"amount\"].sum()\n\n    def avg_check(self):\n        return round(self.total() / len(self.data), 2)\n\n\njune = orders[(orders[\"status\"] == \"delivered\") & (orders[\"order_date\"] >= \"2026-06-01\")]\nreport = Report(\"Июнь 2026\", june)\nresult = [report.total(), report.avg_check()]",
+      "hints": [
+        "Внутри методов данные отчёта доступны через `self.data`.",
+        "Средний чек: `round(self.total() / len(self.data), 2)` — один метод может вызывать другой через `self`."
+      ],
+      "selfTest": {
+        "correct": [
+          "class Report:\n    def __init__(self, title, data):\n        self.title, self.data = title, data\n    def total(self):\n        return float(self.data.amount.sum())\n    def avg_check(self):\n        return round(self.data.amount.mean(), 2)\nd = orders.query(\"status == 'delivered' and order_date >= '2026-06-01'\")\nr = Report(\"x\", d)\nresult = [r.total(), r.avg_check()]"
+        ],
+        "wrong": [
+          "class Report:\n    def __init__(self, title, data):\n        self.title, self.data = title, data\n    def total(self):\n        return self.data.amount.sum()\n    def avg_check(self):\n        return round(self.data.amount.median(), 2)\nd = orders[(orders.status == \"delivered\") & (orders.order_date >= \"2026-06-01\")]\nr = Report(\"x\", d)\nresult = [r.total(), r.avg_check()]"
+        ]
+      }
+    },
+    {
+      "id": "counter-cities",
+      "title": "Counter из стандартной библиотеки",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "С помощью `Counter` из модуля `collections` найди **три самых частых города** клиентов (пропуски не учитывай). Положи в `result` результат `most_common(3)` — список пар «город, число клиентов».",
+      "starter": "from collections import Counter\n\ncities = customers[\"city\"].dropna()\nresult = ",
+      "solution": "from collections import Counter\n\ncities = customers[\"city\"].dropna()\nresult = Counter(cities).most_common(3)",
+      "hints": [
+        "`Counter(список)` считает, сколько раз встречается каждое значение.",
+        "`Counter(cities).most_common(3)`"
+      ],
+      "explanation": "В pandas то же самое: `customers[\"city\"].value_counts().head(3)`. `Counter` пригодится, когда данные — не таблица, а обычный список или текст.",
+      "selfTest": {
+        "correct": [
+          "import collections\nresult = collections.Counter(customers.city.dropna().tolist()).most_common(3)"
+        ],
+        "wrong": [
+          "from collections import Counter\nresult = Counter(customers[\"city\"].dropna()).most_common(2)",
+          "from collections import Counter\nresult = Counter(customers[\"acquisition_channel\"]).most_common(3)"
+        ]
+      }
+    },
+    {
+      "id": "mutable-default",
+      "title": "Коварный список по умолчанию",
+      "difficulty": 3,
+      "type": "quiz",
+      "prompt": "Что выведет код?\n\n```py\ndef add_city(city, cities=[]):\n    cities.append(city)\n    return cities\n\nadd_city(\"Москва\")\nprint(add_city(\"Казань\"))\n```",
+      "options": [
+        {
+          "text": "`['Москва', 'Казань']`",
+          "correct": true,
+          "explain": "Список по умолчанию создаётся **один раз** при определении функции и переживает вызовы. Второй вызов дописал город в тот же список. Правильно: `def add_city(city, cities=None):` и внутри `if cities is None: cities = []`."
+        },
+        {
+          "text": "`['Казань']`",
+          "explain": "Так было бы, если бы при каждом вызове создавался новый пустой список. Но значение по умолчанию вычисляется один раз."
+        },
+        {
+          "text": "Ошибку: нельзя менять параметр функции",
+          "explain": "Менять можно — в этом и ловушка: список меняется «навсегда»."
+        },
+        {
+          "text": "`[]`",
+          "explain": "`append` добавляет элемент в список, поэтому пустым он не будет."
+        }
+      ],
+      "hints": [
+        "Когда создаётся список `[]` из строки `def`: при каждом вызове или один раз?"
+      ]
+    }
+  ]
+}
