@@ -1,0 +1,206 @@
+{
+  "tasks": [
+    {
+      "id": "fermi-coffee",
+      "title": "Оценка на салфетке",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Оцени, сколько заказов в день у сервиса доставки продуктов в городе-миллионнике. Допущения: **1 000 000** жителей, **10%** пользуются доставкой, каждый из них заказывает **раз в 2 недели** (14 дней), доля нашего сервиса — **25%**. Сколько заказов в день у нашего сервиса?",
+      "answer": 1786,
+      "tolerance": 20,
+      "unit": "заказов",
+      "hints": [
+        "Пользователей доставки: 1 000 000 × 0,1 = 100 000. В день каждый делает 1/14 заказа.",
+        "100 000 / 14 × 0,25"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 7143,
+          "message": "Не забудь долю нашего сервиса — 25%."
+        },
+        {
+          "value": 25000,
+          "message": "Пользователи заказывают раз в 14 дней, а не каждый день."
+        }
+      ],
+      "explanation": "Около 1 800 заказов в день. Точность здесь неважна: важно, что это не 100 и не 100 000. С такой оценкой уже можно прикинуть, хватит ли трафика на A/B-тест и сколько нужно курьеров.",
+      "selfTest": {
+        "correct": [
+          "1786",
+          "1800"
+        ],
+        "wrong": [
+          "7143"
+        ]
+      }
+    },
+    {
+      "id": "mece",
+      "title": "MECE-разложение",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Какое разложение числа заказов за месяц соответствует принципу MECE (части не пересекаются и вместе дают всё)?",
+      "options": [
+        {
+          "text": "Заказы новых покупателей + заказы вернувшихся покупателей",
+          "correct": true,
+          "explain": "Каждый заказ относится ровно к одной группе: либо первый заказ клиента, либо повторный. Вместе — все заказы."
+        },
+        {
+          "text": "Заказы с промокодом + заказы с мобильного",
+          "explain": "Группы пересекаются: заказ с мобильного может быть и с промокодом. И вместе они дают не все заказы."
+        },
+        {
+          "text": "Заказы из Москвы + заказы с доставкой",
+          "explain": "Пересекаются и не покрывают все заказы (например, самовывоз в регионах)."
+        },
+        {
+          "text": "Большие заказы + заказы постоянных клиентов",
+          "explain": "Признаки разной природы, группы пересекаются."
+        }
+      ],
+      "hints": [
+        "Проверь: может ли один заказ попасть в обе части? Каждый ли заказ попадёт хотя бы в одну?"
+      ]
+    },
+    {
+      "id": "revenue-tree",
+      "title": "Какой множитель изменился",
+      "difficulty": 2,
+      "prompt": [
+        "Разложи выручку доставленных заказов по месяцам **апреля–мая 2026** на множители:",
+        "- `buyers` — уникальные покупатели;",
+        "- `orders_per_buyer` — доставленных заказов на покупателя (до 3 знаков);",
+        "- `avg_check` — средний чек (до целого);",
+        "- `revenue` — выручка (до целого).",
+        "",
+        "Столбцы: `month`, `buyers`, `orders_per_buyer`, `avg_check`, `revenue`. Сортировка по месяцу."
+      ],
+      "starter": "SELECT CAST(date_trunc('month', order_date) AS DATE) AS month,\n       \nFROM orders\nWHERE status = 'delivered'\n  AND order_date >= '2026-04-01' AND order_date < '2026-06-01'\nGROUP BY month\nORDER BY month;",
+      "solution": "SELECT CAST(date_trunc('month', order_date) AS DATE) AS month,\n       COUNT(DISTINCT customer_id) AS buyers,\n       ROUND(COUNT(*) * 1.0 / COUNT(DISTINCT customer_id), 3) AS orders_per_buyer,\n       ROUND(SUM(amount) / COUNT(*)) AS avg_check,\n       ROUND(SUM(amount)) AS revenue\nFROM orders\nWHERE status = 'delivered'\n  AND order_date >= '2026-04-01' AND order_date < '2026-06-01'\nGROUP BY month\nORDER BY month;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Покупатели — `COUNT(DISTINCT customer_id)`; заказов на покупателя — `COUNT(*) * 1.0 / COUNT(DISTINCT customer_id)`.",
+        "Средний чек — `SUM(amount) / COUNT(*)`."
+      ],
+      "explanation": "Перемножь три множителя — получится выручка. Сравнивая множители между месяцами, сразу видно, что изменилось: людей стало больше, они чаще покупают или тратят больше за раз. Июнь мы не берём: он ещё «незрелый» (часть заказов в доставке).",
+      "selfTest": {
+        "correct": [
+          "WITH t AS (SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, COUNT(DISTINCT customer_id) AS b, COUNT(*) AS o, SUM(amount) AS r FROM orders WHERE status = 'delivered' AND order_date BETWEEN '2026-04-01' AND '2026-05-31' GROUP BY 1) SELECT month, b AS buyers, ROUND(o / b, 3) AS orders_per_buyer, ROUND(r / o) AS avg_check, ROUND(r) AS revenue FROM t ORDER BY 1"
+        ],
+        "wrong": [
+          "SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, COUNT(customer_id) AS buyers, ROUND(COUNT(*) * 1.0 / COUNT(customer_id), 3) AS orders_per_buyer, ROUND(SUM(amount) / COUNT(*)) AS avg_check, ROUND(SUM(amount)) AS revenue FROM orders WHERE status = 'delivered' AND order_date >= '2026-04-01' AND order_date < '2026-06-01' GROUP BY 1 ORDER BY 1"
+        ]
+      }
+    },
+    {
+      "id": "health-check",
+      "title": "Осмотр здоровья данных",
+      "difficulty": 1,
+      "prompt": "Сделай быстрый осмотр таблицы `order_items` одной строкой: `items` — число строк, `orders` — уникальных заказов, `products` — уникальных товаров, `bad_quantity` — строк с количеством ≤ 0, `bad_price` — строк с ценой ≤ 0.",
+      "starter": "SELECT COUNT(*) AS items,\n       \nFROM order_items;",
+      "solution": "SELECT COUNT(*) AS items,\n       COUNT(DISTINCT order_id) AS orders,\n       COUNT(DISTINCT product_id) AS products,\n       COUNT(*) FILTER (WHERE quantity <= 0) AS bad_quantity,\n       COUNT(*) FILTER (WHERE price <= 0) AS bad_price\nFROM order_items;",
+      "checkColumnNames": true,
+      "hints": [
+        "Уникальные — `COUNT(DISTINCT …)`, проблемные строки — `COUNT(*) FILTER (WHERE …)`."
+      ],
+      "explanation": "Нули в проблемных столбцах — хороший знак. А сравнение числа заказов здесь и в `orders` покажет, у всех ли заказов есть позиции.",
+      "selfTest": {
+        "correct": [
+          "SELECT COUNT(item_id) AS items, COUNT(DISTINCT order_id) AS orders, COUNT(DISTINCT product_id) AS products, SUM(CASE WHEN quantity <= 0 THEN 1 ELSE 0 END) AS bad_quantity, SUM(CASE WHEN price <= 0 THEN 1 ELSE 0 END) AS bad_price FROM order_items"
+        ],
+        "wrong": [
+          "SELECT COUNT(*) AS items, COUNT(order_id) AS orders, COUNT(product_id) AS products, COUNT(*) FILTER (WHERE quantity <= 0) AS bad_quantity, COUNT(*) FILTER (WHERE price <= 0) AS bad_price FROM order_items"
+        ]
+      }
+    },
+    {
+      "id": "so-what",
+      "title": "«И что?»",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Какое сообщение руководителю лучше всего проходит проверку вопросом «и что?»",
+      "options": [
+        {
+          "text": "«Конверсия на Android на 30% ниже, чем на iOS. Если поднять её до уровня iOS, получим около +8% заказов, ~1,5 млн ₽ в месяц. Предлагаю разобрать воронку оформления на Android»",
+          "correct": true,
+          "explain": "Факт → оценка в деньгах → конкретное действие. По такому сообщению можно принять решение."
+        },
+        {
+          "text": "«Конверсия на Android — 3,1%, на iOS — 4,4%»",
+          "explain": "Только факт. Что с ним делать и важен ли он, непонятно."
+        },
+        {
+          "text": "«Android хуже iOS»",
+          "explain": "Нет цифр, нет масштаба, нет действия."
+        },
+        {
+          "text": "«Нужно больше данных по Android»",
+          "explain": "Может быть, но без вывода о важности и следующем шаге."
+        }
+      ],
+      "hints": [
+        "Ищи вариант, где есть факт, масштаб и действие."
+      ]
+    },
+    {
+      "id": "too-good",
+      "title": "Слишком хорошо, чтобы быть правдой",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Утром дашборд показывает: вчера конверсия в покупку выросла с 3% до 9%. Релизов не было. Что сделать в первую очередь?",
+      "options": [
+        {
+          "text": "Проверить данные: не сломался ли трекинг визитов (их могло записаться втрое меньше), не попали ли тестовые заказы",
+          "correct": true,
+          "explain": "Резкий скачок без причины — почти всегда проблема данных. Например, если визиты перестали записываться с части устройств, конверсия «вырастет» сама."
+        },
+        {
+          "text": "Сообщить всем о прорыве",
+          "explain": "Если это ошибка данных, придётся извиняться, а доверие к отчётам упадёт."
+        },
+        {
+          "text": "Срочно увеличить бюджет на рекламу",
+          "explain": "Решение по непроверенной цифре может стоить больших денег."
+        },
+        {
+          "text": "Подождать месяц и посмотреть",
+          "explain": "Проверить данные можно за час — ждать не нужно."
+        }
+      ],
+      "hints": [
+        "Что вероятнее: продукт стал втрое лучше за ночь или что-то сломалось в данных?"
+      ]
+    },
+    {
+      "id": "hypothesis-order",
+      "title": "С какой гипотезы начать",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Выручка за неделю упала на 15%. Гипотезы: (1) сбой в сборе данных о заказах; (2) конкурент запустил акцию; (3) сезонный спад; (4) пользователям разонравился дизайн. Что проверять первым?",
+      "options": [
+        {
+          "text": "Сбой данных и сезонность: их проверить быстрее и дешевле всего, и они часто объясняют «падение»",
+          "correct": true,
+          "explain": "Сначала исключают технические причины и обычную сезонность (сравнение с той же неделей прошлого года). Потом переходят к более сложным гипотезам."
+        },
+        {
+          "text": "Дизайн: надо срочно провести опрос пользователей",
+          "explain": "Опрос — дорогая и медленная проверка. Начинают с дешёвых."
+        },
+        {
+          "text": "Конкурента: изучить его сайт",
+          "explain": "Полезно, но сначала стоит убедиться, что падение вообще настоящее."
+        },
+        {
+          "text": "Все одновременно, распределив между командой",
+          "explain": "Можно, но чаще важнее порядок: быстрые проверки избавляют от лишней работы."
+        }
+      ],
+      "hints": [
+        "Какие гипотезы можно проверить за час по имеющимся данным?"
+      ]
+    }
+  ]
+}

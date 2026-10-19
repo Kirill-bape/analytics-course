@@ -1,0 +1,196 @@
+{
+  "tasks": [
+    {
+      "id": "mau-not-sum",
+      "title": "MAU не складывается из DAU",
+      "difficulty": 2,
+      "prompt": [
+        "Для **мая 2026** посчитай:",
+        "- `sum_dau` — сумму по дням числа уникальных клиентов с заказом;",
+        "- `mau` — число уникальных клиентов с заказом за весь месяц;",
+        "- `stickiness_pct` — средний DAU / MAU × 100, до 1 знака."
+      ],
+      "starter": "WITH daily AS (\n    SELECT order_date, COUNT(DISTINCT customer_id) AS dau\n    FROM orders\n    WHERE order_date >= '2026-05-01' AND order_date < '2026-06-01'\n    GROUP BY order_date\n)\nSELECT \n",
+      "solution": "WITH daily AS (\n    SELECT order_date, COUNT(DISTINCT customer_id) AS dau\n    FROM orders\n    WHERE order_date >= '2026-05-01' AND order_date < '2026-06-01'\n    GROUP BY order_date\n),\nm AS (\n    SELECT COUNT(DISTINCT customer_id) AS mau\n    FROM orders\n    WHERE order_date >= '2026-05-01' AND order_date < '2026-06-01'\n)\nSELECT (SELECT SUM(dau) FROM daily) AS sum_dau,\n       m.mau,\n       ROUND(100.0 * (SELECT AVG(dau) FROM daily) / m.mau, 1) AS stickiness_pct\nFROM m;",
+      "checkColumnNames": true,
+      "hints": [
+        "MAU — отдельный подсчёт `COUNT(DISTINCT customer_id)` за весь май.",
+        "Stickiness: `100.0 * AVG(dau) / mau`."
+      ],
+      "explanation": "Сумма DAU больше MAU: клиенты, заказывавшие в разные дни, учтены несколько раз. А низкая липкость для магазина нормальна — продуктами не пользуются каждый день, как мессенджером.",
+      "selfTest": {
+        "correct": [
+          "SELECT SUM(dau) AS sum_dau, MAX(mau) AS mau, ROUND(100.0 * AVG(dau) / MAX(mau), 1) AS stickiness_pct FROM (SELECT order_date, COUNT(DISTINCT customer_id) AS dau FROM orders WHERE date_trunc('month', order_date) = '2026-05-01' GROUP BY 1) d, (SELECT COUNT(DISTINCT customer_id) AS mau FROM orders WHERE date_trunc('month', order_date) = '2026-05-01') m"
+        ],
+        "wrong": [
+          "WITH daily AS (SELECT order_date, COUNT(DISTINCT customer_id) AS dau FROM orders WHERE order_date >= '2026-05-01' AND order_date < '2026-06-01' GROUP BY 1) SELECT SUM(dau) AS sum_dau, SUM(dau) AS mau, ROUND(100.0 * AVG(dau) / SUM(dau), 1) AS stickiness_pct FROM daily"
+        ]
+      }
+    },
+    {
+      "id": "conversion-denominator",
+      "title": "Знаменатель конверсии",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Из 10 000 посетителей сайта 1 200 положили товар в корзину, а 300 купили. Аналитик пишет: «Конверсия в покупку — 25%». Что не так?",
+      "options": [
+        {
+          "text": "25% — это конверсия из корзины в покупку. Конверсия посетителя в покупку — 3%. Нужно явно писать знаменатель",
+          "correct": true,
+          "explain": "300 / 1 200 = 25%, а 300 / 10 000 = 3%. Обе цифры верны, но отвечают на разные вопросы."
+        },
+        {
+          "text": "Всё правильно: 300 / 1 200 = 25%",
+          "explain": "Арифметика верна, но формулировка вводит в заблуждение: читатель поймёт её как конверсию из посетителя."
+        },
+        {
+          "text": "Конверсия должна быть 12%",
+          "explain": "12% — это доля положивших в корзину, а не купивших."
+        },
+        {
+          "text": "Конверсию нельзя считать в процентах",
+          "explain": "Можно и нужно. Важно указать, от кого считается доля."
+        }
+      ],
+      "hints": [
+        "Посчитай 300 / 10 000 и 300 / 1 200."
+      ]
+    },
+    {
+      "id": "arpu-arppu",
+      "title": "ARPU, ARPPU и доля платящих",
+      "difficulty": 2,
+      "prompt": [
+        "Для эксперимента `banner_color` посчитай по группам:",
+        "- `arpu` — выручка на пользователя, до 1 знака;",
+        "- `arppu` — выручка на платящего (`converted = 1`), до 1 знака;",
+        "- `paying_pct` — доля платящих, %, до 2 знаков.",
+        "",
+        "Столбцы: `group_name`, `arpu`, `arppu`, `paying_pct`. Сортировка по группе."
+      ],
+      "starter": "SELECT group_name,\n       \nFROM ab_users\nWHERE experiment = 'banner_color'\nGROUP BY group_name\nORDER BY group_name;",
+      "solution": "SELECT group_name,\n       ROUND(AVG(revenue), 1) AS arpu,\n       ROUND(SUM(revenue) / NULLIF(SUM(converted), 0), 1) AS arppu,\n       ROUND(100.0 * AVG(converted), 2) AS paying_pct\nFROM ab_users\nWHERE experiment = 'banner_color'\nGROUP BY group_name\nORDER BY group_name;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "ARPPU — выручка, делённая на число платящих: `SUM(revenue) / SUM(converted)`.",
+        "Доля платящих — `AVG(converted)` (среднее нулей и единиц)."
+      ],
+      "explanation": "В группе B доля платящих чуть выше, но ARPPU заметно ниже — поэтому ARPU не вырос. Проверь тождество: ARPU ≈ доля платящих × ARPPU.",
+      "selfTest": {
+        "correct": [
+          "SELECT group_name, ROUND(SUM(revenue) / COUNT(*), 1) AS arpu, ROUND(AVG(revenue) FILTER (WHERE converted = 1), 1) AS arppu, ROUND(100.0 * SUM(converted) / COUNT(*), 2) AS paying_pct FROM ab_users WHERE experiment = 'banner_color' GROUP BY 1 ORDER BY 1"
+        ],
+        "wrong": [
+          "SELECT group_name, ROUND(AVG(revenue), 1) AS arpu, ROUND(AVG(revenue), 1) AS arppu, ROUND(100.0 * AVG(converted), 2) AS paying_pct FROM ab_users WHERE experiment = 'banner_color' GROUP BY 1 ORDER BY 1"
+        ]
+      }
+    },
+    {
+      "id": "arpu-identity",
+      "title": "ARPU через долю платящих",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "В приложении платят **4%** пользователей, а платящий в среднем тратит **2 500 ₽** в месяц (ARPPU). Чему равен ARPU?",
+      "answer": 100,
+      "unit": "₽",
+      "hints": [
+        "ARPU = доля платящих × ARPPU.",
+        "0,04 × 2 500"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 2500,
+          "message": "Это ARPPU — выручка на платящего. ARPU делит выручку на всех пользователей."
+        }
+      ],
+      "selfTest": {
+        "correct": [
+          "100"
+        ],
+        "wrong": [
+          "2500"
+        ]
+      }
+    },
+    {
+      "id": "repeat-rate",
+      "title": "Доля повторных покупателей",
+      "difficulty": 2,
+      "prompt": "Какая доля клиентов, сделавших хотя бы один **доставленный** заказ, сделала **два и больше**? Одна цифра: `repeat_pct`, до 1 знака.",
+      "starter": "WITH c AS (\n    SELECT customer_id, COUNT(*) AS orders\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n)\nSELECT \nFROM c;",
+      "solution": "WITH c AS (\n    SELECT customer_id, COUNT(*) AS orders\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY customer_id\n)\nSELECT ROUND(100.0 * AVG(CASE WHEN orders >= 2 THEN 1 ELSE 0 END), 1) AS repeat_pct\nFROM c;",
+      "checkColumnNames": true,
+      "hints": [
+        "Внутри CTE уже есть число заказов каждого клиента. Нужна доля клиентов с `orders >= 2`."
+      ],
+      "explanation": "Доля повторных покупателей — простой заменитель удержания, когда нет данных о визитах. Если она низкая, магазин живёт на постоянном привлечении новых клиентов, а это дорого.",
+      "selfTest": {
+        "correct": [
+          "WITH c AS (SELECT customer_id, COUNT(*) AS n FROM orders WHERE status = 'delivered' GROUP BY 1) SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE n > 1) / COUNT(*), 1) AS repeat_pct FROM c"
+        ],
+        "wrong": [
+          "WITH c AS (SELECT customer_id, COUNT(*) AS n FROM orders GROUP BY 1) SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE n > 1) / COUNT(*), 1) AS repeat_pct FROM c"
+        ]
+      }
+    },
+    {
+      "id": "vanity",
+      "title": "Метрика тщеславия",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Какая из метрик — типичная «метрика тщеславия», которая мало говорит о здоровье продукта?",
+      "options": [
+        {
+          "text": "Общее число регистраций за всё время",
+          "correct": true,
+          "explain": "Она растёт всегда, даже если сегодня продуктом никто не пользуется. Решений по ней не примешь."
+        },
+        {
+          "text": "Доля пользователей, вернувшихся через 30 дней",
+          "explain": "Это удержание — одна из самых честных метрик ценности продукта."
+        },
+        {
+          "text": "Конверсия из корзины в покупку",
+          "explain": "Действенная метрика: её падение указывает на проблему в оформлении заказа."
+        },
+        {
+          "text": "Выручка на пользователя за месяц",
+          "explain": "Связана с деньгами и меняется от решений команды."
+        }
+      ],
+      "hints": [
+        "Какая метрика не может уменьшиться в принципе?"
+      ]
+    },
+    {
+      "id": "rolling-vs-classic",
+      "title": "Rolling или классическое удержание",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Пользователь пришёл 1 марта и затем заходил только 20 апреля. Как он учитывается в удержании «30-го дня»?",
+      "options": [
+        {
+          "text": "В rolling retention 30-го дня — учитывается (вернулся на 30-й день или позже), в классическом — нет (в сам 30-й день не заходил)",
+          "correct": true,
+          "explain": "Rolling считает возврат «в день N или позже», поэтому всегда выше классического. Важно писать, какой вариант используется."
+        },
+        {
+          "text": "Учитывается в обоих",
+          "explain": "Классическое удержание требует активности именно в день (или период) N."
+        },
+        {
+          "text": "Не учитывается ни в одном",
+          "explain": "В rolling — учитывается: 20 апреля позже 30-го дня."
+        },
+        {
+          "text": "Удержание считают только по деньгам",
+          "explain": "Нет, удержание — это возврат пользователя, а не его траты."
+        }
+      ],
+      "hints": [
+        "Чем отличается «в день N» от «в день N или позже»?"
+      ]
+    }
+  ]
+}

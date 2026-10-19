@@ -1,0 +1,209 @@
+{
+  "tasks": [
+    {
+      "id": "factor-hand",
+      "title": "Цепные подстановки вручную",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": [
+        "В марте — **1 000** заказов со средним чеком **10 000 ₽**, в апреле — **1 100** заказов со средним чеком **9 500 ₽**.",
+        "",
+        "Какой вклад в изменение выручки дал **рост числа заказов** (по цепным подстановкам: изменение заказов × мартовский чек)?"
+      ],
+      "answer": 1000000,
+      "unit": "₽",
+      "hints": [
+        "Вклад заказов = (1 100 − 1 000) × 10 000."
+      ],
+      "wrongAnswers": [
+        {
+          "value": -550000,
+          "message": "Это вклад среднего чека: 1 100 × (9 500 − 10 000). А спрашивают про заказы."
+        },
+        {
+          "value": 450000,
+          "message": "Это общее изменение выручки. Нужен вклад только числа заказов."
+        }
+      ],
+      "explanation": "Вклад чека = 1 100 × (9 500 − 10 000) = −550 000 ₽. Сумма вкладов = 450 000 ₽ = общему приросту выручки (10,45 млн − 10 млн). Вывод: заказов стало больше, но чек упал и «съел» больше половины эффекта.",
+      "selfTest": {
+        "correct": [
+          "1000000"
+        ],
+        "wrong": [
+          "450000"
+        ]
+      }
+    },
+    {
+      "id": "factor-sql",
+      "title": "Факторный анализ на SQL",
+      "difficulty": 3,
+      "prompt": [
+        "Разложи изменение выручки **доставленных** заказов с **марта** на **апрель 2026** на вклад числа заказов и среднего чека методом цепных подстановок.",
+        "",
+        "Столбцы (все до целого): `revenue_change` — изменение выручки, `from_orders` — вклад заказов `(o1 − o0) × c0`, `from_check` — вклад чека `o1 × (c1 − c0)`."
+      ],
+      "starter": "WITH m AS (\n    SELECT CAST(date_trunc('month', order_date) AS DATE) AS month,\n           COUNT(*) AS orders,\n           SUM(amount) / COUNT(*) AS avg_check\n    FROM orders\n    WHERE status = 'delivered'\n      AND order_date >= '2026-03-01' AND order_date < '2026-05-01'\n    GROUP BY month\n),\np AS (\n    SELECT \n    FROM m\n)\nSELECT \nFROM p;",
+      "solution": "WITH m AS (\n    SELECT CAST(date_trunc('month', order_date) AS DATE) AS month,\n           COUNT(*) AS orders,\n           SUM(amount) / COUNT(*) AS avg_check\n    FROM orders\n    WHERE status = 'delivered'\n      AND order_date >= '2026-03-01' AND order_date < '2026-05-01'\n    GROUP BY month\n),\np AS (\n    SELECT MAX(orders)    FILTER (WHERE month = '2026-03-01') AS o0,\n           MAX(orders)    FILTER (WHERE month = '2026-04-01') AS o1,\n           MAX(avg_check) FILTER (WHERE month = '2026-03-01') AS c0,\n           MAX(avg_check) FILTER (WHERE month = '2026-04-01') AS c1\n    FROM m\n)\nSELECT ROUND(o1 * c1 - o0 * c0) AS revenue_change,\n       ROUND((o1 - o0) * c0) AS from_orders,\n       ROUND(o1 * (c1 - c0)) AS from_check\nFROM p;",
+      "checkColumnNames": true,
+      "hints": [
+        "В CTE `p` вытащи четыре числа: заказы и средний чек марта (`o0`, `c0`) и апреля (`o1`, `c1`) — через `MAX(…) FILTER (WHERE month = …)`.",
+        "Затем формулы: `o1 * c1 - o0 * c0`, `(o1 - o0) * c0`, `o1 * (c1 - c0)`."
+      ],
+      "explanation": "`from_orders + from_check = revenue_change` — проверь. Так одним запросом видно, рос ли бизнес за счёт числа заказов или за счёт чека.",
+      "selfTest": {
+        "correct": [
+          "WITH a AS (SELECT COUNT(*) AS o0, SUM(amount) / COUNT(*) AS c0 FROM orders WHERE status = 'delivered' AND date_trunc('month', order_date) = '2026-03-01'), b AS (SELECT COUNT(*) AS o1, SUM(amount) / COUNT(*) AS c1 FROM orders WHERE status = 'delivered' AND date_trunc('month', order_date) = '2026-04-01') SELECT ROUND(o1 * c1 - o0 * c0) AS revenue_change, ROUND((o1 - o0) * c0) AS from_orders, ROUND(o1 * (c1 - c0)) AS from_check FROM a, b"
+        ],
+        "wrong": [
+          "WITH a AS (SELECT COUNT(*) AS o0, SUM(amount) / COUNT(*) AS c0 FROM orders WHERE status = 'delivered' AND date_trunc('month', order_date) = '2026-03-01'), b AS (SELECT COUNT(*) AS o1, SUM(amount) / COUNT(*) AS c1 FROM orders WHERE status = 'delivered' AND date_trunc('month', order_date) = '2026-04-01') SELECT ROUND(o1 * c1 - o0 * c0) AS revenue_change, ROUND((o1 - o0) * c1) AS from_orders, ROUND(o0 * (c1 - c0)) AS from_check FROM a, b"
+        ]
+      }
+    },
+    {
+      "id": "additive-split",
+      "title": "Новые и вернувшиеся",
+      "difficulty": 2,
+      "prompt": [
+        "Разложи выручку доставленных заказов **апреля–мая 2026** аддитивно: на заказы **первых** покупок клиента (самый ранний заказ клиента любого статуса) и **повторных**.",
+        "",
+        "Столбцы: `month`, `new_revenue`, `repeat_revenue` (до целого). Сортировка по месяцу."
+      ],
+      "starter": "WITH firsts AS (\n    SELECT customer_id, MIN(order_date) AS first_date\n    FROM orders\n    GROUP BY customer_id\n)\nSELECT CAST(date_trunc('month', o.order_date) AS DATE) AS month,\n       \nFROM orders o\nJOIN firsts f ON f.customer_id = o.customer_id\nWHERE o.status = 'delivered'\n  AND o.order_date >= '2026-04-01' AND o.order_date < '2026-06-01'\nGROUP BY month\nORDER BY month;",
+      "solution": "WITH firsts AS (\n    SELECT customer_id, MIN(order_date) AS first_date\n    FROM orders\n    GROUP BY customer_id\n)\nSELECT CAST(date_trunc('month', o.order_date) AS DATE) AS month,\n       ROUND(SUM(o.amount) FILTER (WHERE o.order_date = f.first_date)) AS new_revenue,\n       ROUND(SUM(o.amount) FILTER (WHERE o.order_date > f.first_date)) AS repeat_revenue\nFROM orders o\nJOIN firsts f ON f.customer_id = o.customer_id\nWHERE o.status = 'delivered'\n  AND o.order_date >= '2026-04-01' AND o.order_date < '2026-06-01'\nGROUP BY month\nORDER BY month;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Первая покупка — заказ в дату `f.first_date`, повторная — позже.",
+        "`SUM(o.amount) FILTER (WHERE o.order_date = f.first_date)` и `… > f.first_date`."
+      ],
+      "explanation": "Сумма двух столбцов — вся выручка месяца: части не пересекаются и покрывают всё (MECE). Если один клиент сделал два заказа в день первой покупки, оба посчитаются как «первые» — для учебной задачи это допустимо, в реальной работе первый заказ выбирают по номеру заказа.",
+      "selfTest": {
+        "correct": [
+          "WITH o2 AS (SELECT *, MIN(order_date) OVER (PARTITION BY customer_id) AS fd FROM orders) SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, ROUND(SUM(CASE WHEN order_date = fd THEN amount END)) AS new_revenue, ROUND(SUM(CASE WHEN order_date > fd THEN amount END)) AS repeat_revenue FROM o2 WHERE status = 'delivered' AND order_date >= '2026-04-01' AND order_date < '2026-06-01' GROUP BY 1 ORDER BY 1"
+        ],
+        "wrong": [
+          "WITH firsts AS (SELECT customer_id, MIN(order_date) AS first_date FROM orders WHERE status = 'delivered' AND order_date >= '2026-04-01' GROUP BY 1) SELECT CAST(date_trunc('month', o.order_date) AS DATE) AS month, ROUND(SUM(o.amount) FILTER (WHERE o.order_date = f.first_date)) AS new_revenue, ROUND(SUM(o.amount) FILTER (WHERE o.order_date > f.first_date)) AS repeat_revenue FROM orders o JOIN firsts f USING (customer_id) WHERE o.status = 'delivered' AND o.order_date >= '2026-04-01' AND o.order_date < '2026-06-01' GROUP BY 1 ORDER BY 1"
+        ]
+      }
+    },
+    {
+      "id": "mix-effect",
+      "title": "Эффект структуры",
+      "difficulty": 2,
+      "type": "number",
+      "prompt": [
+        "В магазине две категории. Цены не менялись: электроника — **30 000 ₽** за заказ, книги — **1 000 ₽**.",
+        "",
+        "В марте: 100 заказов электроники и 100 заказов книг. В апреле: 100 заказов электроники и **300** заказов книг.",
+        "",
+        "На сколько рублей **упал** средний чек магазина (март − апрель)?"
+      ],
+      "answer": 7250,
+      "unit": "₽",
+      "hints": [
+        "Март: (100 × 30 000 + 100 × 1 000) / 200. Апрель: (100 × 30 000 + 300 × 1 000) / 400.",
+        "Март — 15 500 ₽, апрель — 8 250 ₽."
+      ],
+      "explanation": "Средний чек упал почти вдвое, хотя ни один товар не подешевел, а выручка даже выросла. Это чистый эффект структуры: стало больше дешёвых заказов. Поэтому падение среднего чека не всегда плохая новость.",
+      "selfTest": {
+        "correct": [
+          "7250"
+        ],
+        "wrong": [
+          "7750",
+          "0"
+        ]
+      }
+    },
+    {
+      "id": "category-mix-sql",
+      "title": "Структура продаж по категориям",
+      "difficulty": 3,
+      "prompt": [
+        "Для **мая 2026** (доставленные заказы) посчитай по категориям:",
+        "- `items` — сколько штук продано;",
+        "- `share_pct` — доля категории в общем числе штук за месяц, %, до 1 знака;",
+        "- `avg_price` — средняя цена проданной штуки, до целого.",
+        "",
+        "Столбцы: `category`, `items`, `share_pct`, `avg_price`. Сортировка по `items` по убыванию."
+      ],
+      "starter": "SELECT p.category,\n       SUM(oi.quantity) AS items,\n       \nFROM order_items oi\nJOIN orders o   ON o.order_id = oi.order_id\nJOIN products p ON p.product_id = oi.product_id\nWHERE o.status = 'delivered'\n  AND o.order_date >= '2026-05-01' AND o.order_date < '2026-06-01'\nGROUP BY p.category\nORDER BY items DESC;",
+      "solution": "SELECT p.category,\n       SUM(oi.quantity) AS items,\n       ROUND(100.0 * SUM(oi.quantity) / SUM(SUM(oi.quantity)) OVER (), 1) AS share_pct,\n       ROUND(SUM(oi.quantity * oi.price) / SUM(oi.quantity)) AS avg_price\nFROM order_items oi\nJOIN orders o   ON o.order_id = oi.order_id\nJOIN products p ON p.product_id = oi.product_id\nWHERE o.status = 'delivered'\n  AND o.order_date >= '2026-05-01' AND o.order_date < '2026-06-01'\nGROUP BY p.category\nORDER BY items DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Доля — окно по всем строкам результата: `SUM(SUM(oi.quantity)) OVER ()`.",
+        "Средняя цена штуки — выручка категории / штуки: `SUM(oi.quantity * oi.price) / SUM(oi.quantity)`."
+      ],
+      "explanation": "Сравни такую таблицу за два месяца: если доли категорий сдвинулись, средний чек изменится даже при неизменных ценах внутри категорий.",
+      "selfTest": {
+        "correct": [
+          "WITH t AS (SELECT p.category, SUM(oi.quantity) AS items, SUM(oi.quantity * oi.price) AS rev FROM order_items oi JOIN orders o USING (order_id) JOIN products p USING (product_id) WHERE o.status = 'delivered' AND date_trunc('month', o.order_date) = '2026-05-01' GROUP BY 1) SELECT category, items, ROUND(100.0 * items / (SELECT SUM(items) FROM t), 1) AS share_pct, ROUND(rev / items) AS avg_price FROM t ORDER BY items DESC"
+        ],
+        "wrong": [
+          "SELECT p.category, SUM(oi.quantity) AS items, ROUND(100.0 * SUM(oi.quantity) / SUM(SUM(oi.quantity)) OVER (), 1) AS share_pct, ROUND(AVG(oi.price)) AS avg_price FROM order_items oi JOIN orders o USING (order_id) JOIN products p USING (product_id) WHERE o.status = 'delivered' AND o.order_date >= '2026-05-01' AND o.order_date < '2026-06-01' GROUP BY 1 ORDER BY items DESC"
+        ]
+      }
+    },
+    {
+      "id": "tree-owner",
+      "title": "Кто отвечает за ветку",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "В дереве метрик выручка раскладывается на «новых покупателей», «вернувшихся покупателей» и «средний чек». Какая команда естественнее всего отвечает за ветку «вернувшиеся покупатели»?",
+      "options": [
+        {
+          "text": "CRM и удержание: рассылки, программа лояльности, персональные предложения",
+          "correct": true,
+          "explain": "Их инструменты работают именно с существующей базой клиентов."
+        },
+        {
+          "text": "Команда привлечения: реклама в поиске и соцсетях",
+          "explain": "Она приводит новых клиентов, это соседняя ветка."
+        },
+        {
+          "text": "Бухгалтерия",
+          "explain": "Бухгалтерия учитывает деньги, но не влияет на возврат клиентов."
+        },
+        {
+          "text": "Никто: на возврат клиентов повлиять нельзя",
+          "explain": "Можно — это одна из самых управляемых веток дерева."
+        }
+      ],
+      "hints": [
+        "Кто работает с теми, кто уже покупал?"
+      ]
+    },
+    {
+      "id": "diagnosis-order",
+      "title": "Порядок разбора",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Выручка за месяц упала на 8%. Какой порядок разбора правильный?",
+      "options": [
+        {
+          "text": "Сравнить с прошлым годом → разложить на множители → найти изменившийся → разрезы в его ветке → событие, которое объясняет изменение",
+          "correct": true,
+          "explain": "Сверху вниз: сначала понять, что изменилось и насколько это необычно, потом — где, и только потом — почему."
+        },
+        {
+          "text": "Сразу смотреть все разрезы по всем метрикам",
+          "explain": "Утонешь в сотне таблиц, не понимая, какая из них важна."
+        },
+        {
+          "text": "Сначала искать виноватую команду",
+          "explain": "Это не анализ. Сначала нужно понять, что произошло."
+        },
+        {
+          "text": "Предположить, что виновата сезонность, и закрыть вопрос",
+          "explain": "Сезонность проверяют сравнением с прошлым годом, а не предполагают."
+        }
+      ],
+      "hints": [
+        "От общего к частному или наоборот?"
+      ]
+    }
+  ]
+}
