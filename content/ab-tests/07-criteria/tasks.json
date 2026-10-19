@@ -1,0 +1,225 @@
+{
+  "tasks": [
+    {
+      "id": "arpu-ttest",
+      "title": "ARPU: t-тест Уэлча",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Сравни выручку на пользователя (`revenue`) групп A и B эксперимента `checkout_v2` t-тестом Уэлча. В `result` положи список: **разница средних B − A** (до 1 знака) и **p-value** (до 4 знаков).",
+      "starter": "from scipy import stats\n\nck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\na = ck[ck[\"group_name\"] == \"A\"]\nb = ck[ck[\"group_name\"] == \"B\"]\n\nres = \nresult = [round(b[\"revenue\"].mean() - a[\"revenue\"].mean(), 1), ]",
+      "solution": "from scipy import stats\n\nck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\na = ck[ck[\"group_name\"] == \"A\"]\nb = ck[ck[\"group_name\"] == \"B\"]\n\nres = stats.ttest_ind(b[\"revenue\"], a[\"revenue\"], equal_var=False)\nresult = [round(b[\"revenue\"].mean() - a[\"revenue\"].mean(), 1), round(res.pvalue, 4)]",
+      "hints": [
+        "`stats.ttest_ind(b[\"revenue\"], a[\"revenue\"], equal_var=False)`",
+        "p-value одинаковый, в каком бы порядке ни передать группы."
+      ],
+      "selfTest": {
+        "correct": [
+          "from scipy import stats\nck = ab_users.query(\"experiment == 'checkout_v2'\")\nra = ck[ck.group_name == \"A\"].revenue\nrb = ck[ck.group_name == \"B\"].revenue\nresult = [round(rb.mean() - ra.mean(), 1), round(stats.ttest_ind(ra, rb, equal_var=False).pvalue, 4)]"
+        ],
+        "wrong": [
+          "from scipy import stats\nck = ab_users.query(\"experiment == 'checkout_v2'\")\nra = ck[ck.group_name == \"A\"].revenue\nrb = ck[ck.group_name == \"B\"].revenue\nresult = [round(rb.mean() - ra.mean(), 1), round(stats.mannwhitneyu(ra, rb).pvalue, 4)]"
+        ]
+      }
+    },
+    {
+      "id": "z-proportions",
+      "title": "z-тест для конверсий вручную",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Посчитай z-статистику для разницы конверсий групп B и A эксперимента `checkout_v2` по формуле с общей долей:",
+        "",
+        "```text",
+        "p = (покупатели A + покупатели B) / (n_A + n_B)",
+        "SE = √( p × (1 − p) × (1/n_A + 1/n_B) )",
+        "z = (p_B − p_A) / SE",
+        "```",
+        "",
+        "В `result` — z, округлённый до 2 знаков."
+      ],
+      "starter": "import math\n\nck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\na = ck[ck[\"group_name\"] == \"A\"]\nb = ck[ck[\"group_name\"] == \"B\"]\n\nn_a, n_b = len(a), len(b)\np_a, p_b = a[\"converted\"].mean(), b[\"converted\"].mean()\np = \nse = \nresult = ",
+      "solution": "import math\n\nck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\na = ck[ck[\"group_name\"] == \"A\"]\nb = ck[ck[\"group_name\"] == \"B\"]\n\nn_a, n_b = len(a), len(b)\np_a, p_b = a[\"converted\"].mean(), b[\"converted\"].mean()\np = (a[\"converted\"].sum() + b[\"converted\"].sum()) / (n_a + n_b)\nse = math.sqrt(p * (1 - p) * (1 / n_a + 1 / n_b))\nresult = round((p_b - p_a) / se, 2)",
+      "hints": [
+        "Общая доля: `(a[\"converted\"].sum() + b[\"converted\"].sum()) / (n_a + n_b)`.",
+        "`se = math.sqrt(p * (1 - p) * (1 / n_a + 1 / n_b))`, `result = round((p_b - p_a) / se, 2)`."
+      ],
+      "explanation": "|z| больше 1,96 — разница значима при α = 5%. p-value можно получить так: `2 * stats.norm.sf(abs(z))`.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\nck = ab_users[ab_users.experiment == \"checkout_v2\"]\ng = ck.groupby(\"group_name\").converted.agg([\"sum\", \"count\"])\np = g[\"sum\"].sum() / g[\"count\"].sum()\nse = np.sqrt(p * (1 - p) * (1 / g.loc[\"A\", \"count\"] + 1 / g.loc[\"B\", \"count\"]))\nresult = round((g.loc[\"B\", \"sum\"] / g.loc[\"B\", \"count\"] - g.loc[\"A\", \"sum\"] / g.loc[\"A\", \"count\"]) / se, 2)"
+        ],
+        "wrong": [
+          "import math\nck = ab_users[ab_users.experiment == \"checkout_v2\"]\na = ck[ck.group_name == \"A\"].converted\nb = ck[ck.group_name == \"B\"].converted\np = (a.sum() + b.sum()) / (len(a) + len(b))\nse = math.sqrt(p * (1 - p) / (len(a) + len(b)))\nresult = round((b.mean() - a.mean()) / se, 2)"
+        ]
+      }
+    },
+    {
+      "id": "bootstrap-arpu",
+      "title": "Бутстрап-интервал для разницы ARPU",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Построй 95%-й доверительный интервал для разницы ARPU (B − A) бутстрапом: 1 000 повторов, в каждом — выборка с возвращением из каждой группы. Генератор и цикл уже в заготовке.",
+        "",
+        "В `result` положи `[нижняя граница, верхняя граница]`, каждую до 1 знака."
+      ],
+      "starter": "import numpy as np\n\nck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\na = ck[ck[\"group_name\"] == \"A\"]\nb = ck[ck[\"group_name\"] == \"B\"]\n\nrng = np.random.default_rng(3)\na_arr, b_arr = a[\"revenue\"].to_numpy(), b[\"revenue\"].to_numpy()\ndiffs = []\nfor _ in range(1000):\n    sa = rng.choice(a_arr, size=len(a_arr), replace=True)\n    sb = rng.choice(b_arr, size=len(b_arr), replace=True)\n    diffs.append()\n\nlow, high = np.percentile(diffs, [2.5, 97.5])\nresult = [round(low, 1), round(high, 1)]",
+      "solution": "import numpy as np\n\nck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\na = ck[ck[\"group_name\"] == \"A\"]\nb = ck[ck[\"group_name\"] == \"B\"]\n\nrng = np.random.default_rng(3)\na_arr, b_arr = a[\"revenue\"].to_numpy(), b[\"revenue\"].to_numpy()\ndiffs = []\nfor _ in range(1000):\n    sa = rng.choice(a_arr, size=len(a_arr), replace=True)\n    sb = rng.choice(b_arr, size=len(b_arr), replace=True)\n    diffs.append(sb.mean() - sa.mean())\n\nlow, high = np.percentile(diffs, [2.5, 97.5])\nresult = [round(low, 1), round(high, 1)]",
+      "hints": [
+        "В каждом повторе добавляем разницу средних выборок: `sb.mean() - sa.mean()`."
+      ],
+      "explanation": "Если ноль не попал в интервал, эффект значим. А границы показывают, каким он может быть на самом деле: это и стоит писать в отчёте вместо голого p-value.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\nck = ab_users[ab_users.experiment == \"checkout_v2\"]\nA = ck[ck.group_name == \"A\"].revenue.to_numpy()\nB = ck[ck.group_name == \"B\"].revenue.to_numpy()\nrng = np.random.default_rng(3)\nd = [-(rng.choice(A, len(A)).mean() - rng.choice(B, len(B)).mean()) for _ in range(1000)]\nresult = [round(x, 1) for x in np.percentile(d, [2.5, 97.5])]"
+        ],
+        "wrong": [
+          "import numpy as np\nck = ab_users[ab_users.experiment == \"checkout_v2\"]\nA = ck[ck.group_name == \"A\"].revenue.to_numpy()\nB = ck[ck.group_name == \"B\"].revenue.to_numpy()\nrng = np.random.default_rng(3)\nd = []\nfor _ in range(1000):\n    sa = rng.choice(A, len(A))\n    sb = rng.choice(B, len(B))\n    d.append(np.median(sb) - np.median(sa))\nresult = [round(x, 1) for x in np.percentile(d, [2.5, 97.5])]"
+        ]
+      }
+    },
+    {
+      "id": "multiple-chance",
+      "title": "Десять срезов",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Эффекта нет нигде, но аналитик проверяет его в **10** независимых срезах при α = 5%. Какова вероятность хотя бы одной ложной «находки»? Ответ в процентах, до десятых.",
+      "answer": 40.1,
+      "tolerance": 0.06,
+      "unit": "%",
+      "hints": [
+        "Вероятность, что в одном срезе ложной находки нет, — 0,95. Во всех десяти — 0,95¹⁰.",
+        "1 − 0,95¹⁰"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 50,
+          "message": "Просто сложить 10 × 5% нельзя: так при 20 срезах получилось бы 100%. Считай через вероятность «ни одной ошибки»."
+        }
+      ],
+      "selfTest": {
+        "correct": [
+          "40,1"
+        ],
+        "wrong": [
+          "50"
+        ]
+      }
+    },
+    {
+      "id": "holm",
+      "title": "Поправка Холма",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Пять срезов дали p-value из словаря `pvals`. Примени поправку **Холма** (α = 0,05): отсортируй p по возрастанию и сравнивай i-е (с нуля) с `0.05 / (k - i)`. Как только сравнение не прошло — это и все следующие срезы незначимы.",
+        "",
+        "В `result` положи **список названий** значимых срезов в порядке возрастания p."
+      ],
+      "starter": "pvals = {\"mobile\": 0.004, \"desktop\": 0.03, \"tablet\": 0.011, \"новые\": 0.008, \"старые\": 0.20}\n\nk = len(pvals)\nresult = []\nfor i, (name, p) in enumerate(sorted(pvals.items(), key=lambda x: x[1])):\n    \n",
+      "solution": "pvals = {\"mobile\": 0.004, \"desktop\": 0.03, \"tablet\": 0.011, \"новые\": 0.008, \"старые\": 0.20}\n\nk = len(pvals)\nresult = []\nfor i, (name, p) in enumerate(sorted(pvals.items(), key=lambda x: x[1])):\n    if p < 0.05 / (k - i):\n        result.append(name)\n    else:\n        break\n",
+      "orderMatters": true,
+      "hints": [
+        "Пороги по порядку: 0,05/5, 0,05/4, 0,05/3, 0,05/2, 0,05/1.",
+        "Если `p < 0.05 / (k - i)` — добавь срез в список, иначе `break`."
+      ],
+      "explanation": "Бонферрони требовал бы p < 0,01 от всех и признал бы значимыми только mobile и «новые». Холм мягче к следующим срезам: tablet с p = 0,011 проходит порог 0,05/3. А desktop с p = 0,03 уже не проходит 0,05/2 = 0,025.",
+      "selfTest": {
+        "correct": [
+          "pvals = {\"mobile\": 0.004, \"desktop\": 0.03, \"tablet\": 0.011, \"новые\": 0.008, \"старые\": 0.20}\nitems = sorted(pvals.items(), key=lambda x: x[1])\nresult = []\nfor i in range(len(items)):\n    if items[i][1] >= 0.05 / (len(items) - i):\n        break\n    result.append(items[i][0])"
+        ],
+        "wrong": [
+          "pvals = {\"mobile\": 0.004, \"desktop\": 0.03, \"tablet\": 0.011, \"новые\": 0.008, \"старые\": 0.20}\nresult = [n for n, p in sorted(pvals.items(), key=lambda x: x[1]) if p < 0.05]",
+          "pvals = {\"mobile\": 0.004, \"desktop\": 0.03, \"tablet\": 0.011, \"новые\": 0.008, \"старые\": 0.20}\nresult = [n for n, p in sorted(pvals.items(), key=lambda x: x[1]) if p < 0.05 / 5]"
+        ]
+      }
+    },
+    {
+      "id": "mw-vs-mean",
+      "title": "Что доказал Манн — Уитни",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Тест Манна — Уитни по выручке на пользователя дал p = 0,01. Аналитик пишет: «Средняя выручка на пользователя значимо выросла». Что не так?",
+      "options": [
+        {
+          "text": "Манн — Уитни проверяет сдвиг рангов, а не разницу средних: средние могут и не отличаться",
+          "correct": true,
+          "explain": "Например, B может чаще давать небольшие покупки, но реже крупные: ранги сдвинутся, а среднее не изменится или даже упадёт. Для вывода о среднем нужен t-тест или бутстрап средних."
+        },
+        {
+          "text": "Всё верно: значимость есть значимость",
+          "explain": "Значимость — ответ на конкретный вопрос теста. Вопрос Манна — Уитни не про средние."
+        },
+        {
+          "text": "Нужно было взять p < 0,001",
+          "explain": "Порог тут ни при чём: вывод сформулирован не про то, что проверял тест."
+        },
+        {
+          "text": "Манн — Уитни нельзя использовать на больших выборках",
+          "explain": "Можно. Важно правильно понимать, что он проверяет."
+        }
+      ],
+      "hints": [
+        "Какую статистику сравнивает тест: средние или ранги?"
+      ]
+    },
+    {
+      "id": "slice-found",
+      "title": "Значимо только в одном срезе",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Общий результат теста не значим. Но в срезе «планшеты, Казань» эффект значимый (p = 0,02). Менеджер предлагает раскатить изменение для планшетов в Казани. Что ответить?",
+      "options": [
+        {
+          "text": "Скорее всего, это случайная находка из множества срезов. Её можно проверить отдельным тестом на этом сегменте, но не раскатывать сразу",
+          "correct": true,
+          "explain": "Срезов было много, и один «значимый» почти наверняка случайный. Находка — гипотеза для нового теста, а не решение."
+        },
+        {
+          "text": "Раскатить: p меньше 0,05",
+          "explain": "Без поправки на число просмотренных срезов p = 0,02 мало что значит."
+        },
+        {
+          "text": "Удалить этот срез из отчёта",
+          "explain": "Скрывать не нужно — нужно правильно объяснить, что это гипотеза."
+        },
+        {
+          "text": "Признать весь тест успешным",
+          "explain": "Общий результат не значим. Один срез не меняет общий вывод."
+        }
+      ],
+      "hints": [
+        "Сколько срезов посмотрели, прежде чем найти этот?"
+      ]
+    },
+    {
+      "id": "ci-reading",
+      "title": "Как читать интервал",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Бутстрап дал 95% ДИ для разницы ARPU (B − A): **от −5 до +62 ₽**. Какой вывод правильный?",
+      "options": [
+        {
+          "text": "Разница не значима на уровне 5%: интервал содержит ноль, эффект может быть и нулевым",
+          "correct": true,
+          "explain": "Интервал говорит: правдоподобны значения от небольшого падения до заметного роста. Чтобы сузить его, нужно больше данных или снижение дисперсии."
+        },
+        {
+          "text": "B лучше на 62 ₽",
+          "explain": "62 ₽ — только верхняя граница интервала, не оценка эффекта."
+        },
+        {
+          "text": "B хуже на 5 ₽",
+          "explain": "−5 ₽ — нижняя граница. Интервал включает и рост."
+        },
+        {
+          "text": "Эффект точно положительный, ведь большая часть интервала выше нуля",
+          "explain": "Ноль внутри интервала — значит, отсутствие эффекта не исключено."
+        }
+      ],
+      "hints": [
+        "Что значит, если ноль попадает внутрь интервала?"
+      ]
+    }
+  ]
+}

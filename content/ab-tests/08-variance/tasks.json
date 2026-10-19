@@ -1,0 +1,217 @@
+{
+  "tasks": [
+    {
+      "id": "winsorize",
+      "title": "Винзоризация выручки",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Найди 99-й процентиль выручки (`revenue`) по **обеим** группам эксперимента `checkout_v2` вместе и замени всё, что выше, этим порогом (`clip(upper=…)`).",
+        "",
+        "В `result` положи, во сколько раз упала дисперсия: **дисперсия после / дисперсия до**, округлённую до 3 знаков."
+      ],
+      "starter": "ck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\ncap = \ncapped = \nresult = ",
+      "solution": "ck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\ncap = ck[\"revenue\"].quantile(0.99)\ncapped = ck[\"revenue\"].clip(upper=cap)\nresult = round(capped.var() / ck[\"revenue\"].var(), 3)",
+      "hints": [
+        "Порог: `ck[\"revenue\"].quantile(0.99)`.",
+        "Замена: `ck[\"revenue\"].clip(upper=cap)`, отношение дисперсий — `capped.var() / ck[\"revenue\"].var()`."
+      ],
+      "explanation": "Один процент самых больших значений даёт заметную долю всей дисперсии. Срезав их, получаем тест, которому нужно намного меньше пользователей. Цена — метрика теперь «выручка с потолком».",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\nr = ab_users.loc[ab_users.experiment == \"checkout_v2\", \"revenue\"].to_numpy()\nc = np.minimum(r, np.quantile(r, 0.99))\nresult = round(c.var(ddof=1) / r.var(ddof=1), 3)"
+        ],
+        "wrong": [
+          "ck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\ncapped = ck[\"revenue\"].clip(upper=ck[\"revenue\"].quantile(0.95))\nresult = round(capped.var() / ck[\"revenue\"].var(), 3)",
+          "ck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\ncapped = ck[\"revenue\"].clip(upper=ck[\"revenue\"].quantile(0.99))\nresult = round(capped.std() / ck[\"revenue\"].std(), 3)"
+        ]
+      }
+    },
+    {
+      "id": "capped-ttest",
+      "title": "t-тест после винзоризации",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Сравни ARPU групп B и A эксперимента `checkout_v2` t-тестом Уэлча **до** и **после** винзоризации по 99-му процентилю (общему для групп). В `result` положи список из двух t-статистик (B против A), каждую до 2 знаков: `[до, после]`.",
+      "starter": "from scipy import stats\n\nck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"].copy()\ncap = ck[\"revenue\"].quantile(0.99)\nck[\"capped\"] = ck[\"revenue\"].clip(upper=cap)\na = ck[ck[\"group_name\"] == \"A\"]\nb = ck[ck[\"group_name\"] == \"B\"]\n\nresult = ",
+      "solution": "from scipy import stats\n\nck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"].copy()\ncap = ck[\"revenue\"].quantile(0.99)\nck[\"capped\"] = ck[\"revenue\"].clip(upper=cap)\na = ck[ck[\"group_name\"] == \"A\"]\nb = ck[ck[\"group_name\"] == \"B\"]\n\nt_before = stats.ttest_ind(b[\"revenue\"], a[\"revenue\"], equal_var=False).statistic\nt_after = stats.ttest_ind(b[\"capped\"], a[\"capped\"], equal_var=False).statistic\nresult = [round(t_before, 2), round(t_after, 2)]",
+      "hints": [
+        "Два вызова `stats.ttest_ind(…, equal_var=False)`: по `revenue` и по `capped`. Порядок групп — сначала B, потом A."
+      ],
+      "explanation": "Если t-статистика после винзоризации выросла по модулю, тест стал чувствительнее: тот же эффект виден чётче на фоне меньшего шума.",
+      "selfTest": {
+        "correct": [
+          "from scipy import stats\nck = ab_users[ab_users.experiment == \"checkout_v2\"]\ncap = ck.revenue.quantile(0.99)\nA = ck[ck.group_name == \"A\"].revenue\nB = ck[ck.group_name == \"B\"].revenue\nresult = [round(stats.ttest_ind(B, A, equal_var=False).statistic, 2), round(stats.ttest_ind(B.clip(upper=cap), A.clip(upper=cap), equal_var=False).statistic, 2)]"
+        ],
+        "wrong": [
+          "from scipy import stats\nck = ab_users[ab_users.experiment == \"checkout_v2\"]\nA = ck[ck.group_name == \"A\"].revenue\nB = ck[ck.group_name == \"B\"].revenue\nresult = [round(stats.ttest_ind(B, A, equal_var=False).statistic, 2), round(stats.ttest_ind(B.clip(upper=B.quantile(0.99)), A.clip(upper=A.quantile(0.99)), equal_var=False).statistic, 2)]"
+        ]
+      }
+    },
+    {
+      "id": "stratified-effect",
+      "title": "Стратифицированный эффект",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Посчитай эффект эксперимента `checkout_v2` на конверсию **со стратификацией по устройству**: разница конверсий B − A внутри каждого устройства, взвешенная по долям устройств среди всех участников эксперимента.",
+        "",
+        "В `result` — эффект, округлённый до 5 знаков."
+      ],
+      "starter": "ck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\nby = ck.groupby([\"device\", \"group_name\"])[\"converted\"].mean().unstack()\nweights = \nresult = ",
+      "solution": "ck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\nby = ck.groupby([\"device\", \"group_name\"])[\"converted\"].mean().unstack()\nweights = ck[\"device\"].value_counts(normalize=True)\nresult = round(((by[\"B\"] - by[\"A\"]) * weights).sum(), 5)",
+      "hints": [
+        "Доли устройств: `ck[\"device\"].value_counts(normalize=True)`.",
+        "Эффект: `((by[\"B\"] - by[\"A\"]) * weights).sum()` — pandas сам совместит строки по названию устройства."
+      ],
+      "explanation": "Сравни с простой разницей конверсий групп: числа будут близки, потому что группы хорошо сбалансированы. Выигрыш стратификации — в меньшей дисперсии оценки, а не в другом среднем.",
+      "selfTest": {
+        "correct": [
+          "ck = ab_users[ab_users.experiment == \"checkout_v2\"]\nres = 0\nfor d, part in ck.groupby(\"device\"):\n    w = len(part) / len(ck)\n    res += w * (part[part.group_name == \"B\"].converted.mean() - part[part.group_name == \"A\"].converted.mean())\nresult = round(res, 5)"
+        ],
+        "wrong": [
+          "ck = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\nby = ck.groupby([\"device\", \"group_name\"])[\"converted\"].mean().unstack()\nresult = round((by[\"B\"] - by[\"A\"]).mean(), 5)"
+        ]
+      }
+    },
+    {
+      "id": "cuped-reduction",
+      "title": "CUPED: насколько упала дисперсия",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "В заготовке симуляция: `x` — выручка пользователей **до** теста, `y` — выручка **в тесте**, в группе B настоящий эффект +15 ₽.",
+        "",
+        "Посчитай θ = cov(y, x) / var(x), метрику CUPED `y_cuped = y − θ·(x − mean(x))` и положи в `result` отношение дисперсий **var(y_cuped) / var(y)**, округлённое до 3 знаков."
+      ],
+      "starter": "import numpy as np\n\nrng = np.random.default_rng(5)\nn = 5000\nx = rng.gamma(2, 200, size=2 * n)\ngroup = np.repeat([\"A\", \"B\"], n)\neffect = np.where(group == \"B\", 15, 0)\ny = 0.8 * x + rng.normal(0, 150, size=2 * n) + effect\n\ntheta = \ny_cuped = \nresult = ",
+      "solution": "import numpy as np\n\nrng = np.random.default_rng(5)\nn = 5000\nx = rng.gamma(2, 200, size=2 * n)\ngroup = np.repeat([\"A\", \"B\"], n)\neffect = np.where(group == \"B\", 15, 0)\ny = 0.8 * x + rng.normal(0, 150, size=2 * n) + effect\n\ntheta = np.cov(y, x)[0, 1] / np.var(x, ddof=1)\ny_cuped = y - theta * (x - x.mean())\nresult = round(y_cuped.var() / y.var(), 3)",
+      "hints": [
+        "Ковариация: `np.cov(y, x)[0, 1]`; дисперсия: `np.var(x, ddof=1)`.",
+        "`y_cuped = y - theta * (x - x.mean())`, затем `y_cuped.var() / y.var()`."
+      ],
+      "explanation": "Отношение близко к 1 − ρ², где ρ — корреляция x и y. Во столько же раз меньше пользователей нужно тесту на CUPED-метрике.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\n\nrng = np.random.default_rng(5)\nn = 5000\nx = rng.gamma(2, 200, size=2 * n)\ngroup = np.repeat([\"A\", \"B\"], n)\neffect = np.where(group == \"B\", 15, 0)\ny = 0.8 * x + rng.normal(0, 150, size=2 * n) + effect\nr = np.corrcoef(x, y)[0, 1]\nt = r * y.std(ddof=1) / x.std(ddof=1)\nyc = y - t * (x - x.mean())\nresult = round(yc.var() / y.var(), 3)"
+        ],
+        "wrong": [
+          "import numpy as np\n\nrng = np.random.default_rng(5)\nn = 5000\nx = rng.gamma(2, 200, size=2 * n)\ngroup = np.repeat([\"A\", \"B\"], n)\neffect = np.where(group == \"B\", 15, 0)\ny = 0.8 * x + rng.normal(0, 150, size=2 * n) + effect\ntheta = np.cov(y, x)[0, 1] / np.var(y, ddof=1)\nyc = y - theta * (x - x.mean())\nresult = round(yc.var() / y.var(), 3)",
+          "import numpy as np\n\nrng = np.random.default_rng(5)\nn = 5000\nx = rng.gamma(2, 200, size=2 * n)\ngroup = np.repeat([\"A\", \"B\"], n)\neffect = np.where(group == \"B\", 15, 0)\ny = 0.8 * x + rng.normal(0, 150, size=2 * n) + effect\nresult = round((y - x).var() / y.var(), 3)"
+        ]
+      }
+    },
+    {
+      "id": "cuped-effect",
+      "title": "CUPED не меняет эффект",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "На той же симуляции посчитай оценку эффекта (среднее B − среднее A) по обычной метрике `y` и по `y_cuped`. В `result` положи `[эффект по y, эффект по y_cuped]`, каждый до 1 знака.",
+      "starter": "import numpy as np\n\nrng = np.random.default_rng(5)\nn = 5000\nx = rng.gamma(2, 200, size=2 * n)\ngroup = np.repeat([\"A\", \"B\"], n)\neffect = np.where(group == \"B\", 15, 0)\ny = 0.8 * x + rng.normal(0, 150, size=2 * n) + effect\n\ntheta = np.cov(y, x)[0, 1] / np.var(x, ddof=1)\ny_cuped = y - theta * (x - x.mean())\n\nis_b = group == \"B\"\nresult = ",
+      "solution": "import numpy as np\n\nrng = np.random.default_rng(5)\nn = 5000\nx = rng.gamma(2, 200, size=2 * n)\ngroup = np.repeat([\"A\", \"B\"], n)\neffect = np.where(group == \"B\", 15, 0)\ny = 0.8 * x + rng.normal(0, 150, size=2 * n) + effect\n\ntheta = np.cov(y, x)[0, 1] / np.var(x, ddof=1)\ny_cuped = y - theta * (x - x.mean())\n\nis_b = group == \"B\"\nresult = [round(y[is_b].mean() - y[~is_b].mean(), 1), round(y_cuped[is_b].mean() - y_cuped[~is_b].mean(), 1)]",
+      "hints": [
+        "Маска группы B — `is_b`, группы A — `~is_b`.",
+        "Эффект: `y[is_b].mean() - y[~is_b].mean()`, так же для `y_cuped`."
+      ],
+      "explanation": "Обе оценки близки к настоящим +15 ₽, но оценка по CUPED точнее: попробуй поменять зерно генератора — эффект по `y` будет скакать сильнее, чем по `y_cuped`.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\n\nrng = np.random.default_rng(5)\nn = 5000\nx = rng.gamma(2, 200, size=2 * n)\ngroup = np.repeat([\"A\", \"B\"], n)\neffect = np.where(group == \"B\", 15, 0)\ny = 0.8 * x + rng.normal(0, 150, size=2 * n) + effect\nth = np.cov(y, x)[0, 1] / x.var(ddof=1)\nyc = y - th * (x - x.mean())\nb = group == \"B\"\nresult = [round(float(np.mean(y[b]) - np.mean(y[~b])), 1), round(float(np.mean(yc[b]) - np.mean(yc[~b])), 1)]"
+        ],
+        "wrong": [
+          "import numpy as np\n\nrng = np.random.default_rng(5)\nn = 5000\nx = rng.gamma(2, 200, size=2 * n)\ngroup = np.repeat([\"A\", \"B\"], n)\neffect = np.where(group == \"B\", 15, 0)\ny = 0.8 * x + rng.normal(0, 150, size=2 * n) + effect\nth = np.cov(y, x)[0, 1] / x.var(ddof=1)\nyc = y - th * x\nb = group == \"B\"\nresult = [round(y[b].mean() - y[~b].mean(), 1), round(yc[b].mean(), 1)]"
+        ]
+      }
+    },
+    {
+      "id": "cuped-n",
+      "title": "Сколько людей сэкономит CUPED",
+      "difficulty": 2,
+      "type": "number",
+      "prompt": "Тесту на выручку нужно **20 000** пользователей в группе. Корреляция выручки в тесте с выручкой до теста ρ = **0,6**. Сколько пользователей в группе понадобится с CUPED?",
+      "answer": 12800,
+      "tolerance": 1,
+      "unit": "пользователей",
+      "hints": [
+        "Дисперсия, а с ней и размер выборки, умножаются на 1 − ρ².",
+        "20 000 × (1 − 0,36)"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 8000,
+          "message": "Множитель — 1 − ρ², а не 1 − ρ: 1 − 0,6² = 0,64."
+        },
+        {
+          "value": 7200,
+          "message": "Это сэкономленные пользователи. А вопрос — сколько понадобится."
+        }
+      ],
+      "selfTest": {
+        "correct": [
+          "12800"
+        ],
+        "wrong": [
+          "8000"
+        ]
+      }
+    },
+    {
+      "id": "peeking",
+      "title": "Остановить по первому прокрасу",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Тест запланирован на 3 недели. На 4-й день p-value упал до 0,03, и менеджер просит остановить тест и раскатить вариант B. Почему так делать нельзя?",
+      "options": [
+        {
+          "text": "p-value по ходу теста случайно колеблется; если ловить первый момент ниже 0,05, вероятность ложной находки сильно выше 5%",
+          "correct": true,
+          "explain": "Это подглядывание. Если нужно останавливаться раньше, используют последовательные методы (SPRT, групповой дизайн) с более строгими порогами промежуточных проверок."
+        },
+        {
+          "text": "Можно: p < 0,05 — значит, эффект есть",
+          "explain": "Обещание «5% ложных находок» работает только при одной проверке в конце. При ежедневных проверках оно не выполняется."
+        },
+        {
+          "text": "Нельзя, потому что на 4-й день нет данных",
+          "explain": "Данные есть, но их меньше запланированного, и проверок было много."
+        },
+        {
+          "text": "Нужно подождать, пока p-value станет 0,01",
+          "explain": "Более строгий порог при тех же ежедневных проверках не решает проблему системно."
+        }
+      ],
+      "hints": [
+        "Что происходит с шансом ложной тревоги, если смотреть на p-value каждый день?"
+      ]
+    },
+    {
+      "id": "cuped-x",
+      "title": "Какую ковариату брать в CUPED",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Для CUPED нужна метрика X, связанная с выручкой в тесте Y. Какой вариант правильный?",
+      "options": [
+        {
+          "text": "Выручка того же пользователя за 2 недели **до** начала теста",
+          "correct": true,
+          "explain": "X измерен до теста, поэтому изменение на него не повлияло, а с Y он сильно связан."
+        },
+        {
+          "text": "Число визитов пользователя **во время** теста",
+          "explain": "Изменение могло повлиять на визиты. Тогда CUPED «съест» часть эффекта или исказит его."
+        },
+        {
+          "text": "Выручка пользователя в тесте, умноженная на 2",
+          "explain": "Это та же Y. CUPED вычтет весь сигнал вместе с эффектом."
+        },
+        {
+          "text": "Случайное число",
+          "explain": "Не связано с Y, поэтому дисперсия не уменьшится."
+        }
+      ],
+      "hints": [
+        "Ковариата не должна зависеть от того, в какой группе пользователь."
+      ]
+    }
+  ]
+}

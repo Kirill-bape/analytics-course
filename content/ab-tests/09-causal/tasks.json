@@ -1,0 +1,236 @@
+{
+  "tasks": [
+    {
+      "id": "did-hand",
+      "title": "Разность разностей вручную",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": [
+        "В Казани запустили бесплатную доставку, Пермь — контроль. Заказов в день:",
+        "",
+        "| Город | До | После |",
+        "|---|---|---|",
+        "| Казань | 200 | 260 |",
+        "| Пермь | 150 | 180 |",
+        "",
+        "Какой эффект бесплатной доставки на заказы в день по методу разности разностей?"
+      ],
+      "answer": 30,
+      "unit": "заказов в день",
+      "hints": [
+        "Казань выросла на 60, Пермь — на 30 за то же время.",
+        "(260 − 200) − (180 − 150)"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 60,
+          "message": "Это весь рост Казани. Но часть роста была бы и без доставки — посмотри, насколько за то же время выросла Пермь."
+        }
+      ],
+      "explanation": "Половина роста Казани — общий тренд (сезон, маркетинг), который видно и в Перми. Если бы мы сравнили только «до и после» в Казани, эффект завысили бы вдвое.",
+      "selfTest": {
+        "correct": [
+          "30"
+        ],
+        "wrong": [
+          "60"
+        ]
+      }
+    },
+    {
+      "id": "did-sql",
+      "title": "DiD на данных магазина",
+      "difficulty": 2,
+      "prompt": [
+        "Допустим, с 1 апреля 2026 в Москве шла акция, а Санкт-Петербург — контроль. В заготовке — средняя дневная выручка доставленных заказов по городам до (март) и после (апрель).",
+        "",
+        "Посчитай оценку эффекта по разности разностей одним числом: столбец `did`, округлённый до целого."
+      ],
+      "starter": "WITH d AS (\n    SELECT c.city,\n           CASE WHEN o.order_date >= '2026-04-01' THEN 'после' ELSE 'до' END AS period,\n           SUM(o.amount) / COUNT(DISTINCT o.order_date) AS revenue_per_day\n    FROM orders o\n    JOIN customers c ON c.customer_id = o.customer_id\n    WHERE o.status = 'delivered'\n      AND o.order_date >= '2026-03-01' AND o.order_date < '2026-05-01'\n      AND c.city IN ('Москва', 'Санкт-Петербург')\n    GROUP BY c.city, period\n)\nSELECT \nFROM d;",
+      "solution": "WITH d AS (\n    SELECT c.city,\n           CASE WHEN o.order_date >= '2026-04-01' THEN 'после' ELSE 'до' END AS period,\n           SUM(o.amount) / COUNT(DISTINCT o.order_date) AS revenue_per_day\n    FROM orders o\n    JOIN customers c ON c.customer_id = o.customer_id\n    WHERE o.status = 'delivered'\n      AND o.order_date >= '2026-03-01' AND o.order_date < '2026-05-01'\n      AND c.city IN ('Москва', 'Санкт-Петербург')\n    GROUP BY c.city, period\n)\nSELECT ROUND(\n    (MAX(revenue_per_day) FILTER (WHERE city = 'Москва' AND period = 'после')\n     - MAX(revenue_per_day) FILTER (WHERE city = 'Москва' AND period = 'до'))\n  - (MAX(revenue_per_day) FILTER (WHERE city = 'Санкт-Петербург' AND period = 'после')\n     - MAX(revenue_per_day) FILTER (WHERE city = 'Санкт-Петербург' AND period = 'до'))\n) AS did\nFROM d;",
+      "checkColumnNames": true,
+      "hints": [
+        "Достать одно значение из `d` можно так: `MAX(revenue_per_day) FILTER (WHERE city = 'Москва' AND period = 'после')`.",
+        "(Москва после − Москва до) − (Петербург после − Петербург до)."
+      ],
+      "explanation": "На самом деле никакой акции в учебных данных не было — это хороший пример **плацебо-теста**. Если DiD нашёл заметный «эффект», значит, Москва и Петербург и без акции менялись по-разному, и такой контроль не годится.",
+      "selfTest": {
+        "correct": [
+          "WITH d AS (\n    SELECT c.city,\n           CASE WHEN o.order_date >= '2026-04-01' THEN 'после' ELSE 'до' END AS period,\n           SUM(o.amount) / COUNT(DISTINCT o.order_date) AS revenue_per_day\n    FROM orders o\n    JOIN customers c ON c.customer_id = o.customer_id\n    WHERE o.status = 'delivered'\n      AND o.order_date >= '2026-03-01' AND o.order_date < '2026-05-01'\n      AND c.city IN ('Москва', 'Санкт-Петербург')\n    GROUP BY c.city, period\n)\n, p AS (SELECT city, MAX(CASE WHEN period = 'после' THEN revenue_per_day END) - MAX(CASE WHEN period = 'до' THEN revenue_per_day END) AS diff FROM d GROUP BY city) SELECT ROUND(MAX(diff) FILTER (WHERE city = 'Москва') - MAX(diff) FILTER (WHERE city = 'Санкт-Петербург')) AS did FROM p"
+        ],
+        "wrong": [
+          "WITH d AS (\n    SELECT c.city,\n           CASE WHEN o.order_date >= '2026-04-01' THEN 'после' ELSE 'до' END AS period,\n           SUM(o.amount) / COUNT(DISTINCT o.order_date) AS revenue_per_day\n    FROM orders o\n    JOIN customers c ON c.customer_id = o.customer_id\n    WHERE o.status = 'delivered'\n      AND o.order_date >= '2026-03-01' AND o.order_date < '2026-05-01'\n      AND c.city IN ('Москва', 'Санкт-Петербург')\n    GROUP BY c.city, period\n)\nSELECT ROUND(MAX(revenue_per_day) FILTER (WHERE city = 'Москва' AND period = 'после') - MAX(revenue_per_day) FILTER (WHERE city = 'Москва' AND period = 'до')) AS did FROM d"
+        ]
+      }
+    },
+    {
+      "id": "did-regression",
+      "title": "DiD как регрессия",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Повтори оценку через регрессию `y = b0 + b1·тест + b2·после + b3·(тест × после)` по **дневным** данным: каждая строка — город и день, `y` — выручка доставленных заказов за день.",
+        "",
+        "В заготовке данные уже подготовлены. Построй матрицу признаков и найди коэффициенты через `np.linalg.lstsq`. В `result` положи **b3**, округлённый до целого."
+      ],
+      "starter": "import numpy as np\n\nm = orders[orders[\"status\"] == \"delivered\"].merge(customers[[\"customer_id\", \"city\"]], on=\"customer_id\")\nm = m[(m[\"order_date\"] >= \"2026-03-01\") & (m[\"order_date\"] < \"2026-05-01\") & m[\"city\"].isin([\"Москва\", \"Санкт-Петербург\"])]\ndaily = m.groupby([\"city\", \"order_date\"], as_index=False)[\"amount\"].sum()\n\ntest = (daily[\"city\"] == \"Москва\").astype(float)\nafter = (daily[\"order_date\"] >= \"2026-04-01\").astype(float)\nX = np.column_stack([np.ones(len(daily)), ])\ncoef, *_ = np.linalg.lstsq(X, daily[\"amount\"], rcond=None)\nresult = ",
+      "solution": "import numpy as np\n\nm = orders[orders[\"status\"] == \"delivered\"].merge(customers[[\"customer_id\", \"city\"]], on=\"customer_id\")\nm = m[(m[\"order_date\"] >= \"2026-03-01\") & (m[\"order_date\"] < \"2026-05-01\") & m[\"city\"].isin([\"Москва\", \"Санкт-Петербург\"])]\ndaily = m.groupby([\"city\", \"order_date\"], as_index=False)[\"amount\"].sum()\n\ntest = (daily[\"city\"] == \"Москва\").astype(float)\nafter = (daily[\"order_date\"] >= \"2026-04-01\").astype(float)\nX = np.column_stack([np.ones(len(daily)), test, after, test * after])\ncoef, *_ = np.linalg.lstsq(X, daily[\"amount\"], rcond=None)\nresult = round(coef[3])",
+      "hints": [
+        "Столбцы матрицы: единицы, `test`, `after` и их произведение `test * after`.",
+        "Эффект — четвёртый коэффициент: `coef[3]`."
+      ],
+      "explanation": "Число совпадёт с ручным расчётом из прошлого задания: регрессия с взаимодействием — та же разность разностей. Её плюс в том, что можно добавить другие признаки и получить стандартную ошибку коэффициента.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\nm = orders[orders.status == \"delivered\"].merge(customers, on=\"customer_id\")\nm = m[m.order_date.between(\"2026-03-01\", \"2026-04-30\") & m.city.isin([\"Москва\", \"Санкт-Петербург\"])]\nd = m.groupby([\"city\", \"order_date\"]).amount.sum().reset_index()\nt = (d.city == \"Москва\") * 1.0\na = (d.order_date >= \"2026-04-01\") * 1.0\nX = np.c_[np.ones(len(d)), t, a, t * a]\nresult = round(np.linalg.lstsq(X, d.amount.to_numpy(), rcond=None)[0][3])"
+        ],
+        "wrong": [
+          "import numpy as np\nm = orders[orders.status == \"delivered\"].merge(customers, on=\"customer_id\")\nm = m[m.order_date.between(\"2026-03-01\", \"2026-04-30\") & m.city.isin([\"Москва\", \"Санкт-Петербург\"])]\nd = m.groupby([\"city\", \"order_date\"]).amount.sum().reset_index()\nt = (d.city == \"Москва\") * 1.0\na = (d.order_date >= \"2026-04-01\") * 1.0\nX = np.c_[np.ones(len(d)), t, a]\nresult = round(np.linalg.lstsq(X, d.amount.to_numpy(), rcond=None)[0][2])"
+        ]
+      }
+    },
+    {
+      "id": "synthetic",
+      "title": "Синтетический близнец",
+      "difficulty": 2,
+      "type": "number",
+      "prompt": "Синтетический контроль для Казани собран из трёх городов с весами 0,5 × Пермь + 0,3 × Уфа + 0,2 × Самара. После запуска изменения в Казани: Пермь — 100 заказов в день, Уфа — 80, Самара — 120, а сама Казань — 110. Какова оценка эффекта?",
+      "answer": 12,
+      "unit": "заказов в день",
+      "hints": [
+        "Сначала «близнец»: 0,5 × 100 + 0,3 × 80 + 0,2 × 120.",
+        "Эффект = факт Казани − близнец."
+      ],
+      "wrongAnswers": [
+        {
+          "value": 10,
+          "message": "100 — это не близнец, а только один город. Посчитай взвешенную сумму всех трёх."
+        }
+      ],
+      "selfTest": {
+        "correct": [
+          "12"
+        ],
+        "wrong": [
+          "10"
+        ]
+      }
+    },
+    {
+      "id": "confounder",
+      "title": "Рассылка удваивает покупки?",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Подписчики рассылки покупают в 2 раза чаще, чем остальные. Маркетолог делает вывод: «Рассылка удваивает покупки». Что не так?",
+      "options": [
+        {
+          "text": "Подписываются в основном и так активные клиенты: активность влияет и на подписку, и на покупки",
+          "correct": true,
+          "explain": "Это конфаундер. Честно оценить эффект рассылки можно A/B-тестом (часть подписчиков не получает письма) или хотя бы матчингом по активности до подписки."
+        },
+        {
+          "text": "Всё верно: разница в 2 раза очевидна",
+          "explain": "Разница есть, но её причина может быть не в рассылке, а в том, кто на неё подписывается."
+        },
+        {
+          "text": "Нужно больше данных",
+          "explain": "Больше данных той же природы не устранит смешение эффекта с разницей между людьми."
+        },
+        {
+          "text": "Нужно посчитать медиану вместо среднего",
+          "explain": "Смена статистики не решает проблему конфаундера."
+        }
+      ],
+      "hints": [
+        "Чем подписчики отличались от остальных ещё до рассылки?"
+      ]
+    },
+    {
+      "id": "parallel-trends",
+      "title": "Параллельные тренды",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Для оценки акции в Москве по DiD выбрали контролем город, выручка которого последние полгода **падала**, а московская **росла**. Что не так?",
+      "options": [
+        {
+          "text": "Нарушено допущение параллельных трендов: DiD припишет акции разницу, которая была и до неё",
+          "correct": true,
+          "explain": "Если до изменения тренды расходились, эффект будет завышен. Нужен контроль, который до изменения двигался так же, как тестовая группа, или синтетический контроль."
+        },
+        {
+          "text": "Ничего: DiD сам учитывает любые тренды",
+          "explain": "DiD вычитает только общий тренд. Если тренды разные, разница останется в оценке."
+        },
+        {
+          "text": "Нужно взять более длинный период «после»",
+          "explain": "Расходящиеся тренды только сильнее исказят оценку на длинном периоде."
+        },
+        {
+          "text": "Проблема только в размере городов",
+          "explain": "Размер не важен: DiD сравнивает изменения. Важно, чтобы изменения шли параллельно."
+        }
+      ],
+      "hints": [
+        "На каком допущении держится разность разностей?"
+      ]
+    },
+    {
+      "id": "placebo",
+      "title": "Плацебо-тест",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Causal Impact показал, что новая реклама подняла продажи на 12%. Как проверить, можно ли доверять методу?",
+      "options": [
+        {
+          "text": "Запустить тот же анализ на периоде, когда никаких изменений не было: «эффект» должен получиться около нуля",
+          "correct": true,
+          "explain": "Это плацебо-тест. Если метод находит эффект на пустом месте, его модель плохо описывает ряд, и 12% тоже под сомнением."
+        },
+        {
+          "text": "Увеличить уровень значимости до 10%",
+          "explain": "Так находок станет больше, но доверия к методу не прибавится."
+        },
+        {
+          "text": "Показать результат руководителю — пусть решит",
+          "explain": "Проверка надёжности — задача аналитика, а не руководителя."
+        },
+        {
+          "text": "Повторить анализ дважды на тех же данных",
+          "explain": "Результат будет тот же: ошибки модели повторятся."
+        }
+      ],
+      "hints": [
+        "Что должен показать метод там, где воздействия заведомо не было?"
+      ]
+    },
+    {
+      "id": "choose-causal",
+      "title": "Какой метод выбрать",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Пользователи сами решают, включать ли новую функцию «умные рекомендации». Включили 15%. Нужно оценить, как функция влияет на покупки, а A/B-тест уже не провести. Что разумнее всего?",
+      "options": [
+        {
+          "text": "Матчинг (например, PSM): сравнить включивших с похожими по активности и истории покупок до включения",
+          "correct": true,
+          "explain": "Воздействие выбрали сами пользователи — значит, нужно уравнять группы по признакам до воздействия. И честно указать, что неизмеренные различия (например, мотивация) могут остаться."
+        },
+        {
+          "text": "Сравнить всех включивших со всеми остальными напрямую",
+          "explain": "Включают функцию более активные пользователи — получится смесь эффекта и разницы между людьми."
+        },
+        {
+          "text": "Разность разностей по городам",
+          "explain": "Функция доступна во всех городах одновременно, контрольного города нет."
+        },
+        {
+          "text": "Посчитать корреляцию включения и покупок",
+          "explain": "Корреляция не отделяет эффект от различий между пользователями."
+        }
+      ],
+      "hints": [
+        "Кто решал, получить ли воздействие?"
+      ]
+    }
+  ]
+}
