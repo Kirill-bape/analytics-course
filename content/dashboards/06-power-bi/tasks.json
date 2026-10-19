@@ -1,0 +1,227 @@
+{
+  "tasks": [
+    {
+      "id": "measure-or-column",
+      "title": "Мера или вычисляемый столбец",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Нужно показать **средний чек** в карточке и в таблице по городам. Как его сделать в Power BI?",
+      "options": [
+        {
+          "text": "Мерой: `Средний чек = DIVIDE([Выручка], [Заказов])`",
+          "correct": true,
+          "explain": "Мера пересчитывается в контексте каждого визуала: в карточке — по всем данным, в таблице — для каждого города."
+        },
+        {
+          "text": "Вычисляемым столбцом в таблице заказов",
+          "explain": "Столбец считается для каждой строки-заказа. Средний чек — это итог по группе заказов, его не хранят в строках."
+        },
+        {
+          "text": "В Power Query отдельной таблицей",
+          "explain": "Тогда средний чек не будет реагировать на фильтры и срезы отчёта."
+        },
+        {
+          "text": "Посчитать в Excel и вписать числом",
+          "explain": "Цифра не обновится вместе с данными и не разобьётся по городам."
+        }
+      ],
+      "hints": [
+        "Итоги, которые должны меняться вместе с фильтрами, делают…"
+      ]
+    },
+    {
+      "id": "star-schema",
+      "title": "Звезда",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "В модели есть таблицы: Заказы, Клиенты, Товары, Календарь. Какая схема связей правильная?",
+      "options": [
+        {
+          "text": "Заказы в центре; от Клиентов, Товаров и Календаря к Заказам идут связи «один ко многим»",
+          "correct": true,
+          "explain": "Это «звезда»: факты в центре, измерения вокруг. Фильтр по клиенту, товару или дате течёт к заказам."
+        },
+        {
+          "text": "Все таблицы связаны друг с другом «многие ко многим»",
+          "explain": "Такие связи дают неоднозначные фильтры и неверные итоги. Их стараются избегать."
+        },
+        {
+          "text": "Клиенты в центре, Заказы — справочник",
+          "explain": "Заказы — это события, их много. Они и есть таблица фактов."
+        },
+        {
+          "text": "Связи не нужны, достаточно одной большой таблицы",
+          "explain": "Одна широкая таблица работает на малых данных, но медленнее, тяжелее и дублирует описания в каждой строке."
+        }
+      ],
+      "hints": [
+        "Где события (их много), а где справочники?"
+      ]
+    },
+    {
+      "id": "calculate-meaning",
+      "title": "Что делает CALCULATE",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "В таблице по городам есть мера `Выручка всех городов = CALCULATE([Выручка], ALL(Customers[city]))`. Что она покажет в строке «Казань»?",
+      "options": [
+        {
+          "text": "Выручку по всем городам: ALL снимает фильтр по городу",
+          "correct": true,
+          "explain": "Поэтому в каждой строке будет общая выручка. Если поделить на неё выручку строки, получится доля города."
+        },
+        {
+          "text": "Выручку Казани",
+          "explain": "Это делает обычная мера `[Выручка]`. ALL как раз убирает фильтр по городу."
+        },
+        {
+          "text": "Ошибку: нельзя убирать фильтр",
+          "explain": "Можно: `ALL` и `CALCULATE` для этого и существуют."
+        },
+        {
+          "text": "Ноль",
+          "explain": "Ноль получился бы, если бы фильтр отсекал все строки, а ALL их, наоборот, возвращает."
+        }
+      ],
+      "hints": [
+        "ALL — «все значения поля, без фильтра»."
+      ]
+    },
+    {
+      "id": "city-share-sql",
+      "title": "Доля города: то же на SQL",
+      "difficulty": 2,
+      "prompt": [
+        "Повтори меру Power BI `Доля города = DIVIDE([Выручка], CALCULATE([Выручка], ALL(Customers[city])))` на SQL.",
+        "",
+        "Для **доставленных** заказов 2026 года выведи 5 городов с наибольшей выручкой: `city`, `revenue`, `share_pct` — доля выручки города от выручки **всех** заказов 2026 года (включая клиентов без города), в процентах, с округлением до 1 знака. Сортировка по выручке по убыванию."
+      ],
+      "starter": "SELECT c.city,\n       SUM(o.amount) AS revenue,\n       \nFROM orders o\nJOIN customers c ON c.customer_id = o.customer_id\nWHERE o.status = 'delivered' AND o.order_date >= '2026-01-01'\nGROUP BY c.city\nORDER BY revenue DESC\nLIMIT 5;",
+      "solution": "SELECT c.city,\n       SUM(o.amount) AS revenue,\n       ROUND(100.0 * SUM(o.amount) / SUM(SUM(o.amount)) OVER (), 1) AS share_pct\nFROM orders o\nJOIN customers c ON c.customer_id = o.customer_id\nWHERE o.status = 'delivered' AND o.order_date >= '2026-01-01'\nGROUP BY c.city\nORDER BY revenue DESC\nLIMIT 5;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Общий итог по всем городам (это и есть `ALL`) — окно `SUM(SUM(o.amount)) OVER ()`.",
+        "Окно считается до `LIMIT`, поэтому знаменатель включает все города, а не только топ-5."
+      ],
+      "explanation": "Клиенты без города попадают в группу `NULL` — в итоге они учтены, хотя в топ-5 не видны. В Power BI так же: `ALL` возвращает и пустые значения.",
+      "selfTest": {
+        "correct": [
+          "WITH t AS (SELECT c.city, SUM(o.amount) AS revenue FROM orders o JOIN customers c USING (customer_id) WHERE o.status = 'delivered' AND o.order_date >= '2026-01-01' GROUP BY 1) SELECT city, revenue, ROUND(100.0 * revenue / (SELECT SUM(revenue) FROM t), 1) AS share_pct FROM t ORDER BY revenue DESC LIMIT 5"
+        ],
+        "wrong": [
+          "WITH t AS (SELECT c.city, SUM(o.amount) AS revenue FROM orders o JOIN customers c USING (customer_id) WHERE o.status = 'delivered' AND o.order_date >= '2026-01-01' GROUP BY 1 ORDER BY 2 DESC LIMIT 5) SELECT city, revenue, ROUND(100.0 * revenue / (SELECT SUM(revenue) FROM t), 1) AS share_pct FROM t ORDER BY revenue DESC"
+        ]
+      }
+    },
+    {
+      "id": "ytd-sql",
+      "title": "С начала года (TOTALYTD) на SQL",
+      "difficulty": 2,
+      "prompt": "Повтори меру `TOTALYTD`: для каждого месяца **2025 и 2026** годов выведи выручку доставленных заказов и выручку с начала **того же** года. Столбцы: `month` (тип `DATE`), `revenue`, `revenue_ytd`. Сортировка по месяцу.",
+      "starter": "WITH m AS (\n    SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, SUM(amount) AS revenue\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY month\n)\nSELECT month, revenue,\n       \nFROM m\nORDER BY month;",
+      "solution": "WITH m AS (\n    SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, SUM(amount) AS revenue\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY month\n)\nSELECT month, revenue,\n       SUM(revenue) OVER (PARTITION BY year(month) ORDER BY month) AS revenue_ytd\nFROM m\nORDER BY month;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Накопление должно начинаться заново в каждом году — разбей окно по году: `PARTITION BY year(month)`.",
+        "`SUM(revenue) OVER (PARTITION BY year(month) ORDER BY month)`"
+      ],
+      "selfTest": {
+        "correct": [
+          "WITH m AS (SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, SUM(amount) AS revenue FROM orders WHERE status = 'delivered' GROUP BY 1) SELECT a.month, a.revenue, SUM(b.revenue) AS revenue_ytd FROM m a JOIN m b ON year(b.month) = year(a.month) AND b.month <= a.month GROUP BY a.month, a.revenue ORDER BY a.month"
+        ],
+        "wrong": [
+          "WITH m AS (SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, SUM(amount) AS revenue FROM orders WHERE status = 'delivered' GROUP BY 1) SELECT month, revenue, SUM(revenue) OVER (ORDER BY month) AS revenue_ytd FROM m ORDER BY month"
+        ]
+      }
+    },
+    {
+      "id": "divide",
+      "title": "Зачем DIVIDE",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Почему в DAX для конверсии пишут `DIVIDE([Покупки], [Визиты])`, а не `[Покупки] / [Визиты]`?",
+      "options": [
+        {
+          "text": "DIVIDE не падает с ошибкой, когда визитов ноль, — вернёт пустое значение",
+          "correct": true,
+          "explain": "В срезе, где визитов нет (новый магазин, пустой день), обычное деление дало бы ошибку и сломало визуал."
+        },
+        {
+          "text": "DIVIDE считает быстрее",
+          "explain": "Дело не в скорости, а в безопасном делении на ноль."
+        },
+        {
+          "text": "Знак / в DAX запрещён",
+          "explain": "Не запрещён, но при нуле в знаменателе даёт ошибку."
+        },
+        {
+          "text": "DIVIDE автоматически переводит в проценты",
+          "explain": "Нет, формат процентов задают в настройках меры."
+        }
+      ],
+      "hints": [
+        "Что бывает при делении на ноль?"
+      ]
+    },
+    {
+      "id": "calendar-table",
+      "title": "Таблица-календарь",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Мера `Выручка год назад = CALCULATE([Выручка], SAMEPERIODLASTYEAR(Orders[order_date]))` возвращает странные значения: в днях без заказов пусто, а сравнение по месяцам иногда сдвигается. Что исправить?",
+      "options": [
+        {
+          "text": "Сделать отдельную таблицу-календарь со всеми днями, связать её с заказами и использовать её дату в функциях времени",
+          "correct": true,
+          "explain": "Функциям времени нужен непрерывный ряд дат без пропусков. Дата в таблице заказов «дырявая»: в ней только дни, когда были заказы."
+        },
+        {
+          "text": "Заменить SAMEPERIODLASTYEAR на ручной сдвиг на 365 дней",
+          "explain": "Сломается на високосных годах и всё равно не решит проблему пропусков."
+        },
+        {
+          "text": "Удалить дни без заказов из отчёта",
+          "explain": "Пропуски дат — в самих данных. Нужен полный календарь."
+        },
+        {
+          "text": "Перевести даты в текст",
+          "explain": "С текстом функции времени не работают вовсе."
+        }
+      ],
+      "hints": [
+        "Что должно быть в столбце дат, чтобы функции «год назад» и «с начала года» работали надёжно?"
+      ]
+    },
+    {
+      "id": "rls",
+      "title": "Каждому — свой регион",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Отчёт продаж публикуют для всех региональных менеджеров. Каждый должен видеть только свой регион. Как это сделать в Power BI?",
+      "options": [
+        {
+          "text": "Настроить безопасность на уровне строк (RLS): роли с фильтром по региону",
+          "correct": true,
+          "explain": "Один отчёт для всех, а данные фильтруются по роли пользователя. Не нужно поддерживать десять копий."
+        },
+        {
+          "text": "Сделать отдельный отчёт для каждого региона",
+          "explain": "Работает, но любую правку придётся повторять во всех копиях."
+        },
+        {
+          "text": "Попросить менеджеров выбирать свой регион в срезе",
+          "explain": "Срез — не защита: менеджер может выбрать чужой регион."
+        },
+        {
+          "text": "Скрыть столбец региона",
+          "explain": "Строки других регионов всё равно останутся в данных отчёта."
+        }
+      ],
+      "hints": [
+        "Ограничивают не столбцы, а строки, в зависимости от пользователя."
+      ]
+    }
+  ]
+}

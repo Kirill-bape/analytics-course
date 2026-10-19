@@ -1,0 +1,189 @@
+{
+  "tasks": [
+    {
+      "id": "pipeline-order",
+      "title": "Порядок работы в BI",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "В каком порядке создают объекты в DataLens, чтобы получить дашборд?",
+      "options": [
+        {
+          "text": "Подключение → датасет → чарты → дашборд",
+          "correct": true,
+          "explain": "Сначала доступ к источнику, затем описание данных с полями и формулами, затем графики, а в конце — страница с графиками и фильтрами."
+        },
+        {
+          "text": "Дашборд → чарты → подключение → датасет",
+          "explain": "Пустой дашборд создать можно, но чарты без датасета не построишь."
+        },
+        {
+          "text": "Датасет → подключение → дашборд → чарты",
+          "explain": "Датасет строится поверх подключения, поэтому подключение идёт первым."
+        },
+        {
+          "text": "Чарты → датасет → подключение → дашборд",
+          "explain": "Чарту нужны поля датасета, а датасету — подключение."
+        }
+      ],
+      "hints": [
+        "От источника данных — к странице, которую увидит пользователь."
+      ]
+    },
+    {
+      "id": "virtual-dataset",
+      "title": "Виртуальный датасет",
+      "difficulty": 2,
+      "prompt": [
+        "Подготовь запрос для виртуального датасета дашборда: одна строка — **месяц × канал привлечения** клиента.",
+        "",
+        "Столбцы: `month` (первый день месяца, `DATE`), `acquisition_channel`, `orders` (все заказы), `delivered` (доставленные), `revenue` (выручка доставленных). Только 2026 год. Сортировка по месяцу, затем по каналу."
+      ],
+      "starter": "SELECT CAST(date_trunc('month', o.order_date) AS DATE) AS month,\n       c.acquisition_channel,\n       \nFROM orders o\nJOIN customers c ON c.customer_id = o.customer_id\nWHERE o.order_date >= '2026-01-01'\nGROUP BY month, c.acquisition_channel\nORDER BY month, c.acquisition_channel;",
+      "solution": "SELECT CAST(date_trunc('month', o.order_date) AS DATE) AS month,\n       c.acquisition_channel,\n       COUNT(*) AS orders,\n       COUNT(*) FILTER (WHERE o.status = 'delivered') AS delivered,\n       SUM(o.amount) FILTER (WHERE o.status = 'delivered') AS revenue\nFROM orders o\nJOIN customers c ON c.customer_id = o.customer_id\nWHERE o.order_date >= '2026-01-01'\nGROUP BY month, c.acquisition_channel\nORDER BY month, c.acquisition_channel;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Счётчики с условием: `COUNT(*) FILTER (WHERE o.status = 'delivered')`.",
+        "Выручка доставленных: `SUM(o.amount) FILTER (WHERE o.status = 'delivered')`."
+      ],
+      "explanation": "В BI из такого датасета строятся и KPI (`SUM(revenue)`, `SUM(revenue) / SUM(delivered)`), и динамика по месяцам, и разрез по каналам — а тяжёлый расчёт делается один раз в базе.",
+      "selfTest": {
+        "correct": [
+          "SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, acquisition_channel, COUNT(*) AS orders, SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS delivered, SUM(CASE WHEN status = 'delivered' THEN amount END) AS revenue FROM orders JOIN customers USING (customer_id) WHERE order_date >= '2026-01-01' GROUP BY 1, 2 ORDER BY 1, 2"
+        ],
+        "wrong": [
+          "SELECT CAST(date_trunc('month', o.order_date) AS DATE) AS month, c.acquisition_channel, COUNT(*) AS orders, COUNT(*) FILTER (WHERE o.status = 'delivered') AS delivered, SUM(o.amount) AS revenue FROM orders o JOIN customers c USING (customer_id) WHERE o.order_date >= '2026-01-01' GROUP BY 1, 2 ORDER BY 1, 2"
+        ]
+      }
+    },
+    {
+      "id": "avg-of-avg",
+      "title": "Средний чек из витрины",
+      "difficulty": 2,
+      "prompt": [
+        "В витрине из прошлого задания есть `revenue` и `delivered` по месяцам и каналам. Посчитай по ней **средний чек за всё первое полугодие 2026** правильно — как отношение сумм — и, для сравнения, неправильно — как среднее средних чеков строк.",
+        "",
+        "Столбцы: `right_avg_check` и `wrong_avg_check`, оба округлены до целого."
+      ],
+      "starter": "WITH mart AS (\n    SELECT CAST(date_trunc('month', o.order_date) AS DATE) AS month,\n           c.acquisition_channel,\n           COUNT(*) FILTER (WHERE o.status = 'delivered') AS delivered,\n           SUM(o.amount) FILTER (WHERE o.status = 'delivered') AS revenue\n    FROM orders o\n    JOIN customers c ON c.customer_id = o.customer_id\n    WHERE o.order_date >= '2026-01-01'\n    GROUP BY month, c.acquisition_channel\n)\nSELECT \n",
+      "solution": "WITH mart AS (\n    SELECT CAST(date_trunc('month', o.order_date) AS DATE) AS month,\n           c.acquisition_channel,\n           COUNT(*) FILTER (WHERE o.status = 'delivered') AS delivered,\n           SUM(o.amount) FILTER (WHERE o.status = 'delivered') AS revenue\n    FROM orders o\n    JOIN customers c ON c.customer_id = o.customer_id\n    WHERE o.order_date >= '2026-01-01'\n    GROUP BY month, c.acquisition_channel\n)\nSELECT ROUND(SUM(revenue) / SUM(delivered)) AS right_avg_check,\n       ROUND(AVG(revenue / delivered)) AS wrong_avg_check\nFROM mart;",
+      "checkColumnNames": true,
+      "hints": [
+        "Правильно: `SUM(revenue) / SUM(delivered)`.",
+        "Неправильно (для сравнения): `AVG(revenue / delivered)` — среднее средних."
+      ],
+      "explanation": "Среднее средних даёт маленькому каналу в маленьком месяце тот же вес, что и самому большому. Поэтому в BI средние и доли всегда задают формулой «сумма / сумма», а не агрегацией «среднее» поверх готового среднего.",
+      "selfTest": {
+        "correct": [
+          "WITH mart AS (SELECT CAST(date_trunc('month', o.order_date) AS DATE) AS month, c.acquisition_channel, COUNT(*) FILTER (WHERE o.status = 'delivered') AS delivered, SUM(o.amount) FILTER (WHERE o.status = 'delivered') AS revenue FROM orders o JOIN customers c USING (customer_id) WHERE o.order_date >= '2026-01-01' GROUP BY 1, 2), s AS (SELECT SUM(revenue) AS r, SUM(delivered) AS d, AVG(revenue / delivered) AS w FROM mart) SELECT ROUND(r / d) AS right_avg_check, ROUND(w) AS wrong_avg_check FROM s"
+        ],
+        "wrong": [
+          "WITH mart AS (SELECT CAST(date_trunc('month', o.order_date) AS DATE) AS month, c.acquisition_channel, COUNT(*) FILTER (WHERE o.status = 'delivered') AS delivered, SUM(o.amount) FILTER (WHERE o.status = 'delivered') AS revenue FROM orders o JOIN customers c USING (customer_id) WHERE o.order_date >= '2026-01-01' GROUP BY 1, 2) SELECT ROUND(AVG(revenue / delivered)) AS right_avg_check, ROUND(AVG(revenue / delivered)) AS wrong_avg_check FROM mart"
+        ]
+      }
+    },
+    {
+      "id": "distinct-sum",
+      "title": "Уникальных клиентов за месяц",
+      "difficulty": 3,
+      "prompt": [
+        "Покажи, почему уникальные значения нельзя складывать. Для **июня 2026** посчитай:",
+        "- `sum_of_daily` — сумму по дням числа уникальных клиентов за день (так ошибочно делают по витрине «по дням»);",
+        "- `true_monthly` — настоящее число уникальных клиентов, сделавших заказ в июне."
+      ],
+      "starter": "WITH daily AS (\n    SELECT order_date, COUNT(DISTINCT customer_id) AS clients\n    FROM orders\n    WHERE order_date >= '2026-06-01' AND order_date < '2026-07-01'\n    GROUP BY order_date\n)\nSELECT \n",
+      "solution": "WITH daily AS (\n    SELECT order_date, COUNT(DISTINCT customer_id) AS clients\n    FROM orders\n    WHERE order_date >= '2026-06-01' AND order_date < '2026-07-01'\n    GROUP BY order_date\n)\nSELECT (SELECT SUM(clients) FROM daily) AS sum_of_daily,\n       (SELECT COUNT(DISTINCT customer_id)\n        FROM orders\n        WHERE order_date >= '2026-06-01' AND order_date < '2026-07-01') AS true_monthly;",
+      "checkColumnNames": true,
+      "hints": [
+        "Первое число — `SUM(clients)` из `daily`.",
+        "Второе — отдельный подсчёт `COUNT(DISTINCT customer_id)` по заказам июня, без разбиения по дням."
+      ],
+      "explanation": "Разница — клиенты, которые покупали в несколько разных дней июня. Поэтому в витрины кладут либо сами идентификаторы, либо уже посчитанные уникальные значения для каждого нужного периода (день, неделя, месяц) отдельно.",
+      "selfTest": {
+        "correct": [
+          "SELECT SUM(c) AS sum_of_daily, (SELECT COUNT(DISTINCT customer_id) FROM orders WHERE date_trunc('month', order_date) = '2026-06-01') AS true_monthly FROM (SELECT order_date, COUNT(DISTINCT customer_id) AS c FROM orders WHERE date_trunc('month', order_date) = '2026-06-01' GROUP BY 1)"
+        ],
+        "wrong": [
+          "SELECT COUNT(*) AS sum_of_daily, COUNT(DISTINCT customer_id) AS true_monthly FROM orders WHERE order_date >= '2026-06-01' AND order_date < '2026-07-01'"
+        ]
+      }
+    },
+    {
+      "id": "choose-bi",
+      "title": "Какую BI выбрать",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Небольшая IT-компания: данные в PostgreSQL на своём сервере, все аналитики пишут SQL, бюджета на лицензии нет, данные нельзя отправлять в чужое облако. Что подойдёт лучше?",
+      "options": [
+        {
+          "text": "Apache Superset на своём сервере",
+          "correct": true,
+          "explain": "Бесплатный, ставится внутри компании, а SQL Lab и виртуальные датасеты удобны для тех, кто пишет SQL."
+        },
+        {
+          "text": "Power BI с облачной публикацией",
+          "explain": "Нужны лицензии и облако Microsoft — не подходит по условиям."
+        },
+        {
+          "text": "Looker Studio",
+          "explain": "Это облачный сервис Google: данные уйдут во внешнее облако."
+        },
+        {
+          "text": "Excel с макросами",
+          "explain": "Для общей отчётности на базе данных это неудобно и ненадёжно."
+        }
+      ],
+      "hints": [
+        "Ключевые условия: бесплатно, на своём сервере, пользователи знают SQL."
+      ]
+    },
+    {
+      "id": "ago-function",
+      "title": "Функция AGO",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Для чего в DataLens вычисляемое поле `AGO([Выручка], [order_date], \"year\")`?",
+      "options": [
+        {
+          "text": "Показать выручку за тот же период год назад рядом с текущей",
+          "correct": true,
+          "explain": "Это аналог `SAMEPERIODLASTYEAR` в Power BI и `LAG(…, 12)` по месяцам в SQL. По нему считают рост к прошлому году."
+        },
+        {
+          "text": "Посчитать выручку за последние 365 дней",
+          "explain": "Это скользящая сумма, другая функция."
+        },
+        {
+          "text": "Удалить данные старше года",
+          "explain": "Вычисляемые поля не удаляют данные."
+        },
+        {
+          "text": "Посчитать возраст клиента",
+          "explain": "Возраст считают по дате рождения, AGO здесь ни при чём."
+        }
+      ],
+      "hints": [
+        "ago — по-английски «назад»."
+      ]
+    },
+    {
+      "id": "datalens-practice",
+      "title": "Дашборд в DataLens по виртуальному датасету",
+      "difficulty": 3,
+      "type": "checklist",
+      "prompt": "Собери дашборд в DataLens (или Superset), где сложная логика сделана запросом, а BI только рисует. Отмечай шаги, когда они готовы.",
+      "items": [
+        "Загрузил(а) orders.csv и customers.csv в подключение (папка приложения public/data/shop)",
+        "Создал(а) датасет со связью по customer_id и вычисляемыми полями «Выручка» (SUM_IF по статусу) и «Средний чек» (отношение сумм)",
+        "Сделал(а) KPI-индикаторы: выручка, доставленные заказы, средний чек — с изменением к прошлому месяцу",
+        "Построил(а) линию выручки по неделям и столбцы по каналам привлечения",
+        "Добавил(а) селекторы периода и канала и проверил(а), на какие чарты они действуют",
+        "Сверил(а) цифры дашборда с SQL-запросом из этого урока",
+        "Сделал(а) публичную ссылку или скриншот для портфолио (без личных данных)"
+      ],
+      "hints": [
+        "Если что-то в интерфейсе непонятно — опиши мне, что видишь на экране, разберём по шагам."
+      ]
+    }
+  ]
+}

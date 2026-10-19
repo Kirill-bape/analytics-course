@@ -1,0 +1,237 @@
+{
+  "tasks": [
+    {
+      "id": "dim-measure",
+      "title": "Измерение или мера",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "В данных магазина есть поля: город, категория товара, сумма заказа, дата заказа, количество товаров. Какие из них в Tableau будут **мерами**?",
+      "options": [
+        {
+          "text": "Сумма заказа и количество товаров",
+          "correct": true,
+          "explain": "Меры — числа, которые складывают и усредняют. Город, категория и дата — измерения: по ним группируют."
+        },
+        {
+          "text": "Город и категория",
+          "explain": "Это измерения: по ним разбивают данные на группы."
+        },
+        {
+          "text": "Все поля",
+          "explain": "Сумму городов посчитать нельзя, поэтому город — не мера."
+        },
+        {
+          "text": "Только дата",
+          "explain": "Дата — измерение: по ней группируют по дням, месяцам, годам."
+        }
+      ],
+      "hints": [
+        "Мера — то, что имеет смысл сложить или усреднить."
+      ]
+    },
+    {
+      "id": "blue-green",
+      "title": "Синяя или зелёная дата",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Ты перетащил `MONTH(Order Date)` на Columns, и Tableau построил отдельные столбцы для каждого месяца с заголовками. А нужна сплошная линия времени. Что поменять?",
+      "options": [
+        {
+          "text": "Сделать дату непрерывной (зелёной): выбрать в меню поля «Month» из нижнего, непрерывного блока",
+          "correct": true,
+          "explain": "Синяя (дискретная) дата даёт отдельные заголовки, зелёная (непрерывная) — сплошную ось времени, на которой рисуется линия."
+        },
+        {
+          "text": "Поменять тип данных поля на текст",
+          "explain": "Тогда дата перестанет быть датой, и линия времени станет невозможна."
+        },
+        {
+          "text": "Перетащить дату в Filters",
+          "explain": "Фильтр только ограничит период, но не изменит вид оси."
+        },
+        {
+          "text": "Удалить меру с Rows",
+          "explain": "Без меры не будет и самой линии."
+        }
+      ],
+      "hints": [
+        "Вид оси зависит от того, дискретное поле или непрерывное."
+      ]
+    },
+    {
+      "id": "margin-aggregate",
+      "title": "Маржинальность как агрегат",
+      "difficulty": 2,
+      "prompt": [
+        "Посчитай маржинальность по категориям товаров так, как это делает агрегатное вычисление Tableau `SUM(прибыль) / SUM(выручка)`:",
+        "- выручка позиции — `oi.quantity * oi.price` (из `order_items`);",
+        "- себестоимость позиции — `oi.quantity * p.cost_price` (из `products`);",
+        "- `margin_pct` = (выручка − себестоимость) / выручка × 100, округлить до 1 знака.",
+        "",
+        "Учитывай только позиции **доставленных** заказов. Столбцы: `category`, `margin_pct`. Сортировка по `margin_pct` по убыванию."
+      ],
+      "starter": "SELECT p.category,\n       \nFROM order_items oi\nJOIN products p ON p.product_id = oi.product_id\nJOIN orders o ON o.order_id = oi.order_id\nWHERE o.status = 'delivered'\nGROUP BY p.category\nORDER BY margin_pct DESC;",
+      "solution": "SELECT p.category,\n       ROUND(100.0 * (SUM(oi.quantity * oi.price) - SUM(oi.quantity * p.cost_price)) / SUM(oi.quantity * oi.price), 1) AS margin_pct\nFROM order_items oi\nJOIN products p ON p.product_id = oi.product_id\nJOIN orders o ON o.order_id = oi.order_id\nWHERE o.status = 'delivered'\nGROUP BY p.category\nORDER BY margin_pct DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Сначала суммы по категории, потом деление: `(SUM(выручка) - SUM(себестоимость)) / SUM(выручка)`.",
+        "Не усредняй маржинальность отдельных строк — это даст другой, неправильный ответ."
+      ],
+      "mistakes": [
+        {
+          "pattern": "AVG\\s*\\(",
+          "flags": "i",
+          "message": "Среднее маржинальностей строк ≠ маржинальность категории: дорогие позиции должны весить больше. Считай отношение сумм."
+        }
+      ],
+      "explanation": "Если усреднить маржинальность строк, дешёвый чехол весит столько же, сколько дорогой ноутбук. Отношение сумм взвешивает каждую позицию её выручкой — так и считают в отчётах.",
+      "selfTest": {
+        "correct": [
+          "SELECT p.category, ROUND(100 * (1 - SUM(oi.quantity * p.cost_price) / SUM(oi.quantity * oi.price)), 1) AS margin_pct FROM order_items oi JOIN products p USING (product_id) JOIN orders o USING (order_id) WHERE o.status = 'delivered' GROUP BY 1 ORDER BY 2 DESC"
+        ],
+        "wrong": [
+          "SELECT p.category, ROUND(AVG(100.0 * (oi.price - p.cost_price) / oi.price), 1) AS margin_pct FROM order_items oi JOIN products p USING (product_id) JOIN orders o USING (order_id) WHERE o.status = 'delivered' GROUP BY 1 ORDER BY 2 DESC"
+        ]
+      }
+    },
+    {
+      "id": "pct-of-total",
+      "title": "Доля от общего (табличное вычисление)",
+      "difficulty": 2,
+      "prompt": [
+        "Повтори табличное вычисление «Percent of Total»: выручка **доставленных** заказов 2026 года по способу оплаты и доля каждого способа в общей выручке.",
+        "",
+        "Столбцы: `payment_method`, `revenue`, `pct` (доля в процентах, округлённая до 1 знака). Сортировка по выручке по убыванию."
+      ],
+      "starter": "SELECT payment_method,\n       SUM(amount) AS revenue,\n       \nFROM orders\nWHERE status = 'delivered' AND order_date >= '2026-01-01'\nGROUP BY payment_method\nORDER BY revenue DESC;",
+      "solution": "SELECT payment_method,\n       SUM(amount) AS revenue,\n       ROUND(100.0 * SUM(amount) / SUM(SUM(amount)) OVER (), 1) AS pct\nFROM orders\nWHERE status = 'delivered' AND order_date >= '2026-01-01'\nGROUP BY payment_method\nORDER BY revenue DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Общий итог по всем строкам результата — окно без разбиения: `SUM(SUM(amount)) OVER ()`.",
+        "Доля: `100.0 * SUM(amount) / SUM(SUM(amount)) OVER ()`."
+      ],
+      "explanation": "Внутренний `SUM(amount)` — выручка группы, внешний `SUM(…) OVER ()` складывает её по всем группам результата. Ровно так работает табличное вычисление: считает по уже построенной таблице.",
+      "selfTest": {
+        "correct": [
+          "WITH t AS (SELECT payment_method, SUM(amount) AS revenue FROM orders WHERE status = 'delivered' AND order_date >= '2026-01-01' GROUP BY 1) SELECT payment_method, revenue, ROUND(100.0 * revenue / (SELECT SUM(revenue) FROM t), 1) AS pct FROM t ORDER BY revenue DESC"
+        ],
+        "wrong": [
+          "SELECT payment_method, SUM(amount) AS revenue, ROUND(100.0 * SUM(amount) / (SELECT SUM(amount) FROM orders), 1) AS pct FROM orders WHERE status = 'delivered' AND order_date >= '2026-01-01' GROUP BY 1 ORDER BY 2 DESC"
+        ]
+      }
+    },
+    {
+      "id": "running-total",
+      "title": "Накопительный итог",
+      "difficulty": 2,
+      "prompt": "Посчитай выручку доставленных заказов по месяцам **2026 года** и накопительный итог с начала года (Running Total). Столбцы: `month` (первый день месяца, тип `DATE`), `revenue`, `running_total`. Сортировка по месяцу.",
+      "starter": "WITH m AS (\n    SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, SUM(amount) AS revenue\n    FROM orders\n    WHERE status = 'delivered' AND order_date >= '2026-01-01'\n    GROUP BY month\n)\nSELECT month, revenue,\n       \nFROM m\nORDER BY month;",
+      "solution": "WITH m AS (\n    SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, SUM(amount) AS revenue\n    FROM orders\n    WHERE status = 'delivered' AND order_date >= '2026-01-01'\n    GROUP BY month\n)\nSELECT month, revenue,\n       SUM(revenue) OVER (ORDER BY month) AS running_total\nFROM m\nORDER BY month;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Накопительная сумма — окно с сортировкой: `SUM(revenue) OVER (ORDER BY month)`."
+      ],
+      "explanation": "Такой график «выручка с начала года» обычно показывают рядом с линией плана: сразу видно, догоняем план или отстаём.",
+      "selfTest": {
+        "correct": [
+          "SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, SUM(amount) AS revenue, SUM(SUM(amount)) OVER (ORDER BY date_trunc('month', order_date)) AS running_total FROM orders WHERE status = 'delivered' AND order_date >= '2026-01-01' GROUP BY date_trunc('month', order_date) ORDER BY 1"
+        ],
+        "wrong": [
+          "WITH m AS (SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, SUM(amount) AS revenue FROM orders WHERE status = 'delivered' AND order_date >= '2026-01-01' GROUP BY 1) SELECT month, revenue, SUM(revenue) OVER () AS running_total FROM m ORDER BY month"
+        ]
+      }
+    },
+    {
+      "id": "lod-new-clients",
+      "title": "FIXED: новые и старые клиенты",
+      "difficulty": 3,
+      "prompt": [
+        "В Tableau это решается выражением `{FIXED [customer_id] : MIN([order_date])}`. Сделай то же в SQL.",
+        "",
+        "Раздели выручку **доставленных** заказов **июня 2026** на две группы:",
+        "- `'новый'` — клиент сделал свой **самый первый заказ** (любого статуса) в 2026 году;",
+        "- `'старый'` — первый заказ был раньше 2026 года.",
+        "",
+        "Столбцы: `client_type`, `revenue`. Сортировка по `client_type`."
+      ],
+      "starter": "WITH first_order AS (\n    SELECT customer_id, MIN(order_date) AS first_date\n    FROM orders\n    GROUP BY customer_id\n)\nSELECT \n",
+      "solution": "WITH first_order AS (\n    SELECT customer_id, MIN(order_date) AS first_date\n    FROM orders\n    GROUP BY customer_id\n)\nSELECT CASE WHEN f.first_date >= '2026-01-01' THEN 'новый' ELSE 'старый' END AS client_type,\n       SUM(o.amount) AS revenue\nFROM orders o\nJOIN first_order f ON f.customer_id = o.customer_id\nWHERE o.status = 'delivered'\n  AND o.order_date >= '2026-06-01' AND o.order_date < '2026-07-01'\nGROUP BY client_type\nORDER BY client_type;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Дату первого заказа считаем по **всем** заказам клиента — это и есть `FIXED`: он не зависит от фильтра по июню.",
+        "Присоедини `first_order` к заказам июня и раздели по `CASE WHEN f.first_date >= '2026-01-01' …`."
+      ],
+      "explanation": "Если сначала отфильтровать июнь, а потом искать первый заказ, каждый клиент окажется «новым» — первым будет его июньский заказ. Поэтому дата первого заказа считается на своём уровне детализации, отдельно от фильтров отчёта.",
+      "selfTest": {
+        "correct": [
+          "WITH t AS (SELECT CASE WHEN MIN(order_date) OVER (PARTITION BY customer_id) >= '2026-01-01' THEN 'новый' ELSE 'старый' END AS client_type, amount, status, order_date FROM orders) SELECT client_type, SUM(amount) AS revenue FROM t WHERE status = 'delivered' AND order_date >= '2026-06-01' AND order_date < '2026-07-01' GROUP BY 1 ORDER BY 1"
+        ],
+        "wrong": [
+          "WITH june AS (SELECT * FROM orders WHERE status = 'delivered' AND order_date >= '2026-06-01' AND order_date < '2026-07-01'), f AS (SELECT customer_id, MIN(order_date) AS first_date FROM june GROUP BY 1) SELECT CASE WHEN f.first_date >= '2026-01-01' THEN 'новый' ELSE 'старый' END AS client_type, SUM(j.amount) AS revenue FROM june j JOIN f USING (customer_id) GROUP BY 1 ORDER BY 1"
+        ]
+      }
+    },
+    {
+      "id": "margin-avg-trap",
+      "title": "Средняя маржинальность — ловушка",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Два товара: ноутбук продан на 100 000 ₽ с маржой 10 000 ₽ (10%), чехол — на 1 000 ₽ с маржой 500 ₽ (50%). Какая маржинальность продаж правильная?",
+      "options": [
+        {
+          "text": "(10 000 + 500) / (100 000 + 1 000) ≈ 10,4%",
+          "correct": true,
+          "explain": "Это `SUM(прибыль) / SUM(выручка)`: каждая продажа весит пропорционально выручке."
+        },
+        {
+          "text": "(10% + 50%) / 2 = 30%",
+          "explain": "Среднее процентов приравнивает дешёвый чехол к ноутбуку. Маржинальность 30% — фантастика, на деле бизнес зарабатывает около 10%."
+        },
+        {
+          "text": "50% — берём лучший товар",
+          "explain": "Маржинальность считается по всем продажам, а не по лучшему товару."
+        },
+        {
+          "text": "10% — берём самый дорогой товар",
+          "explain": "Близко, но чехол тоже приносит прибыль, и её нужно учесть."
+        }
+      ],
+      "hints": [
+        "Отношение сумм или среднее отношений?"
+      ]
+    },
+    {
+      "id": "fixed-filter",
+      "title": "FIXED не слушается фильтра",
+      "difficulty": 3,
+      "type": "quiz",
+      "prompt": "На листе стоит фильтр «Регион = Урал», но поле `{FIXED [Customer ID] : SUM([Sales])}` продолжает показывать покупки клиента по **всем** регионам. Почему?",
+      "options": [
+        {
+          "text": "FIXED считается раньше обычных фильтров измерений. Чтобы фильтр на него подействовал, его делают фильтром контекста (Add to Context)",
+          "correct": true,
+          "explain": "В Tableau есть порядок применения фильтров. Фильтр контекста срабатывает раньше FIXED, а обычный фильтр измерения — позже."
+        },
+        {
+          "text": "Это ошибка Tableau",
+          "explain": "Нет, это задуманное поведение: FIXED специально «закреплён» на своём уровне детализации."
+        },
+        {
+          "text": "Нужно заменить SUM на AVG",
+          "explain": "Агрегат тут ни при чём: дело в порядке применения фильтров."
+        },
+        {
+          "text": "Фильтр по региону вообще нельзя использовать с LOD",
+          "explain": "Можно, если понимать порядок фильтров и при необходимости сделать фильтр контекстом."
+        }
+      ],
+      "hints": [
+        "В Tableau фильтры и вычисления применяются в определённом порядке."
+      ]
+    }
+  ]
+}
