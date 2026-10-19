@@ -1,0 +1,195 @@
+{
+  "tasks": [
+    {
+      "id": "oltp-olap",
+      "title": "Где считать отчёт",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Аналитик хочет считать ежедневный отчёт по выручке за три года прямо в рабочей базе сайта. Почему это плохая идея?",
+      "options": [
+        {
+          "text": "Тяжёлый запрос нагрузит базу, через которую оформляются заказы, а истории изменений там часто нет: старые статусы перезаписываются",
+          "correct": true,
+          "explain": "Рабочая (OLTP) база создана для быстрых коротких операций. Для аналитики данные копируют в хранилище, где хранится история и можно считать тяжёлые запросы."
+        },
+        {
+          "text": "В рабочей базе нельзя писать SQL",
+          "explain": "Можно, но аналитические запросы там мешают основной работе."
+        },
+        {
+          "text": "Это хорошая идея: данные там самые свежие",
+          "explain": "Свежесть есть, но цена — риск замедлить сайт и отсутствие истории."
+        },
+        {
+          "text": "Рабочие базы не умеют считать суммы",
+          "explain": "Умеют, вопрос в нагрузке и устройстве данных."
+        }
+      ],
+      "hints": [
+        "Для чего создана база сайта?"
+      ]
+    },
+    {
+      "id": "layers",
+      "title": "Какой это слой",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Таблица `daily_sales_by_city`: дата, город, число заказов, выручка. Её каждую ночь пересчитывают и подключают к дашборду руководителя. К какому слою хранилища она относится?",
+      "options": [
+        {
+          "text": "Витрина (data mart)",
+          "correct": true,
+          "explain": "Готовая агрегированная таблица под конкретную задачу — это витрина."
+        },
+        {
+          "text": "Сырой слой",
+          "explain": "В сыром слое данные лежат как в источнике, без агрегации."
+        },
+        {
+          "text": "Детальный слой",
+          "explain": "В детальном слое — отдельные заказы и клиенты, а не итоги по дням."
+        },
+        {
+          "text": "Рабочая база сайта",
+          "explain": "Сайт хранит отдельные заказы, а не агрегаты для дашборда."
+        }
+      ],
+      "hints": [
+        "Это детальные записи или готовые итоги под дашборд?"
+      ]
+    },
+    {
+      "id": "mart-daily",
+      "title": "Собери витрину",
+      "difficulty": 2,
+      "sandbox": true,
+      "prompt": [
+        "Создай витрину `mart_daily_sales` (через `CREATE TABLE … AS`) со столбцами `order_date`, `payment_method`, `orders` (все заказы), `delivered` (доставленные), `revenue` (выручка доставленных).",
+        "",
+        "Затем проверь её: выведи из витрины итоги **за июнь 2026** по способам оплаты — `payment_method`, `orders`, `revenue` — сортировка по выручке по убыванию."
+      ],
+      "starter": "CREATE TABLE mart_daily_sales AS\nSELECT order_date,\n       payment_method,\n       \nFROM orders\nGROUP BY order_date, payment_method;\n\nSELECT payment_method, SUM(orders) AS orders, SUM(revenue) AS revenue\nFROM mart_daily_sales\nWHERE order_date >= '2026-06-01'\nGROUP BY payment_method\nORDER BY revenue DESC;",
+      "solution": "CREATE TABLE mart_daily_sales AS\nSELECT order_date,\n       payment_method,\n       COUNT(*) AS orders,\n       COUNT(*) FILTER (WHERE status = 'delivered') AS delivered,\n       SUM(amount) FILTER (WHERE status = 'delivered') AS revenue\nFROM orders\nGROUP BY order_date, payment_method;\n\nSELECT payment_method, SUM(orders) AS orders, SUM(revenue) AS revenue\nFROM mart_daily_sales\nWHERE order_date >= '2026-06-01'\nGROUP BY payment_method\nORDER BY revenue DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Счётчики с условием: `COUNT(*) FILTER (WHERE status = 'delivered')`, выручка — `SUM(amount) FILTER (WHERE status = 'delivered')`."
+      ],
+      "explanation": "Витрина хранит итоги по дням, поэтому любые периоды (неделя, месяц, квартал) собираются из неё суммированием — быстро и одинаково для всех отчётов. Обрати внимание: суммы складывать можно, а уникальных клиентов из такой витрины уже не посчитать.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE mart_daily_sales AS SELECT order_date, payment_method, COUNT(*) AS orders, SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS delivered, SUM(CASE WHEN status = 'delivered' THEN amount END) AS revenue FROM orders GROUP BY 1, 2; SELECT payment_method, SUM(orders) AS orders, SUM(revenue) AS revenue FROM mart_daily_sales WHERE order_date BETWEEN '2026-06-01' AND '2026-06-30' GROUP BY 1 ORDER BY 3 DESC"
+        ],
+        "wrong": [
+          "CREATE TABLE mart_daily_sales AS SELECT order_date, payment_method, COUNT(*) AS orders, COUNT(*) AS delivered, SUM(amount) AS revenue FROM orders GROUP BY 1, 2; SELECT payment_method, SUM(orders) AS orders, SUM(revenue) AS revenue FROM mart_daily_sales WHERE order_date >= '2026-06-01' GROUP BY 1 ORDER BY 3 DESC"
+        ]
+      }
+    },
+    {
+      "id": "raw-layer-value",
+      "title": "Зачем хранить сырьё",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Через полгода выяснилось, что в правиле очистки была ошибка: часть заказов с промокодом считалась отменёнными. Почему важно, что в хранилище есть сырой слой?",
+      "options": [
+        {
+          "text": "Можно исправить правило и пересчитать детальный слой и витрины из сырых данных за весь период",
+          "correct": true,
+          "explain": "Сырой слой — страховка: пока он есть, любую ошибку преобразования можно исправить задним числом."
+        },
+        {
+          "text": "Сырой слой нужен, чтобы занимать место",
+          "explain": "Место — цена, а смысл — возможность пересчёта."
+        },
+        {
+          "text": "Аналитики должны работать только с сырыми данными",
+          "explain": "Для работы удобнее очищенные слои. Сырьё нужно как источник для пересчёта."
+        },
+        {
+          "text": "Ничем: ошибку уже не исправить",
+          "explain": "С сырым слоем — можно."
+        }
+      ],
+      "hints": [
+        "Что делать, если ошибка в преобразовании обнаружена задним числом?"
+      ]
+    },
+    {
+      "id": "freshness-check",
+      "title": "Проверка свежести",
+      "difficulty": 2,
+      "prompt": "Утром дашборд показывает резкое падение заказов «за вчера». Первым делом проверь свежесть данных: выведи **последнюю дату** заказа в таблице и **число заказов** в каждый из последних 5 дней. Столбцы: `order_date`, `orders`. Сортировка по дате по убыванию.",
+      "starter": "SELECT order_date, COUNT(*) AS orders\nFROM orders\n",
+      "solution": "SELECT order_date, COUNT(*) AS orders\nFROM orders\nGROUP BY order_date\nORDER BY order_date DESC\nLIMIT 5;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Группировка по дате, сортировка по убыванию и `LIMIT 5`."
+      ],
+      "explanation": "Если в последний день заказов в разы меньше обычного, скорее всего, день ещё не загружен целиком: загрузка идёт, сломалась или данные приходят с задержкой. Это проверяется за минуту — до того, как поднимать тревогу.",
+      "selfTest": {
+        "correct": [
+          "SELECT order_date, COUNT(order_id) AS orders FROM orders WHERE order_date > (SELECT MAX(order_date) FROM orders) - INTERVAL 5 DAY GROUP BY 1 ORDER BY 1 DESC"
+        ],
+        "wrong": [
+          "SELECT order_date, COUNT(*) AS orders FROM orders GROUP BY 1 ORDER BY 1 LIMIT 5"
+        ]
+      }
+    },
+    {
+      "id": "elt",
+      "title": "ETL или ELT",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Команда загружает выгрузки из CRM в хранилище как есть, а очистку и объединение делает потом SQL-моделями внутри хранилища. Как называется такой подход?",
+      "options": [
+        {
+          "text": "ELT: сначала загрузка, потом преобразование в хранилище",
+          "correct": true,
+          "explain": "Порядок букв повторяет порядок шагов: Extract, Load, Transform."
+        },
+        {
+          "text": "ETL",
+          "explain": "В ETL преобразование идёт до загрузки, по дороге в хранилище."
+        },
+        {
+          "text": "OLTP",
+          "explain": "Это тип рабочей базы, а не процесс загрузки."
+        },
+        {
+          "text": "Витрина",
+          "explain": "Витрина — результат, а не способ загрузки."
+        }
+      ],
+      "hints": [
+        "Что идёт раньше: загрузка (Load) или преобразование (Transform)?"
+      ]
+    },
+    {
+      "id": "incremental",
+      "title": "Инкрементальная загрузка",
+      "difficulty": 3,
+      "sandbox": true,
+      "prompt": [
+        "Имитируем загрузку. Создай таблицу `dwh_orders` с заказами **до 1 июня 2026** (первая загрузка). Затем догрузи в неё только **новые** заказы: те, у которых `order_date` больше максимальной уже загруженной даты.",
+        "",
+        "В конце выведи одной строкой `loaded_orders` — число строк в `dwh_orders` и `last_date` — максимальную дату."
+      ],
+      "starter": "CREATE TABLE dwh_orders AS\nSELECT * FROM orders WHERE order_date < '2026-06-01';\n\nINSERT INTO dwh_orders\nSELECT * FROM orders\nWHERE ;\n\nSELECT COUNT(*) AS loaded_orders, MAX(order_date) AS last_date FROM dwh_orders;",
+      "solution": "CREATE TABLE dwh_orders AS\nSELECT * FROM orders WHERE order_date < '2026-06-01';\n\nINSERT INTO dwh_orders\nSELECT * FROM orders\nWHERE order_date > (SELECT MAX(order_date) FROM dwh_orders);\n\nSELECT COUNT(*) AS loaded_orders, MAX(order_date) AS last_date FROM dwh_orders;",
+      "checkColumnNames": true,
+      "hints": [
+        "Условие догрузки: `order_date > (SELECT MAX(order_date) FROM dwh_orders)`."
+      ],
+      "explanation": "В итоге в `dwh_orders` все заказы, и ни один не задвоился. Но у такой схемы есть слабость: если заказ за прошлую дату пришёл с опозданием или изменился его статус, он не догрузится. Поэтому на практике часто перегружают последние несколько дней целиком или ориентируются на время изменения записи.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE dwh_orders AS SELECT * FROM orders WHERE order_date < '2026-06-01'; INSERT INTO dwh_orders SELECT o.* FROM orders o WHERE NOT EXISTS (SELECT 1 FROM dwh_orders d WHERE d.order_id = o.order_id); SELECT COUNT(*) AS loaded_orders, MAX(order_date) AS last_date FROM dwh_orders"
+        ],
+        "wrong": [
+          "CREATE TABLE dwh_orders AS SELECT * FROM orders WHERE order_date < '2026-06-01'; INSERT INTO dwh_orders SELECT * FROM orders WHERE order_date >= '2026-05-01'; SELECT COUNT(*) AS loaded_orders, MAX(order_date) AS last_date FROM dwh_orders"
+        ]
+      }
+    }
+  ]
+}
