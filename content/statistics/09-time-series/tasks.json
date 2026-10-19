@@ -1,0 +1,256 @@
+{
+  "tasks": [
+    {
+      "id": "weekday-profile",
+      "title": "Недельная сезонность",
+      "difficulty": 2,
+      "prompt": [
+        "Как число заказов зависит от дня недели? Сначала посчитай заказы **за каждый день** (все статусы), потом среднее этих дневных чисел для каждого дня недели.",
+        "",
+        "Столбцы: `weekday` — номер дня недели (`isodow`, 1 — понедельник), `avg_orders` — среднее число заказов в день, округлённое до 1 знака. Сортировка по `weekday`."
+      ],
+      "starter": "WITH d AS (\n    SELECT order_date, COUNT(*) AS orders\n    FROM orders\n    GROUP BY order_date\n)\nSELECT \n",
+      "solution": "WITH d AS (\n    SELECT order_date, COUNT(*) AS orders\n    FROM orders\n    GROUP BY order_date\n)\nSELECT isodow(order_date) AS weekday,\n       ROUND(AVG(orders), 1) AS avg_orders\nFROM d\nGROUP BY weekday\nORDER BY weekday;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Во внешнем запросе группируй дни из `d` по `isodow(order_date)` и усредняй `orders`.",
+        "`SELECT isodow(order_date) AS weekday, ROUND(AVG(orders), 1) AS avg_orders FROM d GROUP BY weekday ORDER BY weekday`"
+      ],
+      "mistakes": [
+        {
+          "pattern": "FROM\\s+orders[\\s\\S]*isodow",
+          "flags": "i",
+          "unless": "WITH",
+          "message": "Сначала нужно получить число заказов **за каждый день**, а уже потом усреднять дни. Иначе ты считаешь не среднее за день, а что-то другое."
+        }
+      ],
+      "explanation": "Если какие-то дни заметно выше остальных, это недельная сезонность. Сравнивать понедельник с воскресеньем бессмысленно — сравнивай понедельник с прошлым понедельником.",
+      "selfTest": {
+        "correct": [
+          "SELECT dow AS weekday, ROUND(AVG(cnt), 1) AS avg_orders FROM (SELECT order_date, isodow(order_date) AS dow, COUNT(*) AS cnt FROM orders GROUP BY 1, 2) GROUP BY dow ORDER BY dow"
+        ],
+        "wrong": [
+          "SELECT isodow(order_date) AS weekday, ROUND(COUNT(*) / 7.0, 1) AS avg_orders FROM orders GROUP BY weekday ORDER BY weekday",
+          "SELECT dayofweek(order_date) AS weekday, ROUND(AVG(cnt), 1) AS avg_orders FROM (SELECT order_date, COUNT(*) AS cnt FROM orders GROUP BY 1) GROUP BY weekday ORDER BY weekday"
+        ]
+      }
+    },
+    {
+      "id": "yoy-2026",
+      "title": "Рост к прошлому году",
+      "difficulty": 2,
+      "prompt": [
+        "Сравни выручку **доставленных** заказов за январь–июнь 2026 с теми же месяцами 2025 года.",
+        "",
+        "Столбцы:",
+        "- `month` — первый день месяца 2026 года (тип `DATE`);",
+        "- `revenue` — выручка месяца;",
+        "- `revenue_year_ago` — выручка того же месяца год назад;",
+        "- `yoy_pct` — рост в процентах, округлённый до 1 знака.",
+        "",
+        "Сортировка по месяцу."
+      ],
+      "starter": "WITH m AS (\n    SELECT CAST(date_trunc('month', order_date) AS DATE) AS month,\n           SUM(amount) AS revenue\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY month\n),\nwith_lag AS (\n    SELECT month, revenue,\n           LAG(revenue, 12) OVER (ORDER BY month) AS revenue_year_ago\n    FROM m\n)\nSELECT \n",
+      "solution": "WITH m AS (\n    SELECT CAST(date_trunc('month', order_date) AS DATE) AS month,\n           SUM(amount) AS revenue\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY month\n),\nwith_lag AS (\n    SELECT month, revenue,\n           LAG(revenue, 12) OVER (ORDER BY month) AS revenue_year_ago\n    FROM m\n)\nSELECT month, revenue, revenue_year_ago,\n       ROUND(100.0 * (revenue / revenue_year_ago - 1), 1) AS yoy_pct\nFROM with_lag\nWHERE month >= '2026-01-01'\nORDER BY month;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "`LAG(revenue, 12)` уже посчитан в `with_lag`. Осталось отобрать месяцы 2026 года и посчитать рост.",
+        "Рост в процентах: `100.0 * (revenue / revenue_year_ago - 1)`. Фильтр по месяцу ставь **после** `LAG`, иначе прошлогодних месяцев не будет в окне."
+      ],
+      "explanation": "Если отфильтровать 2026 год до расчёта `LAG`, окну не на что будет опереться, и `revenue_year_ago` окажется пустым. Порядок шагов в оконных расчётах важен.",
+      "selfTest": {
+        "correct": [
+          "WITH m AS (SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, SUM(amount) AS revenue FROM orders WHERE status = 'delivered' GROUP BY 1) SELECT a.month, a.revenue, b.revenue AS revenue_year_ago, ROUND(100.0 * (a.revenue / b.revenue - 1), 1) AS yoy_pct FROM m a JOIN m b ON b.month = a.month - INTERVAL 1 YEAR WHERE a.month >= '2026-01-01' ORDER BY a.month"
+        ],
+        "wrong": [
+          "WITH m AS (SELECT CAST(date_trunc('month', order_date) AS DATE) AS month, SUM(amount) AS revenue FROM orders WHERE status = 'delivered' GROUP BY 1), w AS (SELECT month, revenue, LAG(revenue, 1) OVER (ORDER BY month) AS revenue_year_ago FROM m) SELECT month, revenue, revenue_year_ago, ROUND(100.0 * (revenue / revenue_year_ago - 1), 1) AS yoy_pct FROM w WHERE month >= '2026-01-01' ORDER BY month"
+        ]
+      }
+    },
+    {
+      "id": "ma7-june",
+      "title": "Скользящее среднее за неделю",
+      "difficulty": 2,
+      "prompt": [
+        "Посчитай выручку **доставленных** заказов по дням и 7-дневное скользящее среднее. Выведи только **дни июня 2026**:",
+        "- `day` — дата;",
+        "- `revenue` — выручка дня;",
+        "- `ma7` — среднее выручки за этот день и 6 предыдущих, округлённое до целого.",
+        "",
+        "Для 1 июня окно должно захватывать последние дни мая. Сортировка по дате."
+      ],
+      "starter": "WITH d AS (\n    SELECT order_date AS day, SUM(amount) AS revenue\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY day\n),\nw AS (\n    SELECT day, revenue,\n           \n    FROM d\n)\nSELECT *\nFROM w\nWHERE day >= '2026-06-01'\nORDER BY day;",
+      "solution": "WITH d AS (\n    SELECT order_date AS day, SUM(amount) AS revenue\n    FROM orders\n    WHERE status = 'delivered'\n    GROUP BY day\n),\nw AS (\n    SELECT day, revenue,\n           ROUND(AVG(revenue) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)) AS ma7\n    FROM d\n)\nSELECT *\nFROM w\nWHERE day >= '2026-06-01'\nORDER BY day;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Окно из 7 строк: `ROWS BETWEEN 6 PRECEDING AND CURRENT ROW`.",
+        "`ROUND(AVG(revenue) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)) AS ma7`"
+      ],
+      "explanation": "Окно считается в `w` по всем дням, а фильтр по июню стоит снаружи. Поэтому у 1 июня в окне честные 7 дней. Поставь фильтр внутрь `d` — и первые шесть дней июня получат среднее по неполному окну.",
+      "selfTest": {
+        "correct": [
+          "SELECT * FROM (SELECT order_date AS day, SUM(amount) AS revenue, ROUND(AVG(SUM(amount)) OVER (ORDER BY order_date ROWS 6 PRECEDING)) AS ma7 FROM orders WHERE status = 'delivered' GROUP BY order_date) WHERE day >= '2026-06-01' ORDER BY day"
+        ],
+        "wrong": [
+          "WITH d AS (SELECT order_date AS day, SUM(amount) AS revenue FROM orders WHERE status = 'delivered' AND order_date >= '2026-06-01' GROUP BY day) SELECT day, revenue, ROUND(AVG(revenue) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)) AS ma7 FROM d ORDER BY day",
+          "WITH d AS (SELECT order_date AS day, SUM(amount) AS revenue FROM orders WHERE status = 'delivered' GROUP BY day) SELECT * FROM (SELECT day, revenue, ROUND(AVG(revenue) OVER (ORDER BY day ROWS BETWEEN 7 PRECEDING AND CURRENT ROW)) AS ma7 FROM d) WHERE day >= '2026-06-01' ORDER BY day"
+        ]
+      }
+    },
+    {
+      "id": "naive-mae",
+      "title": "Ошибка наивного прогноза",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Наивный прогноз: «завтра будет как сегодня». Проверим, насколько он ошибается.",
+        "",
+        "Посчитай выручку **доставленных** заказов по дням (`daily`). Прогноз на каждый день — выручка предыдущего дня (`daily.shift(1)`). В `result` положи **MAE** этого прогноза **за июнь 2026**, округлённую до целого."
+      ],
+      "starter": "import pandas as pd\n\ndelivered = orders[orders[\"status\"] == \"delivered\"]\ndaily = delivered.groupby(\"order_date\")[\"amount\"].sum()\nforecast = daily.shift(1)\n\njune = daily.index >= pd.Timestamp(\"2026-06-01\")\nresult = ",
+      "solution": "import pandas as pd\n\ndelivered = orders[orders[\"status\"] == \"delivered\"]\ndaily = delivered.groupby(\"order_date\")[\"amount\"].sum()\nforecast = daily.shift(1)\n\njune = daily.index >= pd.Timestamp(\"2026-06-01\")\nresult = round((daily[june] - forecast[june]).abs().mean())",
+      "hints": [
+        "Ошибка каждого дня — `daily[june] - forecast[june]`. Возьми модуль (`.abs()`) и среднее (`.mean()`).",
+        "`round((daily[june] - forecast[june]).abs().mean())`"
+      ],
+      "explanation": "Сравни MAE со средней дневной выручкой: так видно, насколько ошибается прогноз в процентах. Любая серьёзная модель должна давать ошибку меньше наивной — иначе она не нужна.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\nd = orders[orders.status == \"delivered\"].groupby(\"order_date\").amount.sum()\nerr = (d - d.shift()).loc[\"2026-06-01\":]\nresult = round(np.abs(err).mean())"
+        ],
+        "wrong": [
+          "import pandas as pd\nd = orders[orders.status == \"delivered\"].groupby(\"order_date\").amount.sum()\nerr = (d - d.shift()).loc[\"2026-06-01\":]\nresult = round(err.mean())",
+          "import pandas as pd\nd = orders.groupby(\"order_date\").amount.sum()\nerr = (d - d.shift()).loc[\"2026-06-01\":]\nresult = round(err.abs().mean())"
+        ]
+      }
+    },
+    {
+      "id": "mape-hand",
+      "title": "MAPE вручную",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": [
+        "Прогноз и факт продаж за три недели:",
+        "",
+        "| Неделя | Факт | Прогноз |",
+        "|---|---|---|",
+        "| 1 | 200 | 180 |",
+        "| 2 | 250 | 260 |",
+        "| 3 | 400 | 300 |",
+        "",
+        "Посчитай MAPE в процентах."
+      ],
+      "answer": 13,
+      "tolerance": 0.05,
+      "unit": "%",
+      "hints": [
+        "Для каждой недели: |факт − прогноз| / факт. Получится 10%, 4% и …",
+        "Среднее трёх процентов."
+      ],
+      "wrongAnswers": [
+        {
+          "value": 43.33,
+          "message": "Это MAE — средняя ошибка в штуках. Для MAPE каждую ошибку нужно поделить на факт той недели."
+        }
+      ],
+      "selfTest": {
+        "correct": [
+          "13"
+        ],
+        "wrong": [
+          "43,3"
+        ]
+      }
+    },
+    {
+      "id": "mom-trap",
+      "title": "Декабрь лучше ноября",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "В декабре выручка выросла на 35% к ноябрю. Менеджер считает, что сработала новая рекламная кампания. Какую проверку стоит сделать первой?",
+      "options": [
+        {
+          "text": "Сравнить рост с тем, как вырос декабрь к ноябрю в прошлом году",
+          "correct": true,
+          "explain": "Декабрь — сезонный пик. Если в прошлом году без кампании было +30%, то заслуга кампании — максимум пять процентных пунктов. Ещё лучше смотреть рост к прошлому году (YoY)."
+        },
+        {
+          "text": "Никакую: 35% — это очень много",
+          "explain": "Большой рост в сезонный месяц ничего не доказывает. Большая часть может быть обычной сезонностью."
+        },
+        {
+          "text": "Сравнить декабрь со средним за год",
+          "explain": "Декабрь почти всегда выше среднего: сравнение снова не отделяет сезонность от эффекта кампании."
+        },
+        {
+          "text": "Посчитать 7-дневное скользящее среднее",
+          "explain": "Оно сгладит недельный шум, но не уберёт годовую сезонность."
+        }
+      ],
+      "hints": [
+        "Что обычно происходит с продажами в декабре, даже без рекламы?"
+      ]
+    },
+    {
+      "id": "time-split",
+      "title": "Как проверять прогноз",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Аналитик строит модель прогноза дневной выручки по данным за полтора года. Как правильно выделить данные для проверки?",
+      "options": [
+        {
+          "text": "Взять последние недели как проверочные, а модель строить на всём, что было раньше",
+          "correct": true,
+          "explain": "Так модель проверяется в тех же условиях, в которых будет работать: по прошлому предсказывает будущее, которого не видела."
+        },
+        {
+          "text": "Случайно выбрать 20% дней для проверки",
+          "explain": "Тогда модель обучится на днях после проверочных и «подсмотрит будущее». Точность на проверке окажется завышенной."
+        },
+        {
+          "text": "Проверять на тех же данных, на которых строили модель",
+          "explain": "Так проверяется только то, как модель запомнила прошлое. О будущем это ничего не говорит."
+        },
+        {
+          "text": "Проверять на первых месяцах, а строить на последних",
+          "explain": "Это тоже «будущее предсказывает прошлое». В реальной работе так не бывает."
+        }
+      ],
+      "hints": [
+        "В реальности модель всегда предсказывает то, что произойдёт **после** известных ей данных."
+      ]
+    },
+    {
+      "id": "per-day",
+      "title": "Короткий февраль",
+      "difficulty": 2,
+      "type": "number",
+      "prompt": "Выручка за январь — **3,1 млн ₽** (31 день), за февраль — **2,8 млн ₽** (28 дней). Насколько изменилась **выручка в день** в феврале по сравнению с январём? Ответ в процентах (с минусом, если упала).",
+      "answer": 0,
+      "tolerance": 0.05,
+      "unit": "%",
+      "hints": [
+        "Выручка в день: 3,1 млн / 31 и 2,8 млн / 28.",
+        "Обе дают 100 000 ₽ в день."
+      ],
+      "wrongAnswers": [
+        {
+          "value": -9.68,
+          "message": "Это изменение месячной выручки. Но в феврале на 3 дня меньше — посчитай выручку в день."
+        }
+      ],
+      "explanation": "Месячная выручка «упала» почти на 10%, а дневная не изменилась. Короткий месяц — частая причина ложной тревоги в отчётах.",
+      "selfTest": {
+        "correct": [
+          "0"
+        ],
+        "wrong": [
+          "-9,7"
+        ]
+      }
+    }
+  ]
+}

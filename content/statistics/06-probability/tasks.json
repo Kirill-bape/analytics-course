@@ -1,0 +1,254 @@
+{
+  "tasks": [
+    {
+      "id": "p-cancel",
+      "title": "Вероятность отмены",
+      "difficulty": 1,
+      "prompt": "Оцени по данным вероятность того, что случайно выбранный заказ будет **отменён** (`status = 'cancelled'`). Округли до 4 знаков, столбец — `p_cancel`.",
+      "starter": "SELECT ROUND(AVG(CASE WHEN  THEN 1.0 ELSE 0 END), 4) AS p_cancel\nFROM orders;",
+      "solution": "SELECT ROUND(AVG(CASE WHEN status = 'cancelled' THEN 1.0 ELSE 0 END), 4) AS p_cancel\nFROM orders;",
+      "checkColumnNames": true,
+      "hints": [
+        "Вероятность по данным — это доля: среднее из единиц (событие было) и нулей (не было).",
+        "`AVG(CASE WHEN status = 'cancelled' THEN 1.0 ELSE 0 END)`"
+      ],
+      "selfTest": {
+        "correct": [
+          "SELECT ROUND(COUNT(*) FILTER (WHERE status = 'cancelled') * 1.0 / COUNT(*), 4) AS p_cancel FROM orders"
+        ],
+        "wrong": [
+          "SELECT ROUND(AVG(CASE WHEN status = 'cancelled' THEN 1.0 ELSE 0 END), 2) AS p_cancel FROM orders",
+          "SELECT ROUND(AVG(CASE WHEN status <> 'delivered' THEN 1.0 ELSE 0 END), 4) AS p_cancel FROM orders"
+        ]
+      }
+    },
+    {
+      "id": "promo-cancel",
+      "title": "Отмены с промокодом и без",
+      "difficulty": 2,
+      "prompt": [
+        "Посчитай **условную вероятность отмены** для заказов с промокодом и без него.",
+        "",
+        "Столбцы:",
+        "- `has_promo` — `'да'`, если `promo_code` заполнен, иначе `'нет'`;",
+        "- `orders` — число заказов в группе;",
+        "- `p_cancel` — доля отменённых, округлённая до 4 знаков.",
+        "",
+        "Сортировка по `has_promo`."
+      ],
+      "starter": "SELECT CASE WHEN promo_code IS NOT NULL THEN 'да' ELSE 'нет' END AS has_promo,\n       \n\nFROM orders\nGROUP BY has_promo\nORDER BY has_promo;",
+      "solution": "SELECT CASE WHEN promo_code IS NOT NULL THEN 'да' ELSE 'нет' END AS has_promo,\n       COUNT(*) AS orders,\n       ROUND(AVG(CASE WHEN status = 'cancelled' THEN 1.0 ELSE 0 END), 4) AS p_cancel\nFROM orders\nGROUP BY has_promo\nORDER BY has_promo;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Условная вероятность на данных — это доля внутри группы: сгруппируй заказы и посчитай долю отмен в каждой.",
+        "`COUNT(*) AS orders, ROUND(AVG(CASE WHEN status = 'cancelled' THEN 1.0 ELSE 0 END), 4) AS p_cancel`"
+      ],
+      "explanation": "Сравни две вероятности: если они заметно различаются, промокод и отмена **зависимы**. Почему так — отдельный вопрос: может, промокоды чаще используют новички, которые чаще и передумывают.",
+      "selfTest": {
+        "correct": [
+          "SELECT IF(promo_code IS NULL, 'нет', 'да') AS has_promo, COUNT(order_id) AS orders, ROUND(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) / COUNT(*), 4) AS p_cancel FROM orders GROUP BY 1 ORDER BY 1"
+        ],
+        "wrong": [
+          "SELECT CASE WHEN promo_code IS NOT NULL THEN 'да' ELSE 'нет' END AS has_promo, COUNT(*) AS orders, ROUND(SUM(CASE WHEN status = 'cancelled' THEN 1.0 ELSE 0 END) / (SELECT COUNT(*) FROM orders), 4) AS p_cancel FROM orders GROUP BY has_promo ORDER BY has_promo"
+        ]
+      }
+    },
+    {
+      "id": "independence",
+      "title": "Проверка независимости",
+      "difficulty": 3,
+      "prompt": [
+        "Если бы оплата наличными и отмена были **независимы**, то P(наличные и отмена) = P(наличные) × P(отмена). Проверим это на данных.",
+        "",
+        "Выведи одной строкой, всё с округлением до 4 знаков:",
+        "- `p_cash` — доля заказов с оплатой наличными (`payment_method = 'cash'`);",
+        "- `p_cancel` — доля отменённых заказов;",
+        "- `p_both` — доля заказов, которые **и** оплачены наличными, **и** отменены;",
+        "- `p_if_independent` — произведение `p_cash × p_cancel` (перемножай неокруглённые доли)."
+      ],
+      "starter": "SELECT\n    ROUND(AVG(CASE WHEN payment_method = 'cash' THEN 1.0 ELSE 0 END), 4) AS p_cash,\n    \n\nFROM orders;",
+      "solution": "SELECT\n    ROUND(AVG(CASE WHEN payment_method = 'cash' THEN 1.0 ELSE 0 END), 4) AS p_cash,\n    ROUND(AVG(CASE WHEN status = 'cancelled' THEN 1.0 ELSE 0 END), 4) AS p_cancel,\n    ROUND(AVG(CASE WHEN payment_method = 'cash' AND status = 'cancelled' THEN 1.0 ELSE 0 END), 4) AS p_both,\n    ROUND(AVG(CASE WHEN payment_method = 'cash' THEN 1.0 ELSE 0 END)\n        * AVG(CASE WHEN status = 'cancelled' THEN 1.0 ELSE 0 END), 4) AS p_if_independent\nFROM orders;",
+      "checkColumnNames": true,
+      "hints": [
+        "Каждая вероятность — своё `AVG(CASE WHEN … THEN 1.0 ELSE 0 END)`. Для `p_both` в условии два требования через `AND`.",
+        "Для `p_if_independent` перемножь два `AVG(…)` и только потом округли."
+      ],
+      "explanation": "Если `p_both` заметно отличается от `p_if_independent`, события зависимы. Строгую проверку такой зависимости делает тест хи-квадрат — он будет в теме про статистические тесты.",
+      "selfTest": {
+        "correct": [
+          "WITH t AS (SELECT AVG((payment_method = 'cash')::INT) AS a, AVG((status = 'cancelled')::INT) AS b, AVG((payment_method = 'cash' AND status = 'cancelled')::INT) AS ab FROM orders) SELECT ROUND(a, 4) AS p_cash, ROUND(b, 4) AS p_cancel, ROUND(ab, 4) AS p_both, ROUND(a * b, 4) AS p_if_independent FROM t"
+        ],
+        "wrong": [
+          "SELECT ROUND(AVG(CASE WHEN payment_method = 'cash' THEN 1.0 ELSE 0 END), 4) AS p_cash, ROUND(AVG(CASE WHEN status = 'cancelled' THEN 1.0 ELSE 0 END), 4) AS p_cancel, ROUND(AVG(CASE WHEN payment_method = 'cash' OR status = 'cancelled' THEN 1.0 ELSE 0 END), 4) AS p_both, ROUND(AVG(CASE WHEN payment_method = 'cash' THEN 1.0 ELSE 0 END) * AVG(CASE WHEN status = 'cancelled' THEN 1.0 ELSE 0 END), 4) AS p_if_independent FROM orders"
+        ]
+      }
+    },
+    {
+      "id": "funnel-mult",
+      "title": "Воронка рассылки",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Рассылку получили **100 000** человек. Письмо открывают **25%** получивших, из открывших по ссылке переходят **12%**, из перешедших покупают **5%**. Сколько покупок ожидать?",
+      "answer": 150,
+      "unit": "покупок",
+      "hints": [
+        "Конверсии этапов воронки перемножаются: 0,25 × 0,12 × 0,05.",
+        "100 000 × 0,25 × 0,12 × 0,05"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 5000,
+          "message": "5% — это конверсия только последнего шага, среди тех, кто перешёл по ссылке. Умножь на все этапы."
+        },
+        {
+          "value": 42000,
+          "message": "Проценты этапов не складываются, а перемножаются: каждый следующий шаг считается от предыдущего."
+        }
+      ],
+      "explanation": "Итоговая конверсия из получателя в покупателя — 0,15%. Так любую воронку можно разложить на этапы и искать, где теряется больше всего людей.",
+      "selfTest": {
+        "correct": [
+          "150"
+        ],
+        "wrong": [
+          "5000"
+        ]
+      }
+    },
+    {
+      "id": "bayes-defect",
+      "title": "Датчик брака",
+      "difficulty": 3,
+      "type": "number",
+      "prompt": [
+        "На заводе бракованными оказываются **2%** деталей. Датчик срабатывает на **90%** бракованных деталей, но ошибочно срабатывает и на **3%** нормальных.",
+        "",
+        "Датчик сработал. Какова вероятность, что деталь действительно бракованная? Ответ — в процентах, с точностью до десятых."
+      ],
+      "answer": 38,
+      "tolerance": 0.15,
+      "unit": "%",
+      "hints": [
+        "Представь 10 000 деталей: сколько среди них бракованных, на скольких из них сработает датчик и на скольких нормальных он ошибётся?",
+        "Бракованных 200, датчик поймает 180. Нормальных 9 800, ложных срабатываний — 3% от них. Какую долю составляют 180 от всех срабатываний?"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 90,
+          "message": "90% — это вероятность срабатывания **при браке**. А нужна обратная: вероятность брака **при срабатывании**. Посчитай все срабатывания, включая ложные."
+        },
+        {
+          "value": 2,
+          "message": "Это доля брака вообще, без учёта датчика. Срабатывание даёт дополнительную информацию."
+        }
+      ],
+      "explanation": "180 настоящих срабатываний и 294 ложных (3% от 9 800): 180 / 474 ≈ 38%. Больше половины тревог ложные, хотя датчик ошибается всего в 3% случаев. Причина — брак редок, а нормальных деталей очень много.",
+      "selfTest": {
+        "correct": [
+          "38,0",
+          "37.97"
+        ],
+        "wrong": [
+          "90",
+          "60"
+        ]
+      }
+    },
+    {
+      "id": "expected-bonus",
+      "title": "Сколько стоят бонусы за отзывы",
+      "difficulty": 2,
+      "type": "number",
+      "prompt": [
+        "Магазин дарит баллы за отзывы. По опыту прошлых акций:",
+        "- **20%** клиентов оставят короткий отзыв и получат **300** баллов;",
+        "- **5%** клиентов оставят подробный отзыв с фото и получат **1 000** баллов (вместо 300);",
+        "- остальные отзыв не оставят.",
+        "",
+        "Сколько баллов в среднем уйдёт на одного клиента?"
+      ],
+      "answer": 110,
+      "unit": "баллов",
+      "hints": [
+        "Ожидаемое значение — сумма «исход × вероятность» по всем вариантам.",
+        "300 × 0,2 + 1000 × 0,05 + 0 × 0,75"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 1300,
+          "message": "Баллы нужно умножить на вероятности: не каждый клиент оставит отзыв."
+        },
+        {
+          "value": 650,
+          "message": "Это просто среднее двух сумм. А исходы нужно взвесить их вероятностями."
+        }
+      ],
+      "explanation": "На 20 000 клиентов это 2,2 млн баллов — такую цифру и закладывают в бюджет акции.",
+      "selfTest": {
+        "correct": [
+          "110"
+        ],
+        "wrong": [
+          "650"
+        ]
+      }
+    },
+    {
+      "id": "binom-few",
+      "title": "Мало покупок — это тревожно?",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Конверсия сайта — **3%**. Вчера на новый лендинг зашли **80** человек, и купил только один. Насколько это необычно?",
+        "",
+        "Посчитай вероятность того, что из 80 посетителей купят **не больше одного**. Положи в `result`, округлив до 4 знаков."
+      ],
+      "starter": "from scipy import stats\n\nresult = ",
+      "solution": "from scipy import stats\n\nresult = round(stats.binom.cdf(1, 80, 0.03), 4)",
+      "hints": [
+        "«Не больше k успехов» — это `stats.binom.cdf(k, n, p)`.",
+        "`round(stats.binom.cdf(1, 80, 0.03), 4)`"
+      ],
+      "explanation": "Вероятность около 30%: такое случается почти в каждый третий день. Делать выводы о провале лендинга по 80 посетителям рано.",
+      "selfTest": {
+        "correct": [
+          "from scipy import stats\nresult = round(stats.binom.pmf(0, 80, 0.03) + stats.binom.pmf(1, 80, 0.03), 4)"
+        ],
+        "wrong": [
+          "from scipy import stats\nresult = round(stats.binom.pmf(1, 80, 0.03), 4)",
+          "from scipy import stats\nresult = round(stats.binom.cdf(1, 80, 0.3), 4)"
+        ]
+      }
+    },
+    {
+      "id": "gambler",
+      "title": "Пять отмен подряд",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Обычно отменяют 6% заказов. Сегодня подряд отменили пять заказов от разных клиентов. Какова вероятность, что следующий заказ тоже отменят?",
+      "options": [
+        {
+          "text": "Примерно те же 6%: независимые заказы не «помнят» прошлое",
+          "correct": true,
+          "explain": "Если заказы независимы, вероятность для каждого следующего та же. Хотя серия из пяти отмен сама по себе редкая — повод проверить, не сломалось ли что-то, например оплата."
+        },
+        {
+          "text": "Почти ноль: отмен уже было больше нормы, теперь должно выровняться",
+          "explain": "Это ошибка игрока. Случайность не выравнивается специально: у следующего заказа нет «обязанности» компенсировать серию."
+        },
+        {
+          "text": "6% × 5 = 30%",
+          "explain": "Вероятности не накапливаются от числа прошлых событий."
+        },
+        {
+          "text": "6% в шестой степени",
+          "explain": "Так считается вероятность шести отмен **подряд** заранее. А пять уже случились, вопрос только про следующий заказ."
+        }
+      ],
+      "hints": [
+        "Влияет ли отмена одного клиента на решение другого?"
+      ]
+    }
+  ]
+}

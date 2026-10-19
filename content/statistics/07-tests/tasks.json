@@ -1,0 +1,223 @@
+{
+  "tasks": [
+    {
+      "id": "choose-test",
+      "title": "Какой тест выбрать",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Нужно проверить, связан ли **способ доставки** (курьер, пункт выдачи, почта) с тем, **вернул ли** клиент заказ (да / нет). Какой тест подходит?",
+      "options": [
+        {
+          "text": "Хи-квадрат по таблице «способ доставки × возврат»",
+          "correct": true,
+          "explain": "Оба признака — категории. Хи-квадрат сравнивает частоты в таблице сопряжённости с теми, что были бы при независимости."
+        },
+        {
+          "text": "t-тест",
+          "explain": "t-тест сравнивает **средние** числового признака в двух группах. Здесь чисел нет, только категории."
+        },
+        {
+          "text": "ANOVA",
+          "explain": "ANOVA сравнивает средние числового признака в трёх и более группах. «Возврат да/нет» — не числовой признак."
+        },
+        {
+          "text": "Корреляция Пирсона",
+          "explain": "Корреляция нужна для двух числовых величин, а у нас категории."
+        }
+      ],
+      "hints": [
+        "Посмотри на типы данных: оба признака — числа или категории?"
+      ]
+    },
+    {
+      "id": "shift-ttest",
+      "title": "День против ночи",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Различается ли средний выпуск (`produced_units`) **дневной** и **ночной** смены на **линии 2**?",
+        "",
+        "Проведи t-тест Уэлча (`equal_var=False`). В `result` положи **t-статистику**, округлённую до 2 знаков, а p-value выведи через `print`."
+      ],
+      "starter": "from scipy import stats\n\nline2 = production[production[\"line_id\"] == 2]\nday = \nnight = \n\nres = stats.ttest_ind(day, night, equal_var=False)\nprint(res.pvalue)\nresult = ",
+      "solution": "from scipy import stats\n\nline2 = production[production[\"line_id\"] == 2]\nday = line2[line2[\"shift\"] == \"день\"][\"produced_units\"]\nnight = line2[line2[\"shift\"] == \"ночь\"][\"produced_units\"]\n\nres = stats.ttest_ind(day, night, equal_var=False)\nprint(res.pvalue)\nresult = round(res.statistic, 2)",
+      "hints": [
+        "Смена записана в столбце `shift` значениями `\"день\"` и `\"ночь\"`.",
+        "`res = stats.ttest_ind(day, night, equal_var=False)`, затем `res.statistic` и `res.pvalue`."
+      ],
+      "explanation": "t-статистика — это разница средних, делённая на её стандартную ошибку. Чем дальше она от нуля, тем меньше p-value. Знак показывает направление: плюс — первая группа (день) в среднем больше. Сравни p-value с 0,05 и посмотри на сами средние: даже значимая разница может оказаться слишком маленькой, чтобы что-то менять в графике смен.",
+      "selfTest": {
+        "correct": [
+          "from scipy import stats\nl = production.query(\"line_id == 2\")\nresult = round(-stats.ttest_ind(l.loc[l[\"shift\"] == \"ночь\", \"produced_units\"], l.loc[l[\"shift\"] == \"день\", \"produced_units\"], equal_var=False).statistic, 2)"
+        ],
+        "wrong": [
+          "from scipy import stats\nday = production[production[\"shift\"] == \"день\"][\"produced_units\"]\nnight = production[production[\"shift\"] == \"ночь\"][\"produced_units\"]\nresult = round(stats.ttest_ind(day, night, equal_var=False).statistic, 2)",
+          "from scipy import stats\nline2 = production[production[\"line_id\"] == 2]\nresult = round(stats.ttest_ind(line2[\"produced_units\"], line2[\"planned_units\"], equal_var=False).statistic, 2)"
+        ]
+      }
+    },
+    {
+      "id": "lines-anova",
+      "title": "Брак на линиях сборки",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Отличается ли **доля брака** между четырьмя линиями цеха сборки (`line_id` от 1 до 4)?",
+        "",
+        "Для каждой смены посчитай `defect_pct = defect_units / produced_units * 100`, проведи ANOVA (`stats.f_oneway`) по линиям и положи в `result` **F-статистику**, округлённую до 1 знака."
+      ],
+      "starter": "from scipy import stats\n\nassembly = production[production[\"line_id\"].isin([1, 2, 3, 4])].copy()\nassembly[\"defect_pct\"] = \n\ngroups = [g[\"defect_pct\"] for _, g in assembly.groupby(\"line_id\")]\nresult = ",
+      "solution": "from scipy import stats\n\nassembly = production[production[\"line_id\"].isin([1, 2, 3, 4])].copy()\nassembly[\"defect_pct\"] = assembly[\"defect_units\"] / assembly[\"produced_units\"] * 100\n\ngroups = [g[\"defect_pct\"] for _, g in assembly.groupby(\"line_id\")]\nresult = round(stats.f_oneway(*groups).statistic, 1)",
+      "hints": [
+        "Доля брака — `assembly[\"defect_units\"] / assembly[\"produced_units\"] * 100`.",
+        "`stats.f_oneway(*groups)` — звёздочка раскладывает список групп на отдельные аргументы. Нужна `.statistic`."
+      ],
+      "explanation": "Чем больше F, тем сильнее различия **между** линиями по сравнению с разбросом **внутри** каждой. Посмотри и на p-value (`.pvalue`): при таком F он крошечный. Дальше стоит выяснить, какая линия выделяется: `assembly.groupby(\"line_id\")[\"defect_pct\"].mean()`.",
+      "selfTest": {
+        "correct": [
+          "from scipy import stats\na = production[production.line_id <= 4].assign(d=lambda t: t.defect_units / t.produced_units * 100)\nresult = round(stats.f_oneway(*[a.loc[a.line_id == i, \"d\"] for i in [1, 2, 3, 4]]).statistic, 1)"
+        ],
+        "wrong": [
+          "from scipy import stats\nassembly = production[production[\"line_id\"].isin([1, 2, 3, 4])]\nresult = round(stats.f_oneway(*[g[\"defect_units\"] for _, g in assembly.groupby(\"line_id\")]).statistic, 1)",
+          "from scipy import stats\na = production.assign(d=production.defect_units / production.produced_units * 100)\nresult = round(stats.f_oneway(*[g[\"d\"] for _, g in a.groupby(\"line_id\")]).statistic, 1)"
+        ]
+      }
+    },
+    {
+      "id": "cash-chi2",
+      "title": "Наличные и отмены: хи-квадрат",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "В теме про вероятности мы видели, что доля отмен у разных способов оплаты разная. Проверим это строго.",
+        "",
+        "Построй таблицу сопряжённости «способ оплаты × отменён ли заказ» (`pd.crosstab`), проведи тест хи-квадрат и положи в `result` **статистику хи-квадрат**, округлённую до 1 знака."
+      ],
+      "starter": "import pandas as pd\nfrom scipy import stats\n\ntable = pd.crosstab(orders[\"payment_method\"], orders[\"status\"] == \"cancelled\")\n\nresult = ",
+      "solution": "import pandas as pd\nfrom scipy import stats\n\ntable = pd.crosstab(orders[\"payment_method\"], orders[\"status\"] == \"cancelled\")\nchi2, p, dof, expected = stats.chi2_contingency(table)\nresult = round(chi2, 1)",
+      "hints": [
+        "`stats.chi2_contingency(table)` возвращает четыре значения: статистику, p-value, степени свободы и ожидаемые частоты.",
+        "`chi2, p, dof, expected = stats.chi2_contingency(table)`, затем `result = round(chi2, 1)`."
+      ],
+      "explanation": "Выведи `p` и `expected`: сравнение реальных частот с ожидаемыми покажет, какой способ оплаты даёт лишние отмены. Это и есть строгая версия задания про независимость из прошлой темы.",
+      "selfTest": {
+        "correct": [
+          "import pandas as pd\nfrom scipy import stats\nt = pd.crosstab(orders[\"status\"] == \"cancelled\", orders[\"payment_method\"])\nresult = round(stats.chi2_contingency(t)[0], 1)"
+        ],
+        "wrong": [
+          "import pandas as pd\nfrom scipy import stats\nt = pd.crosstab(orders[\"payment_method\"], orders[\"status\"])\nresult = round(stats.chi2_contingency(t)[0], 1)",
+          "import pandas as pd\nfrom scipy import stats\nt = pd.crosstab(orders[\"payment_method\"], orders[\"promo_code\"].notna())\nresult = round(stats.chi2_contingency(t)[0], 1)"
+        ]
+      }
+    },
+    {
+      "id": "promo-mannwhitney",
+      "title": "Чеки с промокодом: Манн — Уитни",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Суммы заказов сильно скошены: есть редкие очень дорогие заказы. Сравни суммы **доставленных** заказов **с промокодом** и **без** тестом Манна — Уитни.",
+        "",
+        "В `result` положи **отношение медиан** «с промокодом / без промокода», округлённое до 3 знаков, а p-value выведи через `print`."
+      ],
+      "starter": "from scipy import stats\n\ndelivered = orders[orders[\"status\"] == \"delivered\"]\npromo = \nno_promo = \n\nprint(stats.mannwhitneyu(promo, no_promo).pvalue)\nresult = ",
+      "solution": "from scipy import stats\n\ndelivered = orders[orders[\"status\"] == \"delivered\"]\npromo = delivered[delivered[\"promo_code\"].notna()][\"amount\"]\nno_promo = delivered[delivered[\"promo_code\"].isna()][\"amount\"]\n\nprint(stats.mannwhitneyu(promo, no_promo).pvalue)\nresult = round(promo.median() / no_promo.median(), 3)",
+      "hints": [
+        "Заказы с промокодом — где `promo_code` заполнен: `.notna()`. Без промокода — `.isna()`.",
+        "`result = round(promo.median() / no_promo.median(), 3)`"
+      ],
+      "explanation": "Тест отвечает, значима ли разница, а отношение медиан — насколько она велика. В отчёт идут оба числа: «медианный чек с промокодом на N% ниже/выше, разница значима (p < 0,05)».",
+      "selfTest": {
+        "correct": [
+          "from scipy import stats\nd = orders.query(\"status == 'delivered'\")\nm1 = d.loc[d.promo_code.notna(), \"amount\"].median()\nm0 = d.loc[d.promo_code.isna(), \"amount\"].median()\nresult = round(m1 / m0, 3)"
+        ],
+        "wrong": [
+          "from scipy import stats\npromo = orders[orders[\"promo_code\"].notna()][\"amount\"]\nno_promo = orders[orders[\"promo_code\"].isna()][\"amount\"]\nresult = round(promo.median() / no_promo.median(), 3)",
+          "from scipy import stats\nd = orders[orders[\"status\"] == \"delivered\"]\nresult = round(d[d[\"promo_code\"].notna()][\"amount\"].mean() / d[d[\"promo_code\"].isna()][\"amount\"].mean(), 3)"
+        ]
+      }
+    },
+    {
+      "id": "p-meaning",
+      "title": "Что значит p = 0,03",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Тест показал, что ночная смена выпускает в среднем меньше дневной, p-value = 0,03. Какое утверждение верное?",
+      "options": [
+        {
+          "text": "Если бы разницы на самом деле не было, такая или большая разница получалась бы случайно лишь в 3% случаев",
+          "correct": true,
+          "explain": "Это и есть определение p-value. Поскольку 0,03 < 0,05, разницу считают статистически значимой."
+        },
+        {
+          "text": "С вероятностью 97% ночная смена работает хуже",
+          "explain": "p-value — не вероятность гипотезы. Он считается в предположении, что разницы нет, и показывает, насколько удивительны данные при таком предположении."
+        },
+        {
+          "text": "Ночная смена выпускает на 3% меньше",
+          "explain": "p-value ничего не говорит о размере разницы. Его нужно смотреть отдельно: разница средних в штуках или процентах."
+        },
+        {
+          "text": "Вывод ненадёжен в 3% смен",
+          "explain": "p-value относится ко всему тесту, а не к отдельным сменам."
+        }
+      ],
+      "hints": [
+        "p-value всегда считается в предположении, что верна нулевая гипотеза."
+      ]
+    },
+    {
+      "id": "many-tests",
+      "title": "Двадцать срезов",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Аналитик проверил эффект акции отдельно в **20** городах t-тестами с α = 0,05. На самом деле акция нигде не сработала. Сколько городов в среднем всё равно покажут «значимый» эффект?",
+      "answer": 1,
+      "unit": "город",
+      "hints": [
+        "α = 0,05 — это доля ложных тревог, когда эффекта нет.",
+        "20 × 0,05"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 0,
+          "message": "Даже без эффекта каждый тест с вероятностью 5% даёт ложную тревогу. Среди 20 тестов такие будут."
+        }
+      ],
+      "explanation": "Поэтому находка «акция сработала в Казани» после перебора 20 городов почти ничего не стоит. Поправка Бонферрони требует в этом случае p < 0,05 / 20 = 0,0025.",
+      "selfTest": {
+        "correct": [
+          "1"
+        ],
+        "wrong": [
+          "0"
+        ]
+      }
+    },
+    {
+      "id": "not-significant",
+      "title": "p = 0,4 — значит, разницы нет?",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Сравнили выпуск двух операторов по 8 сменам каждого, p-value = 0,4. Руководитель говорит: «Значит, они работают одинаково». Прав ли он?",
+      "options": [
+        {
+          "text": "Нет: данных просто недостаточно, чтобы увидеть разницу, если она есть",
+          "correct": true,
+          "explain": "Большой p-value означает «не нашли доказательств различия», а не «доказали равенство». На 8 сменах тест может не заметить даже реальную разницу: мощность маленькая."
+        },
+        {
+          "text": "Да: p-value больше 0,05, значит, разницы точно нет",
+          "explain": "Отсутствие доказательств — не доказательство отсутствия. При маленькой выборке пропустить реальный эффект очень легко."
+        },
+        {
+          "text": "Да, с вероятностью 40% они одинаковые",
+          "explain": "p-value не является вероятностью гипотезы — ни нулевой, ни альтернативной."
+        }
+      ],
+      "hints": [
+        "Что меняется, если выборка совсем маленькая?"
+      ]
+    }
+  ]
+}

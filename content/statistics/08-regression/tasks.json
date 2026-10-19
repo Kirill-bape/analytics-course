@@ -1,0 +1,244 @@
+{
+  "tasks": [
+    {
+      "id": "slope-line3",
+      "title": "Цена минуты простоя",
+      "difficulty": 1,
+      "prompt": "На **линии 3** посчитай наклон регрессии выпуска (`produced_units`) по простою (`downtime_min`): на сколько изделий меняется выпуск за каждую минуту простоя. Округли до 2 знаков, столбец — `slope`.",
+      "starter": "SELECT ROUND(regr_slope(), 2) AS slope\nFROM production\nWHERE line_id = 3;",
+      "solution": "SELECT ROUND(regr_slope(produced_units, downtime_min), 2) AS slope\nFROM production\nWHERE line_id = 3;",
+      "checkColumnNames": true,
+      "hints": [
+        "Порядок аргументов в SQL: сначала `y` (что предсказываем), потом `x`.",
+        "`regr_slope(produced_units, downtime_min)`"
+      ],
+      "mistakes": [
+        {
+          "pattern": "regr_slope\\s*\\(\\s*downtime_min",
+          "flags": "i",
+          "message": "Похоже, аргументы перепутаны: в `regr_slope` сначала идёт `y` — выпуск, а потом `x` — простой."
+        }
+      ],
+      "explanation": "Отрицательный наклон — каждая минута простоя уменьшает выпуск. Умножь его на 60 — получишь потерю изделий за час простоя.",
+      "selfTest": {
+        "correct": [
+          "SELECT ROUND(covar_samp(produced_units, downtime_min) / var_samp(downtime_min), 2) AS slope FROM production WHERE line_id = 3"
+        ],
+        "wrong": [
+          "SELECT ROUND(regr_slope(downtime_min, produced_units), 2) AS slope FROM production WHERE line_id = 3",
+          "SELECT ROUND(regr_slope(produced_units, downtime_min), 2) AS slope FROM production"
+        ]
+      }
+    },
+    {
+      "id": "lines-r2",
+      "title": "Где простой объясняет больше",
+      "difficulty": 2,
+      "prompt": [
+        "Для каждой линии посчитай регрессию выпуска по простою:",
+        "- `line_id`;",
+        "- `slope` — наклон, округлённый до 2 знаков;",
+        "- `r2` — R², округлённый до 3 знаков.",
+        "",
+        "Отсортируй по `line_id`."
+      ],
+      "starter": "SELECT line_id,\n       \nFROM production\nGROUP BY line_id\nORDER BY line_id;",
+      "solution": "SELECT line_id,\n       ROUND(regr_slope(produced_units, downtime_min), 2) AS slope,\n       ROUND(regr_r2(produced_units, downtime_min), 3) AS r2\nFROM production\nGROUP BY line_id\nORDER BY line_id;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Функции регрессии — агрегатные, как `SUM`: с `GROUP BY line_id` они посчитаются для каждой линии.",
+        "`regr_r2(produced_units, downtime_min)`"
+      ],
+      "explanation": "Где R² высокий, простои — главная причина колебаний выпуска, и борьба с ними даст больше всего. Где низкий — выпуск зависит от чего-то ещё: материалов, операторов, плана.",
+      "selfTest": {
+        "correct": [
+          "SELECT line_id, ROUND(regr_slope(produced_units, downtime_min), 2) AS slope, ROUND(POWER(corr(produced_units, downtime_min), 2), 3) AS r2 FROM production GROUP BY 1 ORDER BY 1"
+        ],
+        "wrong": [
+          "SELECT line_id, ROUND(regr_slope(produced_units, downtime_min), 2) AS slope, ROUND(corr(produced_units, downtime_min), 3) AS r2 FROM production GROUP BY line_id ORDER BY line_id"
+        ]
+      }
+    },
+    {
+      "id": "predict-hand",
+      "title": "Прогноз по формуле",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Модель для линии: **выпуск = 420 − 1,8 × простой** (простой в минутах). Сколько изделий выпустит смена с простоем **50 минут**?",
+      "answer": 330,
+      "unit": "изделий",
+      "hints": [
+        "Подставь x = 50 в формулу.",
+        "420 − 1,8 × 50"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 510,
+          "message": "Знак минус: простой **уменьшает** выпуск."
+        }
+      ],
+      "selfTest": {
+        "correct": [
+          "330"
+        ],
+        "wrong": [
+          "510"
+        ]
+      }
+    },
+    {
+      "id": "slope-meaning",
+      "title": "Как читать наклон",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Регрессия суммы заказа по числу товаров в нём дала: **сумма = 1 200 + 3 400 × число_товаров**. Что означает 3 400?",
+      "options": [
+        {
+          "text": "Каждый дополнительный товар в заказе в среднем добавляет к сумме 3 400 ₽",
+          "correct": true,
+          "explain": "Наклон — изменение `y` при росте `x` на единицу."
+        },
+        {
+          "text": "Средняя сумма заказа — 3 400 ₽",
+          "explain": "Средняя сумма зависит и от свободного члена, и от того, сколько товаров обычно в заказе."
+        },
+        {
+          "text": "Заказ без товаров стоит 3 400 ₽",
+          "explain": "Значение при `x = 0` — это свободный член, 1 200 ₽. Хотя заказ без товаров на практике не бывает: свободный член часто не имеет реального смысла."
+        },
+        {
+          "text": "Модель ошибается в среднем на 3 400 ₽",
+          "explain": "Ошибку показывают остатки и R², а не наклон."
+        }
+      ],
+      "hints": [
+        "Наклон — это «на сколько меняется y, если x вырос на 1»."
+      ]
+    },
+    {
+      "id": "linregress-packing",
+      "title": "Регрессия в Python",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Для линии упаковки (**`line_id = 5`**) построй регрессию выпуска (`produced_units`) по простою (`downtime_min`) с помощью `stats.linregress`.",
+        "",
+        "В `result` положи **R²**, округлённый до 3 знаков.",
+        "",
+        "В столбце `downtime_min` есть пропуски. Убери строки с ними (`.dropna(subset=[\"downtime_min\"])`), иначе результат будет `nan`."
+      ],
+      "starter": "from scipy import stats\n\nline5 = production[production[\"line_id\"] == 5]\nres = stats.linregress()\n\nresult = ",
+      "solution": "from scipy import stats\n\nline5 = production[production[\"line_id\"] == 5].dropna(subset=[\"downtime_min\"])\nres = stats.linregress(line5[\"downtime_min\"], line5[\"produced_units\"])\n\nresult = round(res.rvalue ** 2, 3)",
+      "hints": [
+        "Сначала убери пропуски: `production[production[\"line_id\"] == 5].dropna(subset=[\"downtime_min\"])`.",
+        "В `linregress` порядок такой: сначала `x` (простой), потом `y` (выпуск).",
+        "R² — это квадрат корреляции: `res.rvalue ** 2`."
+      ],
+      "mistakes": [
+        {
+          "pattern": "linregress",
+          "unless": "dropna|notna",
+          "message": "Если получилось `nan`, дело в пропусках в `downtime_min`: убери такие строки через `.dropna(subset=[\"downtime_min\"])`."
+        }
+      ],
+      "explanation": "Сравни с результатом `regr_r2` в SQL — числа совпадут. В Python у тебя ещё есть `res.pvalue`: значим ли наклон.",
+      "selfTest": {
+        "correct": [
+          "from scipy import stats\nl = production[(production.line_id == 5) & production.downtime_min.notna()]\nresult = round(stats.linregress(l.produced_units, l.downtime_min).rvalue ** 2, 3)"
+        ],
+        "wrong": [
+          "from scipy import stats\nl = production[production.line_id == 5].dropna()\nresult = round(stats.linregress(l.downtime_min, l.produced_units).rvalue, 3)",
+          "from scipy import stats\np = production.dropna()\nresult = round(stats.linregress(p.downtime_min, p.produced_units).rvalue ** 2, 3)",
+          "from scipy import stats\nl = production[production.line_id == 5]\nresult = round(stats.linregress(l.downtime_min, l.produced_units).rvalue ** 2, 3)"
+        ]
+      }
+    },
+    {
+      "id": "multi-regression",
+      "title": "Простой и стаж вместе",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Построй множественную регрессию выпуска на **линии 1**: `produced_units = a + b1 × downtime_min + b2 × experience_years`. Стаж оператора возьми из таблицы `operators`.",
+        "",
+        "В `result` положи коэффициент **b2** (при стаже), округлённый до 2 знаков."
+      ],
+      "starter": "import numpy as np\n\ndf = production.merge(operators[[\"operator_id\", \"experience_years\"]], on=\"operator_id\")\ndf = df[df[\"line_id\"] == 1].dropna(subset=[\"downtime_min\"])\n\nX = np.column_stack([np.ones(len(df)), df[\"downtime_min\"], df[\"experience_years\"]])\ncoef, *_ = np.linalg.lstsq(X, df[\"produced_units\"], rcond=None)\n\nresult = ",
+      "solution": "import numpy as np\n\ndf = production.merge(operators[[\"operator_id\", \"experience_years\"]], on=\"operator_id\")\ndf = df[df[\"line_id\"] == 1].dropna(subset=[\"downtime_min\"])\n\nX = np.column_stack([np.ones(len(df)), df[\"downtime_min\"], df[\"experience_years\"]])\ncoef, *_ = np.linalg.lstsq(X, df[\"produced_units\"], rcond=None)\n\nresult = round(coef[2], 2)",
+      "hints": [
+        "`coef` — массив из трёх чисел в том же порядке, что столбцы `X`: свободный член, простой, стаж.",
+        "Нужен третий элемент: `coef[2]`."
+      ],
+      "explanation": "Это эффект года стажа **при одинаковом простое**. Простая корреляция «стаж — выпуск» смешала бы два эффекта: опытные операторы могут ещё и реже допускать простои.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\nd = production.merge(operators, on=\"operator_id\", suffixes=(\"\", \"_op\"))\nd = d[d.line_id == 1].dropna(subset=[\"downtime_min\"])\nA = np.c_[np.ones(len(d)), d.downtime_min, d.experience_years]\nresult = round(np.linalg.lstsq(A, d.produced_units, rcond=None)[0][2], 2)"
+        ],
+        "wrong": [
+          "import numpy as np\ndf = production.merge(operators[[\"operator_id\", \"experience_years\"]], on=\"operator_id\")\ndf = df[df[\"line_id\"] == 1].dropna(subset=[\"downtime_min\"])\nX = np.column_stack([np.ones(len(df)), df[\"experience_years\"]])\nresult = round(np.linalg.lstsq(X, df[\"produced_units\"], rcond=None)[0][1], 2)",
+          "import numpy as np\ndf = production.merge(operators[[\"operator_id\", \"experience_years\"]], on=\"operator_id\")\ndf = df[df[\"line_id\"] == 1].dropna(subset=[\"downtime_min\"])\nX = np.column_stack([df[\"downtime_min\"], df[\"experience_years\"]])\nresult = round(np.linalg.lstsq(X, df[\"produced_units\"], rcond=None)[0][1], 2)"
+        ]
+      }
+    },
+    {
+      "id": "worst-residuals",
+      "title": "Смены хуже прогноза",
+      "difficulty": 3,
+      "prompt": [
+        "На **линии 1** найди **5 смен**, которые выпустили намного меньше, чем предсказывает регрессия выпуска по простою. Выведи:",
+        "- `prod_date`, `shift`, `downtime_min`, `produced_units`;",
+        "- `predicted` — прогноз модели, округлённый до целого;",
+        "- `residual` — факт минус прогноз, округлённый до целого.",
+        "",
+        "Сортировка — по остатку от самого отрицательного."
+      ],
+      "starter": "WITH model AS (\n    SELECT regr_slope(produced_units, downtime_min)     AS b,\n           regr_intercept(produced_units, downtime_min) AS a\n    FROM production\n    WHERE line_id = 1\n)\nSELECT \n",
+      "solution": "WITH model AS (\n    SELECT regr_slope(produced_units, downtime_min)     AS b,\n           regr_intercept(produced_units, downtime_min) AS a\n    FROM production\n    WHERE line_id = 1\n)\nSELECT p.prod_date, p.shift, p.downtime_min, p.produced_units,\n       ROUND(m.a + m.b * p.downtime_min) AS predicted,\n       ROUND(p.produced_units - (m.a + m.b * p.downtime_min)) AS residual\nFROM production p\nCROSS JOIN model m\nWHERE p.line_id = 1\nORDER BY residual\nLIMIT 5;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Модель — одна строка с `a` и `b`. Присоедини её к каждой смене через `CROSS JOIN`.",
+        "Прогноз: `m.a + m.b * p.downtime_min`, остаток: `p.produced_units - (прогноз)`. Не забудь `WHERE p.line_id = 1`."
+      ],
+      "explanation": "Эти смены нельзя объяснить простоями: выпуск низкий при обычном простое. Логичный следующий шаг — посмотреть, кто был оператором и что производили.",
+      "selfTest": {
+        "correct": [
+          "SELECT prod_date, shift, downtime_min, produced_units, ROUND(regr_intercept(produced_units, downtime_min) OVER () + regr_slope(produced_units, downtime_min) OVER () * downtime_min) AS predicted, ROUND(produced_units - (regr_intercept(produced_units, downtime_min) OVER () + regr_slope(produced_units, downtime_min) OVER () * downtime_min)) AS residual FROM production WHERE line_id = 1 ORDER BY residual LIMIT 5"
+        ],
+        "wrong": [
+          "WITH model AS (SELECT regr_slope(produced_units, downtime_min) AS b, regr_intercept(produced_units, downtime_min) AS a FROM production WHERE line_id = 1) SELECT p.prod_date, p.shift, p.downtime_min, p.produced_units, ROUND(m.a + m.b * p.downtime_min) AS predicted, ROUND(p.produced_units - (m.a + m.b * p.downtime_min)) AS residual FROM production p CROSS JOIN model m WHERE p.line_id = 1 ORDER BY residual DESC LIMIT 5"
+        ]
+      }
+    },
+    {
+      "id": "extrapolation",
+      "title": "Прогноз за пределами данных",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Модель «выпуск = 420 − 1,8 × простой» построена на сменах с простоем от 0 до 90 минут. Технолог спрашивает, сколько выпустит смена при простое 300 минут. Модель отвечает: −120 изделий. Что не так?",
+      "options": [
+        {
+          "text": "Это экстраполяция: за пределами диапазона обучения прямая не обязана работать",
+          "correct": true,
+          "explain": "Модель видела только простои до 90 минут. Что происходит дальше, она не знает. Отрицательный выпуск — явный признак, что прямую продлили слишком далеко."
+        },
+        {
+          "text": "Модель верная, просто смена работала в минус",
+          "explain": "Выпуск не бывает отрицательным. Ошибка в применении модели, а не в смене."
+        },
+        {
+          "text": "Нужно было взять R² побольше",
+          "explain": "R² — свойство модели на имеющихся данных. Он не спасает от прогнозов далеко за их пределами."
+        },
+        {
+          "text": "Надо поменять x и y местами",
+          "explain": "Тогда получится другая модель с другим смыслом. Проблема не в этом."
+        }
+      ],
+      "hints": [
+        "На каком диапазоне простоя модель «училась»?"
+      ]
+    }
+  ]
+}
