@@ -138,7 +138,9 @@ def _figures():
                 kinds.add("scatter")
             info.append({
                 "kinds": sorted(kinds),
-                "title": ax.get_title() or fig._suptitle.get_text() if fig._suptitle else ax.get_title(),
+                # Заголовок может стоять по центру, слева (loc="left") или справа, а может быть общим (suptitle)
+                "title": ax.get_title() or ax.get_title("left") or ax.get_title("right")
+                or (fig._suptitle.get_text() if fig._suptitle else ""),
                 "xlabel": ax.get_xlabel(),
                 "ylabel": ax.get_ylabel(),
                 "n_bars": sum(len(c) for c in bars),

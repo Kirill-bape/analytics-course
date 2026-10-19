@@ -1,0 +1,221 @@
+{
+  "tasks": [
+    {
+      "id": "boxplot-defects",
+      "title": "Ящики с усами: брак по линиям",
+      "difficulty": 2,
+      "type": "python",
+      "check": "plot",
+      "plot": {
+        "title": true,
+        "ylabel": true
+      },
+      "prompt": "Посчитай долю брака каждой смены (`defect_units / produced_units * 100`) и построй **ящики с усами** (`plt.boxplot`) для линий 1–4: один ящик на линию. Добавь заголовок и подпись оси Y.",
+      "starter": "import matplotlib.pyplot as plt\n\nd = production.assign(defect_pct=production[\"defect_units\"] / production[\"produced_units\"] * 100)\nlines = [1, 2, 3, 4]\ndata = [d.loc[d[\"line_id\"] == i, \"defect_pct\"] for i in lines]\n\nplt.boxplot()\n\nplt.show()",
+      "solution": "import matplotlib.pyplot as plt\n\nd = production.assign(defect_pct=production[\"defect_units\"] / production[\"produced_units\"] * 100)\nlines = [1, 2, 3, 4]\ndata = [d.loc[d[\"line_id\"] == i, \"defect_pct\"] for i in lines]\n\nplt.boxplot(data, tick_labels=[f\"Линия {i}\" for i in lines])\nplt.title(\"Доля брака по сменам на линиях сборки\")\nplt.ylabel(\"Брак, %\")\nplt.show()",
+      "hints": [
+        "`plt.boxplot(data, tick_labels=[…])` — список рядов, по одному на ящик.",
+        "Заголовок `plt.title(…)` и подпись `plt.ylabel(\"Брак, %\")`."
+      ],
+      "explanation": "По ящикам сразу видно и типичный уровень брака (медиана), и стабильность линии (высота ящика), и аварийные смены (точки-выбросы). Одно среднее показало бы только первое.",
+      "selfTest": {
+        "correct": [
+          "import matplotlib.pyplot as plt\nd = production.assign(p=production.defect_units / production.produced_units * 100)\nfig, ax = plt.subplots()\nax.boxplot([d[d.line_id == i].p for i in range(1, 5)])\nax.set_title(\"Брак\")\nax.set_ylabel(\"%\")"
+        ],
+        "wrong": [
+          "import matplotlib.pyplot as plt\nd = production.assign(p=production.defect_units / production.produced_units * 100)\nplt.boxplot([d[d.line_id == i].p for i in range(1, 5)])\nplt.ylabel(\"%\")"
+        ]
+      }
+    },
+    {
+      "id": "heatmap-table",
+      "title": "Данные для тепловой карты",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Подготовь таблицу для тепловой карты: число заказов **2025 года** по дню недели (строки, `dt.dayofweek`: 0 — понедельник) и месяцу (столбцы, 1–12). Используй `pivot_table` с `aggfunc=\"count\"` по `order_id`. Положи таблицу в `result`.",
+      "starter": "d = orders[orders[\"order_date\"].dt.year == 2025].assign(\n    weekday=orders[\"order_date\"].dt.dayofweek,\n    month=orders[\"order_date\"].dt.month,\n)\nresult = ",
+      "solution": "d = orders[orders[\"order_date\"].dt.year == 2025].assign(\n    weekday=orders[\"order_date\"].dt.dayofweek,\n    month=orders[\"order_date\"].dt.month,\n)\nresult = d.pivot_table(index=\"weekday\", columns=\"month\", values=\"order_id\", aggfunc=\"count\")",
+      "hints": [
+        "`d.pivot_table(index=\"weekday\", columns=\"month\", values=\"order_id\", aggfunc=\"count\")`."
+      ],
+      "explanation": "Нарисовать её — дело одной строки: `plt.imshow(result, cmap=\"Blues\", aspect=\"auto\")`. А в seaborn — `sns.heatmap(result, annot=True, fmt=\"d\")`.",
+      "selfTest": {
+        "correct": [
+          "d = orders[orders.order_date.dt.year == 2025]\nresult = pd.crosstab(d.order_date.dt.dayofweek, d.order_date.dt.month)"
+        ],
+        "wrong": [
+          "d = orders.assign(weekday=orders[\"order_date\"].dt.dayofweek, month=orders[\"order_date\"].dt.month)\nresult = d.pivot_table(index=\"weekday\", columns=\"month\", values=\"order_id\", aggfunc=\"count\")"
+        ]
+      }
+    },
+    {
+      "id": "heatmap-plot",
+      "title": "Тепловая карта",
+      "difficulty": 2,
+      "type": "python",
+      "check": "plot",
+      "plot": {
+        "title": true,
+        "xlabel": true
+      },
+      "prompt": "Нарисуй таблицу «день недели × месяц» тепловой картой: `plt.imshow(table, cmap=\"Blues\", aspect=\"auto\")` и шкала `plt.colorbar()`. Подпиши дни недели по оси Y, добавь заголовок и подпись оси X.",
+      "starter": "import matplotlib.pyplot as plt\n\nd = orders[orders[\"order_date\"].dt.year == 2025]\ntable = pd.crosstab(d[\"order_date\"].dt.dayofweek, d[\"order_date\"].dt.month)\n\n\nplt.show()",
+      "solution": "import matplotlib.pyplot as plt\n\nd = orders[orders[\"order_date\"].dt.year == 2025]\ntable = pd.crosstab(d[\"order_date\"].dt.dayofweek, d[\"order_date\"].dt.month)\n\nplt.imshow(table, cmap=\"Blues\", aspect=\"auto\")\nplt.colorbar(label=\"Заказов\")\nplt.yticks(range(7), [\"Пн\", \"Вт\", \"Ср\", \"Чт\", \"Пт\", \"Сб\", \"Вс\"])\nplt.xticks(range(12), table.columns)\nplt.xlabel(\"Месяц 2025 года\")\nplt.title(\"Заказы по дням недели и месяцам\")\nplt.show()",
+      "hints": [
+        "`plt.imshow(table, cmap=\"Blues\", aspect=\"auto\")` и `plt.colorbar()`.",
+        "Подписи дней: `plt.yticks(range(7), [\"Пн\", \"Вт\", …])`. Ещё нужны `plt.xlabel(…)` и `plt.title(…)`."
+      ],
+      "explanation": "На тепловой карте сезонность видна сразу по двум осям: и рост к концу года, и недельный рисунок.",
+      "selfTest": {
+        "correct": [
+          "import matplotlib.pyplot as plt\nd = orders[orders.order_date.dt.year == 2025]\nt = pd.crosstab(d.order_date.dt.dayofweek, d.order_date.dt.month)\nfig, ax = plt.subplots()\nim = ax.imshow(t, aspect=\"auto\")\nfig.colorbar(im)\nax.set_title(\"Заказы\")\nax.set_xlabel(\"Месяц\")"
+        ],
+        "wrong": [
+          "import matplotlib.pyplot as plt\nd = orders[orders.order_date.dt.year == 2025]\nt = pd.crosstab(d.order_date.dt.dayofweek, d.order_date.dt.month)\nplt.imshow(t, aspect=\"auto\")\nplt.xlabel(\"Месяц\")"
+        ]
+      }
+    },
+    {
+      "id": "grouped-bar",
+      "title": "Сгруппированные столбцы",
+      "difficulty": 2,
+      "type": "python",
+      "check": "plot",
+      "plot": {
+        "kind": "bar",
+        "title": true,
+        "ylabel": true
+      },
+      "prompt": "Построй столбчатую диаграмму выручки **доставленных** заказов по способам оплаты, с отдельным столбцом для каждого года (2025 и 2026). Подготовь широкую таблицу через `pivot_table` и вызови `.plot(kind=\"bar\")`. Добавь заголовок и подпись оси Y.",
+      "starter": "import matplotlib.pyplot as plt\n\nd = orders[orders[\"status\"] == \"delivered\"]\ntable = d.pivot_table(index=\"payment_method\", columns=d[\"order_date\"].dt.year, values=\"amount\", aggfunc=\"sum\")\n\n\nplt.show()",
+      "solution": "import matplotlib.pyplot as plt\n\nd = orders[orders[\"status\"] == \"delivered\"]\ntable = d.pivot_table(index=\"payment_method\", columns=d[\"order_date\"].dt.year, values=\"amount\", aggfunc=\"sum\")\n\n(table / 1e6).plot(kind=\"bar\", rot=0)\nplt.title(\"Выручка по способам оплаты\")\nplt.ylabel(\"Выручка, млн ₽\")\nplt.xlabel(\"\")\nplt.show()",
+      "hints": [
+        "Широкая таблица сама даёт по столбцу на год: `table.plot(kind=\"bar\")`.",
+        "Чтобы на оси не было огромных чисел, раздели на миллион: `(table / 1e6).plot(...)` и подпиши `\"Выручка, млн ₽\"`."
+      ],
+      "explanation": "Осторожно с выводом: 2026 год в данных — только полгода. Честнее сравнивать одинаковые периоды, например первое полугодие с первым.",
+      "selfTest": {
+        "correct": [
+          "import matplotlib.pyplot as plt\nd = orders[orders.status == \"delivered\"]\nt = d.groupby([\"payment_method\", d.order_date.dt.year]).amount.sum().unstack()\nax = t.plot.bar()\nax.set_title(\"Выручка\")\nax.set_ylabel(\"₽\")"
+        ],
+        "wrong": [
+          "import matplotlib.pyplot as plt\nd = orders[orders.status == \"delivered\"]\nt = d.groupby([\"payment_method\", d.order_date.dt.year]).amount.sum().unstack()\nt.plot()\nplt.title(\"Выручка\")\nplt.ylabel(\"₽\")"
+        ]
+      }
+    },
+    {
+      "id": "small-multiples",
+      "title": "Small multiples",
+      "difficulty": 3,
+      "type": "python",
+      "check": "plot",
+      "plot": {
+        "kind": "line",
+        "title": true
+      },
+      "prompt": "Построй сетку 2 × 3 маленьких графиков (`plt.subplots(2, 3, sharey=True)`): на каждом — выпуск одной линии по дням, сглаженный скользящим средним за 7 дней. У каждого графика — заголовок с номером линии.",
+      "starter": "import matplotlib.pyplot as plt\n\ndaily = production.groupby([\"prod_date\", \"line_id\"])[\"produced_units\"].sum().unstack()\nfig, axes = plt.subplots(2, 3, figsize=(12, 6), sharey=True)\nfor ax, line in zip(axes.flat, daily.columns):\n    \n\nplt.tight_layout()\nplt.show()",
+      "solution": "import matplotlib.pyplot as plt\n\ndaily = production.groupby([\"prod_date\", \"line_id\"])[\"produced_units\"].sum().unstack()\nfig, axes = plt.subplots(2, 3, figsize=(12, 6), sharey=True)\nfor ax, line in zip(axes.flat, daily.columns):\n    ax.plot(daily.index, daily[line].rolling(7).mean())\n    ax.set_title(f\"Линия {line}\")\n\nplt.tight_layout()\nplt.show()",
+      "hints": [
+        "Внутри цикла рисуй на своей оси: `ax.plot(daily.index, daily[line].rolling(7).mean())`.",
+        "Заголовок оси — `ax.set_title(f\"Линия {line}\")`."
+      ],
+      "explanation": "Общая шкала Y (`sharey=True`) сразу показывает, что линия упаковки работает с другим масштабом, а у остальных видны собственные провалы. На одном графике шесть линий слились бы в кашу.",
+      "selfTest": {
+        "correct": [
+          "import matplotlib.pyplot as plt\ndaily = production.pivot_table(index=\"prod_date\", columns=\"line_id\", values=\"produced_units\", aggfunc=\"sum\")\nfig, axes = plt.subplots(2, 3, sharey=True)\nfor i, ax in enumerate(axes.flat):\n    s = daily.iloc[:, i].rolling(7).mean()\n    ax.plot(s.index, s.values)\n    ax.set_title(\"Линия \" + str(daily.columns[i]))"
+        ],
+        "wrong": [
+          "import matplotlib.pyplot as plt\ndaily = production.pivot_table(index=\"prod_date\", columns=\"line_id\", values=\"produced_units\", aggfunc=\"sum\")\nfig, axes = plt.subplots(2, 3, sharey=True)\nfor i, ax in enumerate(axes.flat):\n    ax.plot(daily.index, daily.iloc[:, i].rolling(7).mean())"
+        ]
+      }
+    },
+    {
+      "id": "which-seaborn",
+      "title": "Какой график seaborn",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Нужно сравнить **распределение** сумм заказов у разных статусов (доставлен, отменён, возвращён): медиану, разброс и выбросы. Какая функция seaborn подходит лучше всего?",
+      "options": [
+        {
+          "text": "`sns.boxplot(data=orders, x=\"status\", y=\"amount\")`",
+          "correct": true,
+          "explain": "Ящики с усами показывают для каждой группы медиану, квартили и выбросы — ровно то, что нужно для сравнения распределений."
+        },
+        {
+          "text": "`sns.lineplot(data=orders, x=\"status\", y=\"amount\")`",
+          "explain": "Линия нужна для динамики во времени. Статусы — не время, соединять их линией бессмысленно."
+        },
+        {
+          "text": "`sns.scatterplot(data=orders, x=\"status\", y=\"amount\")`",
+          "explain": "Тысячи точек в три столбца сольются в кляксу, медиану и квартили не увидишь."
+        },
+        {
+          "text": "`sns.heatmap(orders)`",
+          "explain": "Тепловая карта рисует таблицу чисел, а не распределения по группам."
+        }
+      ],
+      "hints": [
+        "Какой график показывает медиану, квартили и выбросы сразу для нескольких групп?"
+      ]
+    },
+    {
+      "id": "sharey",
+      "title": "Зачем общая шкала",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Шесть маленьких графиков выручки по городам построены с `sharey=False`: у каждого своя шкала Y. Чем это опасно?",
+      "options": [
+        {
+          "text": "Маленький город визуально выглядит таким же большим, как Москва: высоту графиков нельзя сравнивать",
+          "correct": true,
+          "explain": "Каждая шкала растягивается под свои данные. Чтобы сравнивать масштаб, нужна общая шкала (`sharey=True`). Если важна только форма динамики, а не масштаб, свою шкалу можно оставить, но это нужно явно подписать."
+        },
+        {
+          "text": "Ничем: так даже лучше видно каждую линию",
+          "explain": "Форму видно лучше, но читатель почти наверняка начнёт сравнивать высоту графиков между собой и ошибётся."
+        },
+        {
+          "text": "График не построится",
+          "explain": "Построится: `sharey=False` — значение по умолчанию."
+        },
+        {
+          "text": "Пропадут подписи осей",
+          "explain": "Подписи не зависят от того, общая шкала или нет."
+        }
+      ],
+      "hints": [
+        "Что увидит человек, который сравнивает высоту линий на соседних графиках?"
+      ]
+    },
+    {
+      "id": "plotly-when",
+      "title": "Когда нужен Plotly",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "В каком случае интерактивный график Plotly полезнее обычного картинки-графика?",
+      "options": [
+        {
+          "text": "Руководитель хочет сам навести мышь на точку, увидеть значение и приблизить нужный период — а BI-системы у компании нет",
+          "correct": true,
+          "explain": "HTML-файл с графиком Plotly открывается в любом браузере, и в нём можно исследовать данные самому."
+        },
+        {
+          "text": "График пойдёт на слайд в PDF-презентации",
+          "explain": "В PDF интерактивность пропадёт. Лучше аккуратный статичный график."
+        },
+        {
+          "text": "Нужен один столбик с итоговой выручкой",
+          "explain": "Для одного числа график вообще не нужен — достаточно крупной цифры."
+        },
+        {
+          "text": "График печатают на бумаге для совещания",
+          "explain": "На бумаге навести мышь не получится."
+        }
+      ],
+      "hints": [
+        "Где вообще можно навести мышь на точку?"
+      ]
+    }
+  ]
+}
