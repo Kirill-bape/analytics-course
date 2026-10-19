@@ -1,0 +1,210 @@
+{
+  "tasks": [
+    {
+      "id": "missing-share",
+      "title": "Доля пропусков",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Начни знакомство с таблицей `customers`: посчитай **долю пропусков** в каждом столбце, округли до 3 знаков и положи в `result`.",
+      "starter": "result = ",
+      "solution": "result = customers.isna().mean().round(3)",
+      "hints": [
+        "`customers.isna()` — таблица из True/False. Среднее по столбцу — доля True.",
+        "`customers.isna().mean().round(3)`"
+      ],
+      "explanation": "Теперь для каждого столбца с пропусками нужно решить, что они значат: «не указал город» — нормально, а пропуск в дате регистрации — повод спросить, откуда такие клиенты.",
+      "selfTest": {
+        "correct": [
+          "result = (customers.isna().sum() / len(customers)).round(3)"
+        ],
+        "wrong": [
+          "result = customers.isna().sum()",
+          "result = customers.notna().mean().round(3)"
+        ]
+      }
+    },
+    {
+      "id": "skew-ratio",
+      "title": "Насколько скошены чеки",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Для **доставленных** заказов найди, во сколько раз **среднее** больше **медианы** суммы заказа. Округли до 2 знаков и положи в `result`.",
+      "starter": "d = orders[orders[\"status\"] == \"delivered\"][\"amount\"]\nresult = ",
+      "solution": "d = orders[orders[\"status\"] == \"delivered\"][\"amount\"]\nresult = round(d.mean() / d.median(), 2)",
+      "hints": [
+        "`d.mean() / d.median()`, затем `round(…, 2)`."
+      ],
+      "explanation": "Отношение заметно больше 1 — признак длинного правого хвоста: немного очень крупных заказов тянут среднее вверх. Для «типичного чека» в отчёте лучше подходит медиана.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\nx = orders.loc[orders.status == \"delivered\", \"amount\"].to_numpy()\nresult = round(x.mean() / np.median(x), 2)"
+        ],
+        "wrong": [
+          "d = orders[\"amount\"]\nresult = round(d.mean() / d.median(), 2)",
+          "d = orders[orders[\"status\"] == \"delivered\"][\"amount\"]\nresult = round(d.median() / d.mean(), 2)"
+        ]
+      }
+    },
+    {
+      "id": "iqr-outliers",
+      "title": "Выбросы по IQR",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Для сумм **доставленных** заказов найди верхнюю границу выбросов по правилу IQR (`Q3 + 1,5 × IQR`) и посчитай, сколько заказов её превышает. Число — в `result`.",
+      "starter": "d = orders[orders[\"status\"] == \"delivered\"][\"amount\"]\nq1, q3 = d.quantile([0.25, 0.75])\nupper = \nresult = ",
+      "solution": "d = orders[orders[\"status\"] == \"delivered\"][\"amount\"]\nq1, q3 = d.quantile([0.25, 0.75])\nupper = q3 + 1.5 * (q3 - q1)\nresult = int((d > upper).sum())",
+      "hints": [
+        "IQR = q3 − q1. Граница: `q3 + 1.5 * (q3 - q1)`.",
+        "Сколько значений больше границы: `(d > upper).sum()`."
+      ],
+      "explanation": "Выбросов немало — это нормально для денег: распределение скошено. Решать, что с ними делать, нужно по смыслу вопроса, а не автоматически удалять.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\nx = orders.loc[orders.status == \"delivered\", \"amount\"].to_numpy()\nq1, q3 = np.percentile(x, [25, 75])\nresult = int((x > q3 + 1.5 * (q3 - q1)).sum())"
+        ],
+        "wrong": [
+          "d = orders[orders[\"status\"] == \"delivered\"][\"amount\"]\nq1, q3 = d.quantile([0.25, 0.75])\nresult = int((d > q3 + 3 * (q3 - q1)).sum())",
+          "d = orders[\"amount\"]\nq1, q3 = d.quantile([0.25, 0.75])\nresult = int((d > q3 + 1.5 * (q3 - q1)).sum())"
+        ]
+      }
+    },
+    {
+      "id": "price-hist",
+      "title": "Гистограмма цен",
+      "difficulty": 2,
+      "type": "python",
+      "check": "plot",
+      "plot": {
+        "kind": "bar",
+        "title": true,
+        "xlabel": true,
+        "ylabel": true
+      },
+      "prompt": "Построй **гистограмму** цен товаров из `products` (`plt.hist`, 30 столбцов). Добавь заголовок и подписи обеих осей.",
+      "starter": "import matplotlib.pyplot as plt\n\nplt.hist()\n\nplt.show()",
+      "solution": "import matplotlib.pyplot as plt\n\nplt.hist(products[\"price\"], bins=30)\nplt.title(\"Распределение цен товаров\")\nplt.xlabel(\"Цена, ₽\")\nplt.ylabel(\"Число товаров\")\nplt.show()",
+      "hints": [
+        "`plt.hist(products[\"price\"], bins=30)`.",
+        "Заголовок и подписи: `plt.title(…)`, `plt.xlabel(…)`, `plt.ylabel(…)`."
+      ],
+      "explanation": "Видно, что большинство товаров стоят недорого, а длинный хвост тянется к дорогой электронике. Если хочешь рассмотреть основную массу, попробуй логарифмическую ось: `plt.xscale(\"log\")`.",
+      "selfTest": {
+        "correct": [
+          "import matplotlib.pyplot as plt\nproducts[\"price\"].plot(kind=\"hist\", bins=30, title=\"Цены\")\nplt.xlabel(\"Цена\")\nplt.ylabel(\"Товаров\")"
+        ],
+        "wrong": [
+          "import matplotlib.pyplot as plt\nplt.hist(products[\"price\"], bins=30)\nplt.title(\"Цены\")"
+        ]
+      }
+    },
+    {
+      "id": "corr-matrix",
+      "title": "Матрица корреляций",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Посчитай матрицу корреляций для столбцов `planned_units`, `produced_units`, `defect_units`, `downtime_min` таблицы `production`. Округли до 2 знаков и положи таблицу в `result`.",
+      "starter": "cols = [\"planned_units\", \"produced_units\", \"defect_units\", \"downtime_min\"]\nresult = ",
+      "solution": "cols = [\"planned_units\", \"produced_units\", \"defect_units\", \"downtime_min\"]\nresult = production[cols].corr().round(2)",
+      "hints": [
+        "Выбери столбцы `production[cols]` и вызови `.corr()`."
+      ],
+      "explanation": "Пропуски в `downtime_min` не мешают: `corr()` считает каждую пару по строкам, где оба значения есть. Сильная связь плана с выпуском понятна — у мощных линий большой и план, и выпуск. А вот связь простоя и выпуска стоит исследовать отдельно по каждой линии.",
+      "selfTest": {
+        "correct": [
+          "result = production.loc[:, [\"planned_units\", \"produced_units\", \"defect_units\", \"downtime_min\"]].corr(method=\"pearson\").round(2)"
+        ],
+        "wrong": [
+          "result = production[[\"planned_units\", \"produced_units\", \"defect_units\", \"downtime_min\"]].corr(method=\"spearman\").round(2)"
+        ]
+      }
+    },
+    {
+      "id": "channel-value",
+      "title": "Какой канал приводит ценных клиентов",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Сравни каналы привлечения (`acquisition_channel` из `customers`) по **доставленным** заказам. Для каждого канала посчитай:",
+        "- `clients` — число уникальных клиентов с заказами;",
+        "- `revenue` — выручку;",
+        "- `revenue_per_client` — выручку на клиента, округлённую до целого.",
+        "",
+        "Отсортируй по `revenue_per_client` по убыванию и положи таблицу в `result`."
+      ],
+      "starter": "merged = orders.merge(customers[[\"customer_id\", \"acquisition_channel\"]], on=\"customer_id\")\ndelivered = merged[merged[\"status\"] == \"delivered\"]\n\nresult = ",
+      "solution": "merged = orders.merge(customers[[\"customer_id\", \"acquisition_channel\"]], on=\"customer_id\")\ndelivered = merged[merged[\"status\"] == \"delivered\"]\n\nresult = delivered.groupby(\"acquisition_channel\").agg(clients=(\"customer_id\", \"nunique\"), revenue=(\"amount\", \"sum\"))\nresult[\"revenue_per_client\"] = (result[\"revenue\"] / result[\"clients\"]).round(0)\nresult = result.sort_values(\"revenue_per_client\", ascending=False)",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "`agg(clients=(\"customer_id\", \"nunique\"), revenue=(\"amount\", \"sum\"))` — именованная агрегация.",
+        "Новый столбец — деление `revenue / clients`, затем `.round(0)` и сортировка `sort_values(…, ascending=False)`."
+      ],
+      "explanation": "Число клиентов — важный контекст: канал с лучшей выручкой на клиента может быть совсем маленьким. Вывод EDA звучит как гипотеза: «из рекомендаций приходят более ценные клиенты — проверим на когортах».",
+      "selfTest": {
+        "correct": [
+          "m = orders[orders.status == \"delivered\"].merge(customers, on=\"customer_id\")\ng = m.groupby(\"acquisition_channel\").agg(clients=(\"customer_id\", \"nunique\"), revenue=(\"amount\", \"sum\"))\nresult = g.assign(revenue_per_client=(g.revenue / g.clients).round()).sort_values(\"revenue_per_client\", ascending=False)"
+        ],
+        "wrong": [
+          "m = orders[orders.status == \"delivered\"].merge(customers, on=\"customer_id\")\ng = m.groupby(\"acquisition_channel\").agg(clients=(\"customer_id\", \"count\"), revenue=(\"amount\", \"sum\"))\nresult = g.assign(revenue_per_client=(g.revenue / g.clients).round()).sort_values(\"revenue_per_client\", ascending=False)"
+        ]
+      }
+    },
+    {
+      "id": "price-rating-scatter",
+      "title": "Цена и рейтинг на графике",
+      "difficulty": 2,
+      "type": "python",
+      "check": "plot",
+      "plot": {
+        "kind": "scatter",
+        "xlabel": true,
+        "ylabel": true
+      },
+      "prompt": "Построй **точечную диаграмму**: по оси X — цена товара, по оси Y — рейтинг (таблица `products`). Подпиши обе оси.",
+      "starter": "import matplotlib.pyplot as plt\n\nplt.scatter()\n\nplt.show()",
+      "solution": "import matplotlib.pyplot as plt\n\nplt.scatter(products[\"price\"], products[\"rating\"], alpha=0.6)\nplt.xlabel(\"Цена, ₽\")\nplt.ylabel(\"Рейтинг\")\nplt.title(\"Цена и рейтинг товаров\")\nplt.show()",
+      "hints": [
+        "`plt.scatter(x, y)`: сначала цены, потом рейтинги.",
+        "`alpha=0.6` делает точки полупрозрачными, так видно, где их много."
+      ],
+      "explanation": "На графике сразу видно то, что не покажет одно число корреляции: облако без наклона, выбросы, товары без рейтинга (их точек нет).",
+      "selfTest": {
+        "correct": [
+          "import matplotlib.pyplot as plt\nproducts.plot(kind=\"scatter\", x=\"price\", y=\"rating\")\nplt.xlabel(\"Цена\")\nplt.ylabel(\"Рейтинг\")"
+        ],
+        "wrong": [
+          "import matplotlib.pyplot as plt\nplt.plot(products[\"price\"], products[\"rating\"])\nplt.xlabel(\"Цена\")\nplt.ylabel(\"Рейтинг\")"
+        ]
+      }
+    },
+    {
+      "id": "first-step",
+      "title": "Падение, которого не было",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Аналитик построил выручку по месяцам и увидел, что в последнем месяце она упала вдвое. Данные выгружены 15-го числа. Что проверить в первую очередь?",
+      "options": [
+        {
+          "text": "Полный ли последний месяц: возможно, в нём только половина дней",
+          "correct": true,
+          "explain": "Неполный последний период — самая частая причина ложного «падения». Сравнивай одинаковые периоды или выручку в день."
+        },
+        {
+          "text": "Сразу сообщить руководству о падении продаж",
+          "explain": "Сначала нужно исключить проблемы с данными, иначе можно поднять ложную тревогу."
+        },
+        {
+          "text": "Удалить последний месяц из всех отчётов навсегда",
+          "explain": "Удалять ничего не нужно, достаточно понимать, что период неполный, и сравнивать честно."
+        },
+        {
+          "text": "Построить модель машинного обучения для прогноза",
+          "explain": "Сложная модель на неполных данных только запутает. Начни с простой проверки периода."
+        }
+      ],
+      "hints": [
+        "Сколько дней последнего месяца попало в выгрузку?"
+      ]
+    }
+  ]
+}

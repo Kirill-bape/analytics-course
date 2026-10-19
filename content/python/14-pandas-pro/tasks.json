@@ -1,0 +1,204 @@
+{
+  "tasks": [
+    {
+      "id": "melt-plan",
+      "title": "План из широкой таблицы в длинную",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "План продаж записан «как в Excel»: по месяцам в столбцах. Преврати его в длинную таблицу со столбцами `category`, `month`, `plan`. Положи её в `result`.",
+      "starter": "plan = pd.DataFrame({\n    \"category\": [\"Электроника\", \"Книги\", \"Одежда и обувь\"],\n    \"2026-07\": [5000000, 300000, 1200000],\n    \"2026-08\": [5200000, 320000, 1100000],\n    \"2026-09\": [5600000, 450000, 1350000],\n})\n\nresult = plan.melt()",
+      "solution": "plan = pd.DataFrame({\n    \"category\": [\"Электроника\", \"Книги\", \"Одежда и обувь\"],\n    \"2026-07\": [5000000, 300000, 1200000],\n    \"2026-08\": [5200000, 320000, 1100000],\n    \"2026-09\": [5600000, 450000, 1350000],\n})\n\nresult = plan.melt(id_vars=\"category\", var_name=\"month\", value_name=\"plan\")",
+      "checkColumnNames": true,
+      "hints": [
+        "`id_vars` — столбцы, которые остаются как есть (категория). Остальные «расплавятся» в пары «месяц — значение».",
+        "`plan.melt(id_vars=\"category\", var_name=\"month\", value_name=\"plan\")`"
+      ],
+      "explanation": "В длинном виде план удобно соединить с фактом по паре «категория + месяц» и посчитать выполнение плана одной формулой.",
+      "selfTest": {
+        "correct": [
+          "plan = pd.DataFrame({\n    \"category\": [\"Электроника\", \"Книги\", \"Одежда и обувь\"],\n    \"2026-07\": [5000000, 300000, 1200000],\n    \"2026-08\": [5200000, 320000, 1100000],\n    \"2026-09\": [5600000, 450000, 1350000],\n})\nresult = plan.set_index(\"category\").stack().reset_index()\nresult.columns = [\"category\", \"month\", \"plan\"]"
+        ],
+        "wrong": [
+          "plan = pd.DataFrame({\n    \"category\": [\"Электроника\", \"Книги\", \"Одежда и обувь\"],\n    \"2026-07\": [5000000, 300000, 1200000],\n    \"2026-08\": [5200000, 320000, 1100000],\n    \"2026-09\": [5600000, 450000, 1350000],\n})\nresult = plan.melt(id_vars=\"category\")"
+        ]
+      }
+    },
+    {
+      "id": "pivot-back",
+      "title": "Обратно в широкую",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Посчитай выручку **доставленных** заказов по способу оплаты и **году** заказа, а потом разверни в широкую таблицу: строки — способы оплаты, столбцы — годы (2025 и 2026). Положи в `result`.",
+      "starter": "d = orders[orders[\"status\"] == \"delivered\"].copy()\nd[\"year\"] = d[\"order_date\"].dt.year\nlong = d.groupby([\"payment_method\", \"year\"], as_index=False)[\"amount\"].sum()\n\nresult = ",
+      "solution": "d = orders[orders[\"status\"] == \"delivered\"].copy()\nd[\"year\"] = d[\"order_date\"].dt.year\nlong = d.groupby([\"payment_method\", \"year\"], as_index=False)[\"amount\"].sum()\n\nresult = long.pivot(index=\"payment_method\", columns=\"year\", values=\"amount\")",
+      "hints": [
+        "`long.pivot(index=…, columns=…, values=…)`: что в строки, что в столбцы, что в ячейки."
+      ],
+      "explanation": "То же одной командой: `d.pivot_table(index=\"payment_method\", columns=\"year\", values=\"amount\", aggfunc=\"sum\")`.",
+      "selfTest": {
+        "correct": [
+          "d = orders[orders.status == \"delivered\"]\nresult = d.pivot_table(index=\"payment_method\", columns=d.order_date.dt.year, values=\"amount\", aggfunc=\"sum\")"
+        ],
+        "wrong": [
+          "d = orders.copy()\nd[\"year\"] = d[\"order_date\"].dt.year\nresult = d.groupby([\"payment_method\", \"year\"])[\"amount\"].sum().unstack()"
+        ]
+      }
+    },
+    {
+      "id": "transform-share",
+      "title": "Доля заказа в покупках клиента",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Для **доставленных** заказов добавь столбец `share` — долю суммы заказа в общей сумме покупок этого клиента (округли до 3 знаков). Используй `transform`.",
+        "",
+        "В `result` положи таблицу из столбцов `order_id`, `customer_id`, `amount`, `share` для клиента **с `customer_id = 756`**, отсортированную по `order_id`."
+      ],
+      "starter": "d = orders[orders[\"status\"] == \"delivered\"].copy()\nd[\"share\"] = \n\nresult = d[d[\"customer_id\"] == 756][[\"order_id\", \"customer_id\", \"amount\", \"share\"]].sort_values(\"order_id\")",
+      "solution": "d = orders[orders[\"status\"] == \"delivered\"].copy()\nd[\"share\"] = (d[\"amount\"] / d.groupby(\"customer_id\")[\"amount\"].transform(\"sum\")).round(3)\n\nresult = d[d[\"customer_id\"] == 756][[\"order_id\", \"customer_id\", \"amount\", \"share\"]].sort_values(\"order_id\")",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Сумма покупок клиента в каждой строке: `d.groupby(\"customer_id\")[\"amount\"].transform(\"sum\")`.",
+        "Доля — `d[\"amount\"] / …`, затем `.round(3)`."
+      ],
+      "selfTest": {
+        "correct": [
+          "d = orders[orders.status == \"delivered\"].copy()\ntot = d.groupby(\"customer_id\", as_index=False)[\"amount\"].sum().rename(columns={\"amount\": \"tot\"})\nd = d.merge(tot, on=\"customer_id\")\nd[\"share\"] = (d.amount / d.tot).round(3)\nresult = d.query(\"customer_id == 756\")[[\"order_id\", \"customer_id\", \"amount\", \"share\"]].sort_values(\"order_id\")"
+        ],
+        "wrong": [
+          "d = orders.copy()\nd[\"share\"] = (d[\"amount\"] / d.groupby(\"customer_id\")[\"amount\"].transform(\"sum\")).round(3)\nresult = d[d[\"customer_id\"] == 756][[\"order_id\", \"customer_id\", \"amount\", \"share\"]].sort_values(\"order_id\")"
+        ]
+      }
+    },
+    {
+      "id": "rank-in-category",
+      "title": "Самый дорогой товар в категории",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Для каждой категории найди **самый дорогой** товар: присвой товарам ранг по цене внутри категории (`rank(ascending=False, method=\"first\")`) и оставь строки с рангом 1. В `result` — столбцы `category`, `product_name`, `price`, отсортированные по категории.",
+      "starter": "p = products.copy()\np[\"rank\"] = \n\nresult = p[p[\"rank\"] == 1][[\"category\", \"product_name\", \"price\"]].sort_values(\"category\")",
+      "solution": "p = products.copy()\np[\"rank\"] = p.groupby(\"category\")[\"price\"].rank(ascending=False, method=\"first\")\n\nresult = p[p[\"rank\"] == 1][[\"category\", \"product_name\", \"price\"]].sort_values(\"category\")",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "`p.groupby(\"category\")[\"price\"].rank(ascending=False, method=\"first\")` — 1 у самого дорогого в каждой категории."
+      ],
+      "explanation": "Короче через сортировку: `products.sort_values(\"price\", ascending=False).groupby(\"category\").head(1)`. А с `head(3)` — топ-3 в каждой категории.",
+      "selfTest": {
+        "correct": [
+          "result = products.sort_values(\"price\", ascending=False, kind=\"stable\").groupby(\"category\").head(1)[[\"category\", \"product_name\", \"price\"]].sort_values(\"category\")"
+        ],
+        "wrong": [
+          "p = products.copy()\np[\"rank\"] = p.groupby(\"category\")[\"price\"].rank(method=\"first\")\nresult = p[p[\"rank\"] == 1][[\"category\", \"product_name\", \"price\"]].sort_values(\"category\")"
+        ]
+      }
+    },
+    {
+      "id": "days-between",
+      "title": "Дни между заказами клиента",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Для **доставленных** заказов посчитай, сколько дней прошло с **предыдущего** заказа того же клиента (`groupby(...)[\"order_date\"].diff().dt.days`).",
+        "",
+        "В `result` положи **медиану** этого интервала по всем повторным заказам (первые заказы клиентов, где интервала нет, не учитываются)."
+      ],
+      "starter": "d = orders[orders[\"status\"] == \"delivered\"].sort_values([\"customer_id\", \"order_date\"]).copy()\nd[\"gap\"] = \n\nresult = ",
+      "solution": "d = orders[orders[\"status\"] == \"delivered\"].sort_values([\"customer_id\", \"order_date\"]).copy()\nd[\"gap\"] = d.groupby(\"customer_id\")[\"order_date\"].diff().dt.days\n\nresult = d[\"gap\"].median()",
+      "hints": [
+        "`diff()` внутри группы считает разницу с предыдущей строкой: `d.groupby(\"customer_id\")[\"order_date\"].diff()`.",
+        "Для первого заказа клиента получится пропуск — `median()` его пропустит сама."
+      ],
+      "explanation": "Медианный интервал между покупками подсказывает, когда напоминать клиенту о себе: рассылку логично отправлять чуть раньше этого срока.",
+      "selfTest": {
+        "correct": [
+          "d = orders.query(\"status == 'delivered'\").sort_values([\"customer_id\", \"order_date\"])\nprev = d.groupby(\"customer_id\")[\"order_date\"].shift(1)\nresult = (d[\"order_date\"] - prev).dt.days.dropna().median()"
+        ],
+        "wrong": [
+          "d = orders[orders[\"status\"] == \"delivered\"].copy()\nd[\"gap\"] = d[\"order_date\"].diff().dt.days\nresult = d[\"gap\"].median()",
+          "d = orders[orders[\"status\"] == \"delivered\"].sort_values([\"customer_id\", \"order_date\"]).copy()\nd[\"gap\"] = d.groupby(\"customer_id\")[\"order_date\"].diff().dt.days\nresult = d[\"gap\"].mean()"
+        ]
+      }
+    },
+    {
+      "id": "chain",
+      "title": "Цепочка методов",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Одной цепочкой методов получи **топ-3 города** по выручке доставленных заказов со столбцами `city`, `revenue`, `orders`, `avg_check` (средний чек, округлённый до целого).",
+        "",
+        "Шаги: `query` → `merge` с городами клиентов → `groupby(..., as_index=False).agg(...)` → `assign` → `sort_values` → `head(3)`."
+      ],
+      "starter": "result = (\n    orders\n    .query(\"status == 'delivered'\")\n    .merge(customers[[\"customer_id\", \"city\"]], on=\"customer_id\")\n    \n)",
+      "solution": "result = (\n    orders\n    .query(\"status == 'delivered'\")\n    .merge(customers[[\"customer_id\", \"city\"]], on=\"customer_id\")\n    .groupby(\"city\", as_index=False)\n    .agg(revenue=(\"amount\", \"sum\"), orders=(\"order_id\", \"count\"))\n    .assign(avg_check=lambda t: (t[\"revenue\"] / t[\"orders\"]).round(0))\n    .sort_values(\"revenue\", ascending=False)\n    .head(3)\n)",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "`.agg(revenue=(\"amount\", \"sum\"), orders=(\"order_id\", \"count\"))`.",
+        "`.assign(avg_check=lambda t: (t[\"revenue\"] / t[\"orders\"]).round(0))`, затем `.sort_values(\"revenue\", ascending=False).head(3)`."
+      ],
+      "selfTest": {
+        "correct": [
+          "m = orders[orders.status == \"delivered\"].merge(customers, on=\"customer_id\")\ng = m.groupby(\"city\").agg(revenue=(\"amount\", \"sum\"), orders=(\"order_id\", \"size\")).reset_index()\ng[\"avg_check\"] = (g.revenue / g.orders).round()\nresult = g.nlargest(3, \"revenue\")"
+        ],
+        "wrong": [
+          "m = orders.merge(customers, on=\"customer_id\")\ng = m.groupby(\"city\").agg(revenue=(\"amount\", \"sum\"), orders=(\"order_id\", \"size\")).reset_index()\ng[\"avg_check\"] = (g.revenue / g.orders).round()\nresult = g.nlargest(3, \"revenue\")"
+        ]
+      }
+    },
+    {
+      "id": "cut-bins",
+      "title": "Группы по границам: pd.cut",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Без `apply` раздели заказы на группы по сумме с помощью `pd.cut`: до 3 000 — `\"малый\"`, от 3 000 до 10 000 — `\"средний\"`, от 10 000 — `\"крупный\"` (левая граница входит в группу: `right=False`). В `result` — число заказов в каждой группе, по порядку групп (`value_counts(sort=False)`).",
+      "starter": "import numpy as np\n\nsize = pd.cut(orders[\"amount\"], bins=[0, 3000, 10000, np.inf], right=False, labels=[])\nresult = size.value_counts(sort=False)",
+      "solution": "import numpy as np\n\nsize = pd.cut(orders[\"amount\"], bins=[0, 3000, 10000, np.inf], right=False, labels=[\"малый\", \"средний\", \"крупный\"])\nresult = size.value_counts(sort=False)",
+      "orderMatters": true,
+      "hints": [
+        "Подписей столько же, сколько промежутков между границами: три.",
+        "`labels=[\"малый\", \"средний\", \"крупный\"]`"
+      ],
+      "explanation": "`right=False` делает промежутки вида [3000; 10000): 3 000 попадает в «средний», а 10 000 — уже в «крупный». Ровно как в задании про сегменты с lambda, только в десятки раз быстрее.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\nlab = np.select([orders.amount < 3000, orders.amount < 10000], [\"малый\", \"средний\"], \"крупный\")\nresult = pd.Series(pd.Categorical(lab, categories=[\"малый\", \"средний\", \"крупный\"])).value_counts(sort=False)"
+        ],
+        "wrong": [
+          "import numpy as np\nsize = pd.cut(orders[\"amount\"], bins=[0, 5000, 10000, np.inf], right=False, labels=[\"малый\", \"средний\", \"крупный\"])\nresult = size.value_counts(sort=False)"
+        ]
+      }
+    },
+    {
+      "id": "slow-code",
+      "title": "Почему код тормозит",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "На таблице в 20 миллионов строк этот код работает 15 минут:\n\n```py\ndf[\"revenue\"] = df.apply(lambda r: r[\"qty\"] * r[\"price\"], axis=1)\n```\n\nКак ускорить?",
+      "options": [
+        {
+          "text": "`df[\"revenue\"] = df[\"qty\"] * df[\"price\"]`",
+          "correct": true,
+          "explain": "Векторная операция перемножает столбцы целиком внутри NumPy, без вызова Python-функции для каждой строки. На 20 млн строк это секунды вместо минут."
+        },
+        {
+          "text": "Переписать через цикл `for i in range(len(df))`",
+          "explain": "Цикл по строкам ещё медленнее, чем `apply`."
+        },
+        {
+          "text": "Заменить `lambda` на обычную функцию через `def`",
+          "explain": "Скорость не изменится: всё равно функция вызывается 20 миллионов раз."
+        },
+        {
+          "text": "Добавить `.copy()` перед `apply`",
+          "explain": "Копия только займёт память, а вычисления останутся такими же медленными."
+        }
+      ],
+      "hints": [
+        "Что быстрее: вызвать функцию для каждой строки или перемножить столбцы целиком?"
+      ]
+    }
+  ]
+}

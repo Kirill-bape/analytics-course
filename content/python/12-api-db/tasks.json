@@ -1,0 +1,199 @@
+{
+  "tasks": [
+    {
+      "id": "json-rate",
+      "title": "Курс из ответа API",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "В `text` — ответ API с курсами валют: сколько единиц валюты дают за 1 рубль. Разбери JSON и посчитай, сколько **долларов** получится за **25 000 ₽**. Округли до 2 знаков, ответ — в `result`.",
+      "starter": "import json\n\ntext = '{\"date\": \"2026-06-30\", \"base\": \"RUB\", \"rates\": {\"USD\": 0.0127, \"EUR\": 0.0109, \"CNY\": 0.0921}}'\n\ndata = \nresult = ",
+      "solution": "import json\n\ntext = '{\"date\": \"2026-06-30\", \"base\": \"RUB\", \"rates\": {\"USD\": 0.0127, \"EUR\": 0.0109, \"CNY\": 0.0921}}'\n\ndata = json.loads(text)\nresult = round(25000 * data[\"rates\"][\"USD\"], 2)",
+      "hints": [
+        "`json.loads(text)` превратит текст в словарь.",
+        "Курс доллара: `data[\"rates\"][\"USD\"]`."
+      ],
+      "selfTest": {
+        "correct": [
+          "import json\ntext = '{\"date\": \"2026-06-30\", \"base\": \"RUB\", \"rates\": {\"USD\": 0.0127, \"EUR\": 0.0109, \"CNY\": 0.0921}}'\nrates = json.loads(text).get(\"rates\")\nresult = round(rates[\"USD\"] * 25000, 2)"
+        ],
+        "wrong": [
+          "import json\ntext = '{\"date\": \"2026-06-30\", \"base\": \"RUB\", \"rates\": {\"USD\": 0.0127, \"EUR\": 0.0109, \"CNY\": 0.0921}}'\nresult = round(25000 * json.loads(text)[\"rates\"][\"EUR\"], 2)",
+          "import json\ntext = '{\"date\": \"2026-06-30\", \"base\": \"RUB\", \"rates\": {\"USD\": 0.0127, \"EUR\": 0.0109, \"CNY\": 0.0921}}'\nresult = round(25000 / json.loads(text)[\"rates\"][\"USD\"], 2)"
+        ]
+      }
+    },
+    {
+      "id": "json-normalize",
+      "title": "Плоская таблица из вложенного JSON",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "В `response` — список заказов из API, у каждого вложенный словарь `client`. Разверни его в таблицу через `pd.json_normalize` и посчитай **сумму заказов по городу клиента**. Результат (город → сумма) — в `result`.",
+      "starter": "response = [\n    {\"id\": 1, \"amount\": 4990, \"client\": {\"name\": \"Анна\", \"city\": \"Москва\"}},\n    {\"id\": 2, \"amount\": 1290, \"client\": {\"name\": \"Олег\", \"city\": \"Казань\"}},\n    {\"id\": 3, \"amount\": 15400, \"client\": {\"name\": \"Ирина\", \"city\": \"Москва\"}},\n    {\"id\": 4, \"amount\": 790, \"client\": {\"name\": \"Пётр\", \"city\": \"Пермь\"}},\n    {\"id\": 5, \"amount\": 8200, \"client\": {\"name\": \"Мария\", \"city\": \"Казань\"}},\n]\n\ndf = pd.json_normalize(response)\nprint(df.columns.tolist())\nresult = ",
+      "solution": "response = [\n    {\"id\": 1, \"amount\": 4990, \"client\": {\"name\": \"Анна\", \"city\": \"Москва\"}},\n    {\"id\": 2, \"amount\": 1290, \"client\": {\"name\": \"Олег\", \"city\": \"Казань\"}},\n    {\"id\": 3, \"amount\": 15400, \"client\": {\"name\": \"Ирина\", \"city\": \"Москва\"}},\n    {\"id\": 4, \"amount\": 790, \"client\": {\"name\": \"Пётр\", \"city\": \"Пермь\"}},\n    {\"id\": 5, \"amount\": 8200, \"client\": {\"name\": \"Мария\", \"city\": \"Казань\"}},\n]\n\ndf = pd.json_normalize(response)\nprint(df.columns.tolist())\nresult = df.groupby(\"client.city\")[\"amount\"].sum()",
+      "hints": [
+        "После `json_normalize` город лежит в столбце `client.city` — посмотри список столбцов, который печатает заготовка.",
+        "`df.groupby(\"client.city\")[\"amount\"].sum()`"
+      ],
+      "selfTest": {
+        "correct": [
+          "response = [\n    {\"id\": 1, \"amount\": 4990, \"client\": {\"name\": \"Анна\", \"city\": \"Москва\"}},\n    {\"id\": 2, \"amount\": 1290, \"client\": {\"name\": \"Олег\", \"city\": \"Казань\"}},\n    {\"id\": 3, \"amount\": 15400, \"client\": {\"name\": \"Ирина\", \"city\": \"Москва\"}},\n    {\"id\": 4, \"amount\": 790, \"client\": {\"name\": \"Пётр\", \"city\": \"Пермь\"}},\n    {\"id\": 5, \"amount\": 8200, \"client\": {\"name\": \"Мария\", \"city\": \"Казань\"}},\n]\nrows = [{\"city\": r[\"client\"][\"city\"], \"amount\": r[\"amount\"]} for r in response]\nresult = pd.DataFrame(rows).groupby(\"city\")[\"amount\"].sum()"
+        ],
+        "wrong": [
+          "response = [\n    {\"id\": 1, \"amount\": 4990, \"client\": {\"name\": \"Анна\", \"city\": \"Москва\"}},\n    {\"id\": 2, \"amount\": 1290, \"client\": {\"name\": \"Олег\", \"city\": \"Казань\"}},\n    {\"id\": 3, \"amount\": 15400, \"client\": {\"name\": \"Ирина\", \"city\": \"Москва\"}},\n    {\"id\": 4, \"amount\": 790, \"client\": {\"name\": \"Пётр\", \"city\": \"Пермь\"}},\n    {\"id\": 5, \"amount\": 8200, \"client\": {\"name\": \"Мария\", \"city\": \"Казань\"}},\n]\ndf = pd.json_normalize(response)\nresult = df.groupby(\"client.city\")[\"amount\"].count()"
+        ]
+      }
+    },
+    {
+      "id": "record-path",
+      "title": "Позиции заказа из списка внутри JSON",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "У каждого заказа в `response` есть список позиций `items`. Разверни позиции в таблицу так, чтобы у каждой были `order_id` и `city` заказа: `pd.json_normalize(response, record_path=\"items\", meta=[\"order_id\", \"city\"])`.",
+        "",
+        "Посчитай выручку (`qty × price`) по городам и положи в `result`."
+      ],
+      "starter": "response = [\n    {\"order_id\": 101, \"city\": \"Москва\", \"items\": [{\"sku\": \"A1\", \"qty\": 2, \"price\": 990}, {\"sku\": \"B7\", \"qty\": 1, \"price\": 4990}]},\n    {\"order_id\": 102, \"city\": \"Казань\", \"items\": [{\"sku\": \"C3\", \"qty\": 3, \"price\": 450}]},\n    {\"order_id\": 103, \"city\": \"Москва\", \"items\": [{\"sku\": \"A1\", \"qty\": 1, \"price\": 990}, {\"sku\": \"D2\", \"qty\": 2, \"price\": 2590}]},\n]\n\nitems = pd.json_normalize(response, record_path=\"items\", meta=[\"order_id\", \"city\"])\nprint(items)\n\nresult = ",
+      "solution": "response = [\n    {\"order_id\": 101, \"city\": \"Москва\", \"items\": [{\"sku\": \"A1\", \"qty\": 2, \"price\": 990}, {\"sku\": \"B7\", \"qty\": 1, \"price\": 4990}]},\n    {\"order_id\": 102, \"city\": \"Казань\", \"items\": [{\"sku\": \"C3\", \"qty\": 3, \"price\": 450}]},\n    {\"order_id\": 103, \"city\": \"Москва\", \"items\": [{\"sku\": \"A1\", \"qty\": 1, \"price\": 990}, {\"sku\": \"D2\", \"qty\": 2, \"price\": 2590}]},\n]\n\nitems = pd.json_normalize(response, record_path=\"items\", meta=[\"order_id\", \"city\"])\nprint(items)\n\nitems[\"revenue\"] = items[\"qty\"] * items[\"price\"]\nresult = items.groupby(\"city\")[\"revenue\"].sum()",
+      "hints": [
+        "Каждая строка `items` — одна позиция: столбцы `sku`, `qty`, `price`, `order_id`, `city`.",
+        "Сначала столбец `revenue = qty * price`, потом группировка по `city`."
+      ],
+      "explanation": "Именно так выглядят ответы многих API интернет-магазинов и CRM: заказ, а внутри список товаров. Без `record_path` позиции остались бы списками внутри одной ячейки.",
+      "selfTest": {
+        "correct": [
+          "response = [\n    {\"order_id\": 101, \"city\": \"Москва\", \"items\": [{\"sku\": \"A1\", \"qty\": 2, \"price\": 990}, {\"sku\": \"B7\", \"qty\": 1, \"price\": 4990}]},\n    {\"order_id\": 102, \"city\": \"Казань\", \"items\": [{\"sku\": \"C3\", \"qty\": 3, \"price\": 450}]},\n    {\"order_id\": 103, \"city\": \"Москва\", \"items\": [{\"sku\": \"A1\", \"qty\": 1, \"price\": 990}, {\"sku\": \"D2\", \"qty\": 2, \"price\": 2590}]},\n]\nrows = [{\"city\": o[\"city\"], \"rev\": it[\"qty\"] * it[\"price\"]} for o in response for it in o[\"items\"]]\nresult = pd.DataFrame(rows).groupby(\"city\")[\"rev\"].sum()"
+        ],
+        "wrong": [
+          "response = [\n    {\"order_id\": 101, \"city\": \"Москва\", \"items\": [{\"sku\": \"A1\", \"qty\": 2, \"price\": 990}, {\"sku\": \"B7\", \"qty\": 1, \"price\": 4990}]},\n    {\"order_id\": 102, \"city\": \"Казань\", \"items\": [{\"sku\": \"C3\", \"qty\": 3, \"price\": 450}]},\n    {\"order_id\": 103, \"city\": \"Москва\", \"items\": [{\"sku\": \"A1\", \"qty\": 1, \"price\": 990}, {\"sku\": \"D2\", \"qty\": 2, \"price\": 2590}]},\n]\nitems = pd.json_normalize(response, record_path=\"items\", meta=[\"order_id\", \"city\"])\nresult = items.groupby(\"city\")[\"price\"].sum()"
+        ]
+      }
+    },
+    {
+      "id": "pagination",
+      "title": "Собрать все страницы",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Функция `get_page(page)` имитирует API: отдаёт заказы порциями по 50, а когда данные кончились — пустой список. Собери **все** страницы в одну таблицу и положи в `result` список `[число заказов, сумма amount]`.",
+      "starter": "def get_page(page):\n    \"\"\"Имитация API: 230 заказов, по 50 на страницу.\"\"\"\n    start = (page - 1) * 50\n    return [{\"order_id\": 5000 + i, \"amount\": 100 + (i * 37) % 900} for i in range(start, min(start + 50, 230))]\n\nrows, page = [], 1\nwhile True:\n    batch = get_page(page)\n    \n\ndf = pd.DataFrame(rows)\nresult = [len(df), df[\"amount\"].sum()]",
+      "solution": "def get_page(page):\n    \"\"\"Имитация API: 230 заказов, по 50 на страницу.\"\"\"\n    start = (page - 1) * 50\n    return [{\"order_id\": 5000 + i, \"amount\": 100 + (i * 37) % 900} for i in range(start, min(start + 50, 230))]\n\nrows, page = [], 1\nwhile True:\n    batch = get_page(page)\n    if not batch:\n        break\n    rows.extend(batch)\n    page += 1\n\ndf = pd.DataFrame(rows)\nresult = [len(df), df[\"amount\"].sum()]",
+      "hints": [
+        "Если страница пустая (`if not batch:`), выходи из цикла через `break`.",
+        "Иначе добавь записи `rows.extend(batch)` и переходи к следующей странице `page += 1`."
+      ],
+      "explanation": "Последняя страница неполная — 30 записей. Если бы цикл останавливался на «странице меньше 50», он бы тоже сработал. А вот фиксированное число страниц — плохая идея: завтра данных станет больше.",
+      "selfTest": {
+        "correct": [
+          "def get_page(page):\n    \"\"\"Имитация API: 230 заказов, по 50 на страницу.\"\"\"\n    start = (page - 1) * 50\n    return [{\"order_id\": 5000 + i, \"amount\": 100 + (i * 37) % 900} for i in range(start, min(start + 50, 230))]\nrows = []\nfor p in range(1, 100):\n    b = get_page(p)\n    if not b:\n        break\n    rows += b\nresult = [len(rows), sum(r[\"amount\"] for r in rows)]"
+        ],
+        "wrong": [
+          "def get_page(page):\n    \"\"\"Имитация API: 230 заказов, по 50 на страницу.\"\"\"\n    start = (page - 1) * 50\n    return [{\"order_id\": 5000 + i, \"amount\": 100 + (i * 37) % 900} for i in range(start, min(start + 50, 230))]\nrows = []\nfor p in range(1, 4):\n    rows += get_page(p)\nresult = [len(rows), sum(r[\"amount\"] for r in rows)]"
+        ]
+      }
+    },
+    {
+      "id": "regex-prices",
+      "title": "Цены со страницы",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "В `html` — кусок страницы каталога. С помощью `re.findall` вытащи все цены, преврати их в числа (убери пробелы) и положи в `result` **список цен** в том порядке, в каком они идут на странице.",
+      "starter": "import re\n\nhtml = \"\"\"\n<ul class=\"catalog\">\n  <li><span class=\"name\">Наушники</span> <span class=\"price\">4 990 ₽</span></li>\n  <li><span class=\"name\">Рюкзак</span> <span class=\"price\">3 490 ₽</span></li>\n  <li><span class=\"name\">Пауэрбанк</span> <span class=\"price\">2 190 ₽</span></li>\n  <li><span class=\"name\">Смарт-часы</span> <span class=\"price\">12 990 ₽</span></li>\n  <li><span class=\"name\">Кабель</span> <span class=\"price\">390 ₽</span></li>\n</ul>\n\"\"\"\n\nraw = re.findall(r'class=\"price\">([\\d ]+) ₽', html)\nresult = ",
+      "solution": "import re\n\nhtml = \"\"\"\n<ul class=\"catalog\">\n  <li><span class=\"name\">Наушники</span> <span class=\"price\">4 990 ₽</span></li>\n  <li><span class=\"name\">Рюкзак</span> <span class=\"price\">3 490 ₽</span></li>\n  <li><span class=\"name\">Пауэрбанк</span> <span class=\"price\">2 190 ₽</span></li>\n  <li><span class=\"name\">Смарт-часы</span> <span class=\"price\">12 990 ₽</span></li>\n  <li><span class=\"name\">Кабель</span> <span class=\"price\">390 ₽</span></li>\n</ul>\n\"\"\"\n\nraw = re.findall(r'class=\"price\">([\\d ]+) ₽', html)\nresult = [int(p.replace(\" \", \"\")) for p in raw]",
+      "orderMatters": true,
+      "hints": [
+        "`raw` — список строк вроде `\"4 990\"`. Убери пробел через `.replace(\" \", \"\")` и преврати в число `int(…)`.",
+        "`[int(p.replace(\" \", \"\")) for p in raw]`"
+      ],
+      "selfTest": {
+        "correct": [
+          "import re\nhtml = \"\"\"\n<ul class=\"catalog\">\n  <li><span class=\"name\">Наушники</span> <span class=\"price\">4 990 ₽</span></li>\n  <li><span class=\"name\">Рюкзак</span> <span class=\"price\">3 490 ₽</span></li>\n  <li><span class=\"name\">Пауэрбанк</span> <span class=\"price\">2 190 ₽</span></li>\n  <li><span class=\"name\">Смарт-часы</span> <span class=\"price\">12 990 ₽</span></li>\n  <li><span class=\"name\">Кабель</span> <span class=\"price\">390 ₽</span></li>\n</ul>\n\"\"\"\nresult = [int(re.sub(r\"\\s\", \"\", m)) for m in re.findall(r\"price\\\">(.*?) ₽\", html)]"
+        ],
+        "wrong": [
+          "import re\nhtml = \"\"\"\n<ul class=\"catalog\">\n  <li><span class=\"name\">Наушники</span> <span class=\"price\">4 990 ₽</span></li>\n  <li><span class=\"name\">Рюкзак</span> <span class=\"price\">3 490 ₽</span></li>\n  <li><span class=\"name\">Пауэрбанк</span> <span class=\"price\">2 190 ₽</span></li>\n  <li><span class=\"name\">Смарт-часы</span> <span class=\"price\">12 990 ₽</span></li>\n  <li><span class=\"name\">Кабель</span> <span class=\"price\">390 ₽</span></li>\n</ul>\n\"\"\"\nresult = sorted(int(p.replace(\" \", \"\")) for p in re.findall(r'class=\"price\">([\\d ]+) ₽', html))",
+          "import re\nhtml = \"\"\"\n<ul class=\"catalog\">\n  <li><span class=\"name\">Наушники</span> <span class=\"price\">4 990 ₽</span></li>\n  <li><span class=\"name\">Рюкзак</span> <span class=\"price\">3 490 ₽</span></li>\n  <li><span class=\"name\">Пауэрбанк</span> <span class=\"price\">2 190 ₽</span></li>\n  <li><span class=\"name\">Смарт-часы</span> <span class=\"price\">12 990 ₽</span></li>\n  <li><span class=\"name\">Кабель</span> <span class=\"price\">390 ₽</span></li>\n</ul>\n\"\"\"\nresult = [int(p) for p in re.findall(r\"(\\d+) ₽\", html)]"
+        ]
+      }
+    },
+    {
+      "id": "regex-orders",
+      "title": "Номера заказов из сообщений",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": "В `messages` — обращения в поддержку. Номер заказа пишут по-разному: `№ 104523` и `№104871`. Вытащи **все** номера из всех сообщений и положи в `result` список чисел в порядке появления.",
+      "starter": "import re\n\nmessages = [\n    \"Здравствуйте! Заказ № 104523 пришёл без чека\",\n    \"Где мой заказ №104871? Жду уже неделю\",\n    \"Спасибо, всё получила\",\n    \"Прошу отменить заказ № 105002 и заказ №105003\",\n]\n\nresult = []\nfor m in messages:\n    \n",
+      "solution": "import re\n\nmessages = [\n    \"Здравствуйте! Заказ № 104523 пришёл без чека\",\n    \"Где мой заказ №104871? Жду уже неделю\",\n    \"Спасибо, всё получила\",\n    \"Прошу отменить заказ № 105002 и заказ №105003\",\n]\n\nresult = []\nfor m in messages:\n    result += [int(x) for x in re.findall(r\"№\\s?(\\d+)\", m)]\n",
+      "orderMatters": true,
+      "hints": [
+        "Шаблон: знак `№`, затем необязательный пробел `\\s?`, затем цифры в скобках `(\\d+)`.",
+        "`re.findall(r\"№\\s?(\\d+)\", m)` вернёт список номеров одного сообщения — добавь их в общий список."
+      ],
+      "explanation": "Такой разбор помогает связать обращения с заказами и посчитать, по каким заказам чаще всего пишут в поддержку.",
+      "selfTest": {
+        "correct": [
+          "import re\nmessages = [\n    \"Здравствуйте! Заказ № 104523 пришёл без чека\",\n    \"Где мой заказ №104871? Жду уже неделю\",\n    \"Спасибо, всё получила\",\n    \"Прошу отменить заказ № 105002 и заказ №105003\",\n]\nresult = [int(n) for n in re.findall(r\"№ ?(\\d+)\", \" \".join(messages))]"
+        ],
+        "wrong": [
+          "import re\nmessages = [\n    \"Здравствуйте! Заказ № 104523 пришёл без чека\",\n    \"Где мой заказ №104871? Жду уже неделю\",\n    \"Спасибо, всё получила\",\n    \"Прошу отменить заказ № 105002 и заказ №105003\",\n]\nresult = [int(n) for n in re.findall(r\"№ (\\d+)\", \" \".join(messages))]"
+        ]
+      }
+    },
+    {
+      "id": "status-code",
+      "title": "Ошибка 429",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Скрипт выгружает данные из API рекламного кабинета. После сотни быстрых запросов подряд сервис стал отвечать кодом **429**. Что делать?",
+      "options": [
+        {
+          "text": "Делать паузы между запросами и повторять неудачный запрос через некоторое время",
+          "correct": true,
+          "explain": "429 — «слишком много запросов». У API есть лимит частоты. Помогают пауза (`time.sleep`) и повтор с нарастающей задержкой."
+        },
+        {
+          "text": "Получить новый ключ API — старый испорчен",
+          "explain": "С ключом всё в порядке: при проблеме с доступом был бы код 401 или 403."
+        },
+        {
+          "text": "Исправить адрес запроса",
+          "explain": "Неверный адрес дал бы 404."
+        },
+        {
+          "text": "Ничего, это ошибка на стороне сервиса",
+          "explain": "Ошибки сервиса — это коды 500 и выше. 429 говорит, что слишком часто запрашиваем мы."
+        }
+      ],
+      "hints": [
+        "Коды 4xx — проблема в запросе. Что не так, если запросов было много и быстро?"
+      ]
+    },
+    {
+      "id": "token-safety",
+      "title": "Где хранить токен",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Аналитик написал скрипт выгрузки из CRM и хочет выложить его на GitHub, чтобы показать в портфолио. Токен доступа к CRM сейчас записан прямо в коде. Как правильно?",
+      "options": [
+        {
+          "text": "Убрать токен из кода: читать из переменной окружения или из файла `.env`, который добавлен в `.gitignore`",
+          "correct": true,
+          "explain": "Код можно показывать, секреты — никогда. Если токен уже попадал в репозиторий, его нужно отозвать и выпустить новый: история коммитов хранит всё."
+        },
+        {
+          "text": "Оставить как есть: репозиторий всё равно никто не смотрит",
+          "explain": "Открытые репозитории автоматически сканируют боты в поисках ключей. Утёкший токен находят за минуты."
+        },
+        {
+          "text": "Удалить строку с токеном следующим коммитом",
+          "explain": "Токен останется в истории коммитов, его легко найти. Нужно отозвать его и выпустить новый."
+        },
+        {
+          "text": "Зашифровать токен, заменив пару букв",
+          "explain": "Это не защита: настоящий токен всё равно лежит в коде."
+        }
+      ],
+      "hints": [
+        "Что попадает в публичный репозиторий — и что остаётся в истории коммитов?"
+      ]
+    }
+  ]
+}
