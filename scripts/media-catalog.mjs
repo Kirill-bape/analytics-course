@@ -163,6 +163,12 @@ for (const { rel, size } of all) {
   }
   if (r && typeof r === 'string') r = { key: r };
   // Заметка к видео (по расшифровке) может уточнить урок: разложить неразобранное или перенести
+  // По расшифровке выяснилось, что это то же видео, что и другое (копия под другим номером)
+  const noteDuplicate = notes[idOf(rel)]?.duplicate;
+  if (noteDuplicate) {
+    report.push([rel, '', '', '', `Дубль: то же видео, что ${files[noteDuplicate]?.path ?? noteDuplicate}`]);
+    continue;
+  }
   const noteLesson = notes[idOf(rel)]?.lesson;
   if (noteLesson && (!r || r.key)) r = { ...(r ?? {}), key: noteLesson };
 
