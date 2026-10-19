@@ -1,0 +1,198 @@
+{
+  "tasks": [
+    {
+      "id": "order-unit",
+      "title": "Экономика одного заказа",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Средний заказ: выручка **3 000 ₽**, себестоимость товаров **2 100 ₽**, доставка **350 ₽**, эквайринг **2%** от выручки, сборка на складе **120 ₽**. Какова маржинальная прибыль одного заказа?",
+      "answer": 370,
+      "unit": "₽",
+      "hints": [
+        "Эквайринг: 2% от 3 000 = 60 ₽.",
+        "3 000 − 2 100 − 350 − 60 − 120"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 900,
+          "message": "Это валовая прибыль. Вычти ещё переменные расходы: доставку, эквайринг и сборку."
+        },
+        {
+          "value": 430,
+          "message": "Не забудь эквайринг — 2% от выручки."
+        }
+      ],
+      "explanation": "Из 3 000 ₽ выручки у компании остаётся 370 ₽ — около 12%. Отсюда видно, почему бесплатная доставка маленьких заказов так опасна: при чеке в 1 500 ₽ та же доставка может съесть всю прибыль.",
+      "selfTest": {
+        "correct": [
+          "370"
+        ],
+        "wrong": [
+          "900"
+        ]
+      }
+    },
+    {
+      "id": "gross-margin-sql",
+      "title": "Валовая маржа по категориям",
+      "difficulty": 2,
+      "prompt": [
+        "Для **доставленных** заказов первого полугодия 2026 посчитай валовую прибыль по категориям товаров:",
+        "- `revenue` — сумма `quantity × price` (до целого);",
+        "- `gross_profit` — сумма `quantity × (price − cost_price)` (до целого);",
+        "- `gross_margin_pct` — валовая прибыль / выручка × 100 (до 1 знака).",
+        "",
+        "Столбцы: `category`, `revenue`, `gross_profit`, `gross_margin_pct`. Сортировка по валовой прибыли по убыванию."
+      ],
+      "starter": "SELECT p.category,\n       \nFROM orders o\nJOIN order_items oi ON oi.order_id = o.order_id\nJOIN products p     ON p.product_id = oi.product_id\nWHERE o.status = 'delivered' AND o.order_date >= '2026-01-01'\nGROUP BY p.category\nORDER BY gross_profit DESC;",
+      "solution": "SELECT p.category,\n       ROUND(SUM(oi.quantity * oi.price)) AS revenue,\n       ROUND(SUM(oi.quantity * (oi.price - p.cost_price))) AS gross_profit,\n       ROUND(100.0 * SUM(oi.quantity * (oi.price - p.cost_price)) / SUM(oi.quantity * oi.price), 1) AS gross_margin_pct\nFROM orders o\nJOIN order_items oi ON oi.order_id = o.order_id\nJOIN products p     ON p.product_id = oi.product_id\nWHERE o.status = 'delivered' AND o.order_date >= '2026-01-01'\nGROUP BY p.category\nORDER BY gross_profit DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Себестоимость — из `products.cost_price`, цена продажи — из `order_items.price`.",
+        "Маржа — отношение сумм, а не среднее маржинальностей строк."
+      ],
+      "explanation": "Категория с самой большой выручкой не обязательно самая прибыльная. Высокомаржинальные категории — кандидаты для продвижения: каждый рубль выручки там приносит больше прибыли.",
+      "selfTest": {
+        "correct": [
+          "WITH t AS (SELECT p.category, SUM(oi.quantity * oi.price) AS r, SUM(oi.quantity * p.cost_price) AS c FROM orders o JOIN order_items oi USING (order_id) JOIN products p USING (product_id) WHERE o.status = 'delivered' AND o.order_date BETWEEN '2026-01-01' AND '2026-06-30' GROUP BY 1) SELECT category, ROUND(r) AS revenue, ROUND(r - c) AS gross_profit, ROUND(100.0 * (r - c) / r, 1) AS gross_margin_pct FROM t ORDER BY 3 DESC"
+        ],
+        "wrong": [
+          "SELECT p.category, ROUND(SUM(oi.quantity * oi.price)) AS revenue, ROUND(SUM(oi.price - p.cost_price)) AS gross_profit, ROUND(100.0 * SUM(oi.price - p.cost_price) / SUM(oi.price), 1) AS gross_margin_pct FROM orders o JOIN order_items oi USING (order_id) JOIN products p USING (product_id) WHERE o.status = 'delivered' AND o.order_date >= '2026-01-01' GROUP BY 1 ORDER BY 3 DESC"
+        ]
+      }
+    },
+    {
+      "id": "ltv-cac",
+      "title": "LTV / CAC",
+      "difficulty": 2,
+      "type": "number",
+      "prompt": "Клиент в среднем делает **0,5** заказа в месяц и остаётся с нами **24** месяца. Маржинальная прибыль заказа — **400 ₽**. Привлечение клиента стоит **2 000 ₽**. Чему равно отношение **LTV / CAC**?",
+      "answer": 2.4,
+      "tolerance": 0.01,
+      "hints": [
+        "LTV = 400 × 0,5 × 24.",
+        "LTV = 4 800 ₽. Раздели на CAC."
+      ],
+      "wrongAnswers": [
+        {
+          "value": 4.8,
+          "message": "Похоже, LTV посчитан без частоты заказов: клиент делает 0,5 заказа в месяц, а не один."
+        }
+      ],
+      "explanation": "Меньше 3 — экономика есть, но тонкая. Рычаги: поднять удержание (срок жизни), частоту или маржу заказа — либо найти каналы с более дешёвым привлечением.",
+      "selfTest": {
+        "correct": [
+          "2,4"
+        ],
+        "wrong": [
+          "4,8"
+        ]
+      }
+    },
+    {
+      "id": "payback",
+      "title": "Срок окупаемости",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "CAC — **1 800 ₽**. Клиент приносит **300 ₽** маржинальной прибыли в месяц. За сколько месяцев окупится его привлечение?",
+      "answer": 6,
+      "unit": "месяцев",
+      "hints": [
+        "Срок = CAC / маржинальная прибыль в месяц."
+      ],
+      "selfTest": {
+        "correct": [
+          "6"
+        ],
+        "wrong": [
+          "5"
+        ]
+      }
+    },
+    {
+      "id": "ltv-revenue-trap",
+      "title": "LTV по выручке",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Маркетолог считает: «LTV клиента — 30 000 ₽ выручки, CAC — 5 000 ₽, отношение 6, можно смело увеличивать бюджет». Валовая маржа магазина — 20%, переменные расходы на заказы — ещё 8% выручки. Что не так?",
+      "options": [
+        {
+          "text": "LTV нужно считать по маржинальной прибыли: 30 000 × (20% − 8%) = 3 600 ₽, и LTV/CAC меньше 1 — каждый клиент убыточен",
+          "correct": true,
+          "explain": "Сравнивать CAC с выручкой — частая и дорогая ошибка. Из выручки ещё нужно оплатить товары и доставку."
+        },
+        {
+          "text": "Всё верно: 30 000 / 5 000 = 6",
+          "explain": "Арифметика верна, но сравниваются несопоставимые величины: выручка и затраты."
+        },
+        {
+          "text": "Нужно было разделить CAC на 6",
+          "explain": "CAC — реальные расходы, их нельзя «уменьшить» формулой."
+        },
+        {
+          "text": "LTV вообще нельзя считать",
+          "explain": "Можно, если правильно взять прибыль и честно оценить срок жизни."
+        }
+      ],
+      "hints": [
+        "Сколько денег из 30 000 ₽ выручки остаётся компании?"
+      ]
+    },
+    {
+      "id": "pnl-gross",
+      "title": "Строка P&L",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Выручка за месяц — **12,3 млн ₽**, себестоимость — **8,6 млн ₽**, переменные расходы — **1,1 млн ₽**, маркетинг — **0,9 млн ₽**, постоянные расходы — **1,2 млн ₽**. Какова операционная прибыль (EBITDA) в млн ₽?",
+      "answer": 0.5,
+      "tolerance": 0.001,
+      "unit": "млн ₽",
+      "hints": [
+        "12,3 − 8,6 − 1,1 − 0,9 − 1,2"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 3.7,
+          "message": "Это валовая прибыль. Дальше нужно вычесть переменные, маркетинговые и постоянные расходы."
+        }
+      ],
+      "explanation": "Из 12,3 млн выручки в операционной прибыли остаётся 0,5 млн — около 4%. Типичная картина для ритейла: небольшое изменение в любой строке сильно меняет итог.",
+      "selfTest": {
+        "correct": [
+          "0,5"
+        ],
+        "wrong": [
+          "3,7"
+        ]
+      }
+    },
+    {
+      "id": "discount-impact",
+      "title": "Скидка и прибыль",
+      "difficulty": 3,
+      "prompt": [
+        "Сравни валовую прибыль заказов **с промокодом** и **без** для доставленных заказов 2026 года. Валовая прибыль заказа = `amount` (сумма после скидки) − себестоимость его позиций (`quantity × cost_price`).",
+        "",
+        "Столбцы: `has_promo` (`'да'`/`'нет'`), `orders`, `avg_gross_profit` — средняя валовая прибыль заказа (до целого). Сортировка по `has_promo`."
+      ],
+      "starter": "WITH cost AS (\n    SELECT oi.order_id, SUM(oi.quantity * p.cost_price) AS cogs\n    FROM order_items oi\n    JOIN products p ON p.product_id = oi.product_id\n    GROUP BY oi.order_id\n)\nSELECT \n",
+      "solution": "WITH cost AS (\n    SELECT oi.order_id, SUM(oi.quantity * p.cost_price) AS cogs\n    FROM order_items oi\n    JOIN products p ON p.product_id = oi.product_id\n    GROUP BY oi.order_id\n)\nSELECT CASE WHEN o.promo_code IS NOT NULL THEN 'да' ELSE 'нет' END AS has_promo,\n       COUNT(*) AS orders,\n       ROUND(AVG(o.amount - c.cogs)) AS avg_gross_profit\nFROM orders o\nJOIN cost c ON c.order_id = o.order_id\nWHERE o.status = 'delivered' AND o.order_date >= '2026-01-01'\nGROUP BY has_promo\nORDER BY has_promo;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Себестоимость заказа уже посчитана в CTE `cost`. Присоедини её к заказам по `order_id`.",
+        "Валовая прибыль заказа — `o.amount - c.cogs`, среднее по группе — `AVG(…)`."
+      ],
+      "explanation": "Сравнение средних — только первый шаг: заказы с промокодом часто отличаются и по составу. Но если прибыль с промокодом заметно ниже, стоит проверить, окупают ли промокоды себя новыми и вернувшимися клиентами.",
+      "selfTest": {
+        "correct": [
+          "SELECT IF(o.promo_code IS NULL, 'нет', 'да') AS has_promo, COUNT(*) AS orders, ROUND(SUM(o.amount - x.c) / COUNT(*)) AS avg_gross_profit FROM orders o JOIN (SELECT order_id, SUM(quantity * cost_price) AS c FROM order_items JOIN products USING (product_id) GROUP BY 1) x USING (order_id) WHERE o.status = 'delivered' AND o.order_date >= '2026-01-01' GROUP BY 1 ORDER BY 1"
+        ],
+        "wrong": [
+          "WITH cost AS (SELECT oi.order_id, SUM(oi.quantity * p.cost_price) AS cogs FROM order_items oi JOIN products p USING (product_id) GROUP BY 1) SELECT CASE WHEN o.promo_code IS NOT NULL THEN 'да' ELSE 'нет' END AS has_promo, COUNT(*) AS orders, ROUND(AVG(o.amount)) AS avg_gross_profit FROM orders o JOIN cost c USING (order_id) WHERE o.status = 'delivered' AND o.order_date >= '2026-01-01' GROUP BY 1 ORDER BY 1"
+        ]
+      }
+    }
+  ]
+}

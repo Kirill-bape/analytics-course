@@ -1,0 +1,198 @@
+{
+  "tasks": [
+    {
+      "id": "cohort-m1",
+      "title": "Удержание первого месяца по когортам",
+      "difficulty": 2,
+      "prompt": [
+        "Для когорт **с января по июнь 2025** посчитай удержание **1-го месяца**: долю клиентов когорты, сделавших хотя бы один заказ (любой статус) в следующем календарном месяце после месяца первого заказа.",
+        "",
+        "Столбцы: `cohort`, `size`, `retention_m1_pct` (до 1 знака). Сортировка по когорте."
+      ],
+      "starter": "WITH firsts AS (\n    SELECT customer_id, CAST(date_trunc('month', MIN(order_date)) AS DATE) AS cohort\n    FROM orders\n    GROUP BY customer_id\n),\nactivity AS (\n    SELECT DISTINCT f.cohort, o.customer_id,\n           datediff('month', f.cohort, date_trunc('month', o.order_date)) AS month_n\n    FROM orders o\n    JOIN firsts f ON f.customer_id = o.customer_id\n)\nSELECT \n",
+      "solution": "WITH firsts AS (\n    SELECT customer_id, CAST(date_trunc('month', MIN(order_date)) AS DATE) AS cohort\n    FROM orders\n    GROUP BY customer_id\n),\nactivity AS (\n    SELECT DISTINCT f.cohort, o.customer_id,\n           datediff('month', f.cohort, date_trunc('month', o.order_date)) AS month_n\n    FROM orders o\n    JOIN firsts f ON f.customer_id = o.customer_id\n)\nSELECT cohort,\n       COUNT(*) FILTER (WHERE month_n = 0) AS size,\n       ROUND(100.0 * COUNT(*) FILTER (WHERE month_n = 1) / COUNT(*) FILTER (WHERE month_n = 0), 1) AS retention_m1_pct\nFROM activity\nWHERE cohort BETWEEN '2025-01-01' AND '2025-06-01'\nGROUP BY cohort\nORDER BY cohort;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Размер когорты — клиенты с `month_n = 0` (каждый клиент активен в месяц первого заказа).",
+        "Удержание: `COUNT(*) FILTER (WHERE month_n = 1)` / размер."
+      ],
+      "explanation": "Сравни удержание соседних когорт: если оно стабильно — качество продукта и аудитории не меняется. Резкий провал у одной когорты — повод посмотреть, откуда пришли эти клиенты.",
+      "selfTest": {
+        "correct": [
+          "WITH firsts AS (\n    SELECT customer_id, CAST(date_trunc('month', MIN(order_date)) AS DATE) AS cohort\n    FROM orders\n    GROUP BY customer_id\n), sizes AS (SELECT cohort, COUNT(*) AS size FROM firsts GROUP BY 1), back AS (SELECT f.cohort, COUNT(DISTINCT o.customer_id) AS n FROM orders o JOIN firsts f USING (customer_id) WHERE date_trunc('month', o.order_date) = f.cohort + INTERVAL 1 MONTH GROUP BY 1) SELECT s.cohort, s.size, ROUND(100.0 * COALESCE(b.n, 0) / s.size, 1) AS retention_m1_pct FROM sizes s LEFT JOIN back b USING (cohort) WHERE s.cohort BETWEEN '2025-01-01' AND '2025-06-01' ORDER BY 1"
+        ],
+        "wrong": [
+          "WITH firsts AS (\n    SELECT customer_id, CAST(date_trunc('month', MIN(order_date)) AS DATE) AS cohort\n    FROM orders\n    GROUP BY customer_id\n), activity AS (SELECT f.cohort, o.customer_id, datediff('month', f.cohort, date_trunc('month', o.order_date)) AS month_n FROM orders o JOIN firsts f USING (customer_id)) SELECT cohort, COUNT(*) FILTER (WHERE month_n = 0) AS size, ROUND(100.0 * COUNT(*) FILTER (WHERE month_n = 1) / COUNT(*) FILTER (WHERE month_n = 0), 1) AS retention_m1_pct FROM activity WHERE cohort BETWEEN '2025-01-01' AND '2025-06-01' GROUP BY 1 ORDER BY 1"
+        ]
+      }
+    },
+    {
+      "id": "retention-pivot",
+      "title": "Когортная таблица в pandas",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Построй когортную таблицу удержания в pandas (все заказы, любой статус): строки — когорты (месяц первого заказа), столбцы — месяц жизни 0, 1, 2…, значения — доля клиентов когорты, активных в этот месяц.",
+        "",
+        "В `result` положи часть таблицы: когорты **с 2025-01 по 2025-06** и столбцы **1, 2, 3**, округлённые до 3 знаков."
+      ],
+      "starter": "o = orders.copy()\no[\"month\"] = o[\"order_date\"].dt.to_period(\"M\")\no[\"cohort\"] = o.groupby(\"customer_id\")[\"month\"].transform(\"min\")\no[\"month_n\"] = (o[\"month\"] - o[\"cohort\"]).apply(lambda d: d.n)\n\nactive = o.drop_duplicates([\"customer_id\", \"month_n\"])\ntable = \nretention = \nresult = retention.loc[\"2025-01\":\"2025-06\", [1, 2, 3]]",
+      "solution": "o = orders.copy()\no[\"month\"] = o[\"order_date\"].dt.to_period(\"M\")\no[\"cohort\"] = o.groupby(\"customer_id\")[\"month\"].transform(\"min\")\no[\"month_n\"] = (o[\"month\"] - o[\"cohort\"]).apply(lambda d: d.n)\n\nactive = o.drop_duplicates([\"customer_id\", \"month_n\"])\ntable = active.pivot_table(index=\"cohort\", columns=\"month_n\", values=\"customer_id\", aggfunc=\"count\")\nretention = table.div(table[0], axis=0).round(3)\nresult = retention.loc[\"2025-01\":\"2025-06\", [1, 2, 3]]",
+      "hints": [
+        "Число клиентов по когорте и месяцу жизни: `active.pivot_table(index=\"cohort\", columns=\"month_n\", values=\"customer_id\", aggfunc=\"count\")`.",
+        "Доля — делим каждую строку на её столбец 0: `table.div(table[0], axis=0)`."
+      ],
+      "explanation": "В ячейках — та же величина, что в прошлом SQL-задании для 1-го месяца, плюс 2-й и 3-й. Такую таблицу обычно раскрашивают как тепловую карту: так сразу видно, какие когорты удерживаются лучше.",
+      "selfTest": {
+        "correct": [
+          "o = orders.copy()\no[\"m\"] = o.order_date.dt.to_period(\"M\")\nfirst = o.groupby(\"customer_id\").m.min().rename(\"cohort\")\no = o.join(first, on=\"customer_id\")\no[\"n\"] = (o.m.astype(\"int64\") - o.cohort.astype(\"int64\"))\nt = o.groupby([\"cohort\", \"n\"]).customer_id.nunique().unstack()\nr = t.div(t[0], axis=0).round(3)\nresult = r.loc[\"2025-01\":\"2025-06\", [1, 2, 3]]"
+        ],
+        "wrong": [
+          "o = orders.copy()\no[\"month\"] = o[\"order_date\"].dt.to_period(\"M\")\no[\"cohort\"] = o.groupby(\"customer_id\")[\"month\"].transform(\"min\")\no[\"month_n\"] = (o[\"month\"] - o[\"cohort\"]).apply(lambda d: d.n)\ntable = o.pivot_table(index=\"cohort\", columns=\"month_n\", values=\"customer_id\", aggfunc=\"count\")\nresult = table.div(table[0], axis=0).round(3).loc[\"2025-01\":\"2025-06\", [1, 2, 3]]"
+        ]
+      }
+    },
+    {
+      "id": "cohort-ltv",
+      "title": "Накопленная выручка когорты",
+      "difficulty": 3,
+      "prompt": [
+        "Для когорты **февраля 2025** посчитай накопленную выручку **доставленных** заказов на одного клиента к каждому месяцу жизни от 0 до 5.",
+        "",
+        "Размер когорты — все клиенты, у кого первый заказ (любого статуса) в феврале 2025. Столбцы: `month_n`, `cum_revenue_per_client` (до целого). Сортировка по `month_n`."
+      ],
+      "starter": "WITH firsts AS (\n    SELECT customer_id, CAST(date_trunc('month', MIN(order_date)) AS DATE) AS cohort\n    FROM orders\n    GROUP BY customer_id\n),\nrev AS (\n    SELECT f.cohort,\n           datediff('month', f.cohort, date_trunc('month', o.order_date)) AS month_n,\n           SUM(o.amount) AS revenue\n    FROM orders o\n    JOIN firsts f ON f.customer_id = o.customer_id\n    WHERE o.status = 'delivered'\n    GROUP BY f.cohort, month_n\n),\nsizes AS (SELECT cohort, COUNT(*) AS size FROM firsts GROUP BY cohort)\nSELECT \n",
+      "solution": "WITH firsts AS (\n    SELECT customer_id, CAST(date_trunc('month', MIN(order_date)) AS DATE) AS cohort\n    FROM orders\n    GROUP BY customer_id\n),\nrev AS (\n    SELECT f.cohort,\n           datediff('month', f.cohort, date_trunc('month', o.order_date)) AS month_n,\n           SUM(o.amount) AS revenue\n    FROM orders o\n    JOIN firsts f ON f.customer_id = o.customer_id\n    WHERE o.status = 'delivered'\n    GROUP BY f.cohort, month_n\n),\nsizes AS (SELECT cohort, COUNT(*) AS size FROM firsts GROUP BY cohort)\nSELECT r.month_n,\n       ROUND(SUM(r.revenue) OVER (PARTITION BY r.cohort ORDER BY r.month_n) / s.size) AS cum_revenue_per_client\nFROM rev r\nJOIN sizes s ON s.cohort = r.cohort\nWHERE r.cohort = '2025-02-01' AND r.month_n <= 5\nORDER BY r.month_n;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Накопленная сумма по месяцам жизни внутри когорты: `SUM(r.revenue) OVER (PARTITION BY r.cohort ORDER BY r.month_n)`.",
+        "Раздели на размер когорты `s.size` и оставь только февральскую когорту и месяцы 0–5."
+      ],
+      "explanation": "Кривая растёт всё медленнее: основную выручку клиент приносит в первые месяцы. Умножь её на маржу — получишь LTV по прибыли и сможешь сравнить с CAC.",
+      "selfTest": {
+        "correct": [
+          "WITH firsts AS (\n    SELECT customer_id, CAST(date_trunc('month', MIN(order_date)) AS DATE) AS cohort\n    FROM orders\n    GROUP BY customer_id\n) SELECT * FROM (SELECT n AS month_n, ROUND(SUM(rv) OVER (ORDER BY n) / (SELECT COUNT(*) FROM firsts WHERE cohort = '2025-02-01')) AS cum_revenue_per_client FROM (SELECT datediff('month', DATE '2025-02-01', date_trunc('month', o.order_date)) AS n, SUM(o.amount) AS rv FROM orders o JOIN firsts f USING (customer_id) WHERE f.cohort = '2025-02-01' AND o.status = 'delivered' GROUP BY 1) t) WHERE month_n <= 5 ORDER BY 1"
+        ],
+        "wrong": [
+          "WITH firsts AS (\n    SELECT customer_id, CAST(date_trunc('month', MIN(order_date)) AS DATE) AS cohort\n    FROM orders\n    GROUP BY customer_id\n), rev AS (SELECT f.cohort, datediff('month', f.cohort, date_trunc('month', o.order_date)) AS month_n, SUM(o.amount) AS revenue FROM orders o JOIN firsts f USING (customer_id) WHERE o.status = 'delivered' GROUP BY 1, 2), sizes AS (SELECT cohort, COUNT(*) AS size FROM firsts GROUP BY 1) SELECT r.month_n, ROUND(r.revenue / s.size) AS cum_revenue_per_client FROM rev r JOIN sizes s USING (cohort) WHERE r.cohort = '2025-02-01' AND r.month_n <= 5 ORDER BY 1"
+        ]
+      }
+    },
+    {
+      "id": "order-funnel",
+      "title": "Воронка заказа",
+      "difficulty": 2,
+      "prompt": [
+        "Построй воронку заказов, оформленных **до 1 июня 2026** (чтобы все успели пройти путь):",
+        "- `created` — все заказы;",
+        "- `shipped` — отправленные (статусы `shipped`, `delivered`, `returned`);",
+        "- `delivered` — получены клиентом (`delivered`, `returned`);",
+        "- `kept` — оставлены без возврата (`delivered`).",
+        "",
+        "И две сквозные конверсии от `created`: `delivered_pct` и `kept_pct` (до 1 знака)."
+      ],
+      "starter": "SELECT COUNT(*) AS created,\n       \nFROM orders\nWHERE order_date < '2026-06-01';",
+      "solution": "SELECT COUNT(*) AS created,\n       COUNT(*) FILTER (WHERE status IN ('shipped', 'delivered', 'returned')) AS shipped,\n       COUNT(*) FILTER (WHERE status IN ('delivered', 'returned')) AS delivered,\n       COUNT(*) FILTER (WHERE status = 'delivered') AS kept,\n       ROUND(100.0 * COUNT(*) FILTER (WHERE status IN ('delivered', 'returned')) / COUNT(*), 1) AS delivered_pct,\n       ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'delivered') / COUNT(*), 1) AS kept_pct\nFROM orders\nWHERE order_date < '2026-06-01';",
+      "checkColumnNames": true,
+      "hints": [
+        "Каждый шаг включает всех, кто прошёл его **или дальше**: например, возвращённый заказ тоже был доставлен.",
+        "`COUNT(*) FILTER (WHERE status IN ('delivered', 'returned'))`"
+      ],
+      "explanation": "Главная потеря между оформлением и отправкой — это отмены. Если бы они были, например, в 2 раза реже, доставленных заказов стало бы заметно больше без единого рубля на рекламу.",
+      "selfTest": {
+        "correct": [
+          "SELECT COUNT(*) AS created, SUM(CASE WHEN status <> 'cancelled' AND status <> 'processing' THEN 1 ELSE 0 END) AS shipped, SUM(CASE WHEN status IN ('delivered', 'returned') THEN 1 ELSE 0 END) AS delivered, SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS kept, ROUND(100.0 * SUM(CASE WHEN status IN ('delivered', 'returned') THEN 1 ELSE 0 END) / COUNT(*), 1) AS delivered_pct, ROUND(100.0 * SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) / COUNT(*), 1) AS kept_pct FROM orders WHERE order_date < '2026-06-01'"
+        ],
+        "wrong": [
+          "SELECT COUNT(*) AS created, COUNT(*) FILTER (WHERE status = 'shipped') AS shipped, COUNT(*) FILTER (WHERE status = 'delivered') AS delivered, COUNT(*) FILTER (WHERE status = 'delivered') AS kept, ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'delivered') / COUNT(*), 1) AS delivered_pct, ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'delivered') / COUNT(*), 1) AS kept_pct FROM orders WHERE order_date < '2026-06-01'"
+        ]
+      }
+    },
+    {
+      "id": "short-cohort",
+      "title": "Короткие когорты",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "В когортной таблице у когорты мая 2026 нет значений в столбцах 2 и 3. Менеджер говорит: «Майские клиенты совсем не возвращаются!» Что ответить?",
+      "options": [
+        {
+          "text": "У майской когорты ещё не наступили 2-й и 3-й месяцы жизни: данных нет, а не удержание нулевое",
+          "correct": true,
+          "explain": "Свежие когорты «короче» старых. Сравнивать можно только те месяцы жизни, которые у всех когорт уже прошли."
+        },
+        {
+          "text": "Да, это тревожный сигнал — майская когорта хуже",
+          "explain": "Пустые ячейки — это будущее, которого в данных ещё нет."
+        },
+        {
+          "text": "Нужно заполнить пропуски нулями",
+          "explain": "Тогда в среднем по когортам удержание ошибочно занизится."
+        },
+        {
+          "text": "Нужно удалить майскую когорту из анализа навсегда",
+          "explain": "Через пару месяцев у неё появятся данные. Просто сравнивай только доступные периоды."
+        }
+      ],
+      "hints": [
+        "Какое сегодня число относительно мая?"
+      ]
+    },
+    {
+      "id": "cohort-reading",
+      "title": "Как читать когортную таблицу",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "В когортной таблице удержание 1-го месяца у когорт января–марта — около 25%, а у когорт апреля–мая — около 15%. Что это вероятнее всего значит?",
+      "options": [
+        {
+          "text": "Качество новых клиентов или продукта ухудшилось: стоит проверить, откуда пришли апрельские и майские клиенты и что менялось в продукте",
+          "correct": true,
+          "explain": "Сравнение по столбцу показывает, как меняется удержание у новых когорт. Частая причина — новый рекламный канал с дешёвым, но нецелевым трафиком."
+        },
+        {
+          "text": "Клиенты января стали покупать реже",
+          "explain": "Это читается по строке когорты, а здесь сравнение по столбцу между разными когортами."
+        },
+        {
+          "text": "Ничего: удержание всегда падает со временем",
+          "explain": "Внутри одной когорты — да. Но здесь речь о разных когортах в одном и том же месяце жизни."
+        },
+        {
+          "text": "Таблица посчитана неправильно",
+          "explain": "Возможно, но такое изменение — частая реальная картина. Сначала проверь гипотезы о каналах и продукте."
+        }
+      ],
+      "hints": [
+        "Это сравнение по строке или по столбцу?"
+      ]
+    },
+    {
+      "id": "funnel-step",
+      "title": "Пошаговая конверсия",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Воронка: 10 000 посетителей → 3 000 открыли карточку товара → 600 положили в корзину → 240 оформили заказ. Какова **пошаговая** конверсия из корзины в заказ, %?",
+      "answer": 40,
+      "unit": "%",
+      "hints": [
+        "Пошаговая — от предыдущего шага: 240 / 600."
+      ],
+      "wrongAnswers": [
+        {
+          "value": 2.4,
+          "message": "Это сквозная конверсия от посетителей. Пошаговая считается от предыдущего шага — корзины."
+        }
+      ],
+      "selfTest": {
+        "correct": [
+          "40"
+        ],
+        "wrong": [
+          "2,4"
+        ]
+      }
+    }
+  ]
+}
