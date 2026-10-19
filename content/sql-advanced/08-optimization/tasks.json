@@ -1,0 +1,228 @@
+{
+  "tasks": [
+    {
+      "id": "view-delivered",
+      "title": "Представление для выручки",
+      "difficulty": 1,
+      "sandbox": true,
+      "prompt": [
+        "В компании договорились: выручка — это только **доставленные** заказы (`status = 'delivered'`).",
+        "",
+        "Создай представление `delivered_orders` со столбцами `order_id`, `customer_id`, `order_date`, `amount` — только доставленные заказы. Затем одним запросом **к представлению** посчитай:",
+        "- `orders_cnt` — число заказов;",
+        "- `revenue` — их сумму."
+      ],
+      "starter": "CREATE VIEW delivered_orders AS\n\n\nSELECT COUNT(*) AS orders_cnt,\n       SUM(amount) AS revenue\nFROM delivered_orders;\n",
+      "solution": "CREATE VIEW delivered_orders AS\nSELECT order_id, customer_id, order_date, amount\nFROM orders\nWHERE status = 'delivered';\n\nSELECT COUNT(*) AS orders_cnt,\n       SUM(amount) AS revenue\nFROM delivered_orders;",
+      "checkColumnNames": true,
+      "hints": [
+        "После `CREATE VIEW delivered_orders AS` идёт обычный `SELECT` с условием `WHERE status = 'delivered'`.",
+        "Между созданием представления и итоговым запросом нужна точка с запятой."
+      ],
+      "mistakes": [
+        {
+          "pattern": "SELECT",
+          "flags": "i",
+          "unless": "CREATE\\s+VIEW",
+          "message": "Сначала создай представление командой `CREATE VIEW delivered_orders AS …`, а итоги считай уже по нему."
+        }
+      ],
+      "explanation": "Теперь правило «выручка = доставленные заказы» записано в одном месте. Если его поменяют (например, начнут учитывать и `shipped`), достаточно исправить представление — все отчёты, которые его используют, пересчитаются сами.",
+      "selfTest": {
+        "correct": [
+          "CREATE VIEW delivered_orders AS SELECT * FROM orders WHERE status = 'delivered'; SELECT COUNT(order_id) AS orders_cnt, SUM(amount) AS revenue FROM delivered_orders"
+        ],
+        "wrong": [
+          "CREATE VIEW delivered_orders AS SELECT order_id, customer_id, order_date, amount FROM orders; SELECT COUNT(*) AS orders_cnt, SUM(amount) AS revenue FROM delivered_orders",
+          "CREATE VIEW delivered_orders AS SELECT order_id, customer_id, order_date, amount FROM orders WHERE status <> 'cancelled'; SELECT COUNT(*) AS orders_cnt, SUM(amount) AS revenue FROM delivered_orders"
+        ]
+      }
+    },
+    {
+      "id": "view-stores",
+      "title": "Что хранит представление",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Вчера создали представление `delivered_orders`, а сегодня в таблицу `orders` добавились новые доставленные заказы. Что вернёт `SELECT COUNT(*) FROM delivered_orders`?",
+      "options": [
+        {
+          "text": "Число с учётом новых заказов",
+          "correct": true,
+          "explain": "Представление хранит только текст запроса. При каждом обращении запрос выполняется заново по свежим данным."
+        },
+        {
+          "text": "Вчерашнее число: представление сохранило данные на момент создания",
+          "explain": "Так ведёт себя таблица, созданная через `CREATE TABLE … AS`, или материализованное представление до обновления. Обычное представление данных не хранит."
+        },
+        {
+          "text": "Ошибку: представление нужно пересоздать после изменения таблицы",
+          "explain": "Пересоздавать не нужно: представление всегда читает текущие данные таблицы."
+        }
+      ],
+      "hints": [
+        "Вспомни: представление — это сохранённый **запрос** или сохранённые **данные**?"
+      ]
+    },
+    {
+      "id": "top-customers-view",
+      "title": "Лучшие клиенты через представление",
+      "difficulty": 2,
+      "sandbox": true,
+      "prompt": [
+        "Создай представление `customer_revenue`: для каждого клиента `customer_id` и `revenue` — сумма его **доставленных** заказов.",
+        "",
+        "Затем выведи **5 клиентов** с самой большой выручкой: `full_name`, `city`, `revenue`. Имя и город возьми из `customers`. Сортировка — по выручке от большей к меньшей."
+      ],
+      "starter": "CREATE VIEW customer_revenue AS\n\n\nSELECT c.full_name, c.city, cr.revenue\nFROM customer_revenue cr\n\n",
+      "solution": "CREATE VIEW customer_revenue AS\nSELECT customer_id, SUM(amount) AS revenue\nFROM orders\nWHERE status = 'delivered'\nGROUP BY customer_id;\n\nSELECT c.full_name, c.city, cr.revenue\nFROM customer_revenue cr\nJOIN customers c ON c.customer_id = cr.customer_id\nORDER BY cr.revenue DESC\nLIMIT 5;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Внутри представления: `SELECT customer_id, SUM(amount) AS revenue FROM orders WHERE status = 'delivered' GROUP BY customer_id`.",
+        "Во втором запросе соедини представление с `customers` по `customer_id`, отсортируй по `revenue DESC` и возьми `LIMIT 5`."
+      ],
+      "explanation": "Это и есть правило «агрегируй до `JOIN`»: представление сжимает тысячи заказов до одной строки на клиента, и к `customers` присоединяется уже короткая таблица.",
+      "selfTest": {
+        "correct": [
+          "CREATE VIEW customer_revenue AS SELECT customer_id, SUM(amount) AS revenue FROM orders WHERE status = 'delivered' GROUP BY 1; SELECT full_name, city, revenue FROM customers JOIN customer_revenue USING (customer_id) ORDER BY revenue DESC LIMIT 5"
+        ],
+        "wrong": [
+          "CREATE VIEW customer_revenue AS SELECT customer_id, SUM(amount) AS revenue FROM orders GROUP BY customer_id; SELECT c.full_name, c.city, cr.revenue FROM customer_revenue cr JOIN customers c ON c.customer_id = cr.customer_id ORDER BY cr.revenue DESC LIMIT 5",
+          "CREATE VIEW customer_revenue AS SELECT customer_id, SUM(amount) AS revenue FROM orders WHERE status = 'delivered' GROUP BY customer_id; SELECT c.full_name, c.city, cr.revenue FROM customer_revenue cr JOIN customers c ON c.customer_id = cr.customer_id ORDER BY cr.revenue LIMIT 5"
+        ]
+      }
+    },
+    {
+      "id": "index-when",
+      "title": "Где поможет индекс",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "В таблице `orders` 50 миллионов строк. Инженер создал индекс по столбцу `customer_id`. Какой запрос он ускорит сильнее всего?",
+      "options": [
+        {
+          "text": "`SELECT * FROM orders WHERE customer_id = 1042`",
+          "correct": true,
+          "explain": "Запрос ищет строки одного клиента — крошечную долю таблицы. Индекс сразу укажет, где они лежат, и полный просмотр 50 миллионов строк не понадобится."
+        },
+        {
+          "text": "`SELECT COUNT(*) FROM orders`",
+          "explain": "Чтобы посчитать все строки, их все и нужно пройти. Индекс по `customer_id` тут не помогает."
+        },
+        {
+          "text": "`SELECT AVG(amount) FROM orders WHERE status <> 'cancelled'`",
+          "explain": "Условие не про `customer_id`, да и выбирает почти все строки. База всё равно прочитает таблицу целиком."
+        },
+        {
+          "text": "`SELECT customer_id, SUM(amount) FROM orders GROUP BY customer_id`",
+          "explain": "Группировка проходит по всем строкам: каждую нужно прочитать, чтобы сложить суммы. Индекс тут почти ничего не даёт."
+        }
+      ],
+      "hints": [
+        "Индекс — как оглавление: он полезен, когда нужно найти **немного** строк по значению этого столбца."
+      ]
+    },
+    {
+      "id": "sargable",
+      "title": "Фильтр, который не мешает индексу",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "По столбцу `order_date` есть индекс. Какое условие для заказов **за март 2026** позволит базе им воспользоваться?",
+      "options": [
+        {
+          "text": "`WHERE order_date >= '2026-03-01' AND order_date < '2026-04-01'`",
+          "correct": true,
+          "explain": "Столбец сравнивается с границами как есть, без преобразований. Индекс по датам сразу находит начало и конец диапазона."
+        },
+        {
+          "text": "`WHERE EXTRACT(YEAR FROM order_date) = 2026 AND EXTRACT(MONTH FROM order_date) = 3`",
+          "explain": "Результат верный, но столбец завёрнут в функцию. Индекс построен по датам, а не по номерам месяцев, поэтому базе придётся вычислить месяц для каждой строки."
+        },
+        {
+          "text": "`WHERE CAST(order_date AS VARCHAR) LIKE '2026-03%'`",
+          "explain": "Превращение даты в текст тоже ломает индекс, да ещё и медленнее сравнения дат."
+        },
+        {
+          "text": "`WHERE date_trunc('month', order_date) = '2026-03-01'`",
+          "explain": "Опять функция над столбцом. Работает правильно, но индекс по `order_date` использовать не получится."
+        }
+      ],
+      "hints": [
+        "Ищи вариант, где сам столбец `order_date` ничем не обёрнут."
+      ]
+    },
+    {
+      "id": "march-range",
+      "title": "Выручка за март диапазоном",
+      "difficulty": 2,
+      "prompt": [
+        "Посчитай выручку **доставленных** заказов, оформленных **в марте 2026 года**. Столбец — `revenue`.",
+        "",
+        "Отбери даты диапазоном, не заворачивая `order_date` в функции: так запрос сможет использовать индекс по дате."
+      ],
+      "starter": "SELECT SUM(amount) AS revenue\nFROM orders\nWHERE status = 'delivered'\n  AND ",
+      "solution": "SELECT SUM(amount) AS revenue\nFROM orders\nWHERE status = 'delivered'\n  AND order_date >= '2026-03-01'\n  AND order_date < '2026-04-01';",
+      "checkColumnNames": true,
+      "hints": [
+        "Начало диапазона — `'2026-03-01'` включительно, конец — первое апреля **не** включительно.",
+        "`order_date >= '2026-03-01' AND order_date < '2026-04-01'`"
+      ],
+      "mistakes": [
+        {
+          "pattern": "<=\\s*'2026-03-30'",
+          "message": "В марте 31 день. Надёжнее писать `< '2026-04-01'`: тогда не нужно помнить, сколько дней в месяце."
+        }
+      ],
+      "explanation": "Запись `>= начало AND < начало следующего месяца` — привычка, которая пригодится всегда: она не ломает индекс и не теряет последний день месяца, даже если в столбце хранится дата со временем.",
+      "selfTest": {
+        "correct": [
+          "SELECT SUM(amount) AS revenue FROM orders WHERE status = 'delivered' AND order_date BETWEEN '2026-03-01' AND '2026-03-31'",
+          "SELECT SUM(amount) AS revenue FROM orders WHERE status = 'delivered' AND EXTRACT(MONTH FROM order_date) = 3 AND EXTRACT(YEAR FROM order_date) = 2026"
+        ],
+        "wrong": [
+          "SELECT SUM(amount) AS revenue FROM orders WHERE status = 'delivered' AND order_date >= '2026-03-01' AND order_date < '2026-03-31'",
+          "SELECT SUM(amount) AS revenue FROM orders WHERE order_date >= '2026-03-01' AND order_date < '2026-04-01'"
+        ]
+      }
+    },
+    {
+      "id": "category-avg",
+      "title": "Дороже средней по категории",
+      "difficulty": 3,
+      "prompt": [
+        "Для каждой категории товаров выведи:",
+        "- `category`;",
+        "- `avg_price` — среднюю цену в категории, округлённую до 2 знаков;",
+        "- `expensive_cnt` — сколько товаров этой категории дороже средней цены **своей** категории.",
+        "",
+        "Отсортируй по категории. Посчитай средние **один раз** в CTE и присоедини к товарам, а не подзапросом для каждой строки."
+      ],
+      "starter": "WITH category_avg AS (\n    SELECT category, AVG(price) AS avg_price\n    FROM products\n    GROUP BY category\n)\nSELECT \n",
+      "solution": "WITH category_avg AS (\n    SELECT category, AVG(price) AS avg_price\n    FROM products\n    GROUP BY category\n)\nSELECT p.category,\n       ROUND(ca.avg_price, 2) AS avg_price,\n       COUNT(*) AS expensive_cnt\nFROM products p\nJOIN category_avg ca ON ca.category = p.category\nWHERE p.price > ca.avg_price\nGROUP BY p.category, ca.avg_price\nORDER BY p.category;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Соедини `products` с `category_avg` по категории и оставь товары, где `p.price > ca.avg_price`.",
+        "Группируй по категории и средней цене: `GROUP BY p.category, ca.avg_price`. Округляй уже в `SELECT`: `ROUND(ca.avg_price, 2)`."
+      ],
+      "mistakes": [
+        {
+          "pattern": "ROUND\\s*\\(\\s*AVG",
+          "flags": "i",
+          "unless": "category_avg",
+          "message": "Сравнивать цену нужно со средней **своей категории**. Посчитай средние в CTE `category_avg` и присоедини их к товарам."
+        }
+      ],
+      "explanation": "Вариант с подзапросом `WHERE price > (SELECT AVG(price) FROM products p2 WHERE p2.category = p.category)` даёт тот же ответ, но считает среднее заново для каждого товара. На каталоге в миллион позиций это миллион одинаковых расчётов вместо пары десятков. Подходит и оконная функция: `AVG(price) OVER (PARTITION BY category)`.",
+      "selfTest": {
+        "correct": [
+          "SELECT category, ROUND(MAX(avg_p), 2) AS avg_price, COUNT(*) FILTER (WHERE price > avg_p) AS expensive_cnt FROM (SELECT category, price, AVG(price) OVER (PARTITION BY category) AS avg_p FROM products) t GROUP BY category ORDER BY category",
+          "SELECT p.category, ROUND((SELECT AVG(price) FROM products p3 WHERE p3.category = p.category), 2) AS avg_price, COUNT(*) AS expensive_cnt FROM products p WHERE p.price > (SELECT AVG(p2.price) FROM products p2 WHERE p2.category = p.category) GROUP BY p.category ORDER BY p.category"
+        ],
+        "wrong": [
+          "WITH a AS (SELECT AVG(price) AS avg_price FROM products) SELECT p.category, ROUND(a.avg_price, 2) AS avg_price, COUNT(*) AS expensive_cnt FROM products p, a WHERE p.price > a.avg_price GROUP BY p.category, a.avg_price ORDER BY p.category",
+          "WITH category_avg AS (SELECT category, AVG(price) AS avg_price FROM products GROUP BY category) SELECT p.category, ROUND(ca.avg_price, 2) AS avg_price, COUNT(*) AS expensive_cnt FROM products p JOIN category_avg ca ON ca.category = p.category GROUP BY p.category, ca.avg_price ORDER BY p.category"
+        ]
+      }
+    }
+  ]
+}

@@ -150,7 +150,13 @@ for (const { rel, size } of all) {
   const parts = rel.split('/');
   const courseDir = parts[0];
   const courseName = COURSES[courseDir] ?? courseDir;
-  const section = parts.slice(1, -1).join(' / ') || '—';
+  // «part 4 / Курс [2023] [школа] [автор, / Курс [2023] …» → «part 4 / Курс»
+  const section =
+    parts
+      .slice(1, -1)
+      .map((p) => p.replace(/\[[^\]]*\]?/g, '').replace(/\s+/g, ' ').trim())
+      .filter((p, i, a) => p && p !== a[i - 1])
+      .join(' / ') || '—';
   const file = parts.at(-1);
   const ext = extname(file).toLowerCase();
   const isVideo = VIDEO.has(ext) || /\.mp4\.(mp4|mkv)$/i.test(file);
@@ -170,7 +176,8 @@ for (const { rel, size } of all) {
     continue;
   }
   const noteLesson = notes[idOf(rel)]?.lesson;
-  if (noteLesson && (!r || r.key)) r = { ...(r ?? {}), key: noteLesson };
+  const noteBlock = notes[idOf(rel)]?.block; // для документа: 'theory' или 'practice'
+  if (noteLesson && (!r || r.key)) r = { ...(r ?? {}), key: noteLesson, ...(noteBlock ? { block: noteBlock } : {}) };
 
   if (!r) {
     report.push([rel, '', '', isVideo ? 'Видео' : 'Материал', 'НЕ РАЗОБРАНО — уточнить по расшифровке или содержимому']);
@@ -210,7 +217,8 @@ for (const { rel, size } of all) {
     const fmt = ext === '.mp4' || ext === '.m4v' || remuxed ? 'mp4' : ext.replace('.', '');
     const item = { id, title: note.title ?? cleanTitle(file), course: courseName, tier: tier(courseName), section, duration, size: remuxed ? statSync(mp4).size : size, fmt };
     // Порядок в уроке — по исходной нумерации файла в курсе, даже если название заменено
-    sortKey.set(item, `${section}/${cleanTitle(file)}`);
+    // (note.sort — свой ключ, когда части одного блока лежат в разных папках)
+    sortKey.set(item, note.sort ?? `${section}/${cleanTitle(file)}`);
     if (share > 0.02) item.damaged = Math.round(share * 100);
     if (note.description) item.description = note.description;
     if (note.chapters?.length) item.chapters = note.chapters;

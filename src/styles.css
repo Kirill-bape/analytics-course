@@ -1390,6 +1390,13 @@ li.done .topic-status {
   color: var(--text-muted);
   font-style: italic;
 }
+/* Многострочный текст, например план запроса из EXPLAIN */
+.result td.multiline {
+  white-space: pre;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.25;
+}
 .result .rownum {
   color: var(--text-faint);
   text-align: right;

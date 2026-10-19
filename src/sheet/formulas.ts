@@ -5,8 +5,12 @@
 import { HyperFormula, type CellValue, type SimpleCellAddress } from 'hyperformula';
 import { ruRU } from 'hyperformula/i18n/languages';
 
-const RU_BY_EN = ruRU.functions as Record<string, string>;
+import { RU_EXTRA } from './extraFunctions';
+
+const RU_BY_EN: Record<string, string> = { ...(ruRU.functions as Record<string, string>), ...RU_EXTRA };
 const EN_BY_RU = new Map(Object.entries(RU_BY_EN).map(([en, ru]) => [ru.toUpperCase(), en]));
+// Прежнее русское название из словаря HyperFormula тоже понимаем
+EN_BY_RU.set('УСЛОВИЯ', 'IFS');
 // В Excel функция пишется с латинской X, в словаре HyperFormula — с русской Х
 EN_BY_RU.set('ПРОСМОТРX', 'XLOOKUP');
 

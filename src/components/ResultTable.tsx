@@ -29,7 +29,10 @@ export function ResultTable({ result, maxRows = 200, total }: { result: QueryRes
                 <tr key={r}>
                   <td className="rownum">{r + 1}</td>
                   {row.map((v, c) => (
-                    <td key={c} className={v === null ? 'null' : typeof v === 'number' ? 'num' : undefined}>
+                    <td
+                      key={c}
+                      className={v === null ? 'null' : typeof v === 'number' ? 'num' : typeof v === 'string' && v.includes('\n') ? 'multiline' : undefined}
+                    >
                       {formatCell(v)}
                     </td>
                   ))}
