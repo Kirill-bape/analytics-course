@@ -26,7 +26,10 @@ export interface ProgressData {
 const EMPTY: ProgressData = { version: 1, tasks: {}, activeDays: [] };
 const LS_KEY = 'analytics-course-progress';
 /** Тестовый режим (адрес с ?sandbox): прогресс не загружается и не сохраняется */
-export const SANDBOX = typeof location !== 'undefined' && new URLSearchParams(location.search).has('sandbox');
+// Песочница: прогресс не сохраняется. Включается адресом ?sandbox или запуском
+// на проверочном порту 3001 (его открывает предпросмотр для проверок, см. .claude/launch.json)
+export const SANDBOX =
+  typeof location !== 'undefined' && (new URLSearchParams(location.search).has('sandbox') || (import.meta.env.DEV && location.port === '3001'));
 /** Копия в progress.json есть только при запуске на компьютере через сервер разработки */
 const FILE_MIRROR = import.meta.env.DEV && !SANDBOX;
 

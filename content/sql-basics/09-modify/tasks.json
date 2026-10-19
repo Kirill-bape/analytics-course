@@ -1,0 +1,241 @@
+{
+  "tasks": [
+    {
+      "id": "create-wishlist",
+      "title": "Свой список желаний",
+      "difficulty": 1,
+      "sandbox": true,
+      "prompt": [
+        "Создай таблицу `wishlist` со столбцами:",
+        "- `id` — целое число, первичный ключ;",
+        "- `product` — текст, пустым быть не может;",
+        "- `price` — цена с копейками, `DECIMAL(10,2)`.",
+        "",
+        "Добавь в неё три строки:",
+        "",
+        "| id | product | price |",
+        "|---|---|---|",
+        "| 1 | Наушники | 4990 |",
+        "| 2 | Рюкзак | 3490 |",
+        "| 3 | Книга | 690 |",
+        "",
+        "В конце выведи всю таблицу, отсортированную по `id`."
+      ],
+      "starter": "-- 1. Создай таблицу\nCREATE TABLE wishlist (\n    \n);\n\n-- 2. Добавь строки\n\n\n-- 3. Покажи результат\nSELECT * FROM wishlist ORDER BY id;\n",
+      "solution": "CREATE TABLE wishlist (\n    id      INTEGER PRIMARY KEY,\n    product VARCHAR NOT NULL,\n    price   DECIMAL(10,2)\n);\nINSERT INTO wishlist (id, product, price) VALUES\n    (1, 'Наушники', 4990),\n    (2, 'Рюкзак', 3490),\n    (3, 'Книга', 690);\nSELECT * FROM wishlist ORDER BY id;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Столбцы в `CREATE TABLE` перечисляются через запятую: имя, тип и ограничения. Например, `id INTEGER PRIMARY KEY`.",
+        "Три строки можно добавить одной командой: `INSERT INTO wishlist (id, product, price) VALUES (1, 'Наушники', 4990), (…), (…);`",
+        "Текст пишется в одинарных кавычках, числа — без кавычек. Команды разделяются точкой с запятой."
+      ],
+      "explanation": "Так создают небольшие справочники, которых нет в базе: план продаж, список акций, соответствие старых и новых названий. Ограничения `PRIMARY KEY` и `NOT NULL` не дадут случайно добавить дубль или пустое название.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE wishlist (id INTEGER, product VARCHAR, price DECIMAL(10,2)); INSERT INTO wishlist VALUES (3, 'Книга', 690); INSERT INTO wishlist VALUES (1, 'Наушники', 4990); INSERT INTO wishlist VALUES (2, 'Рюкзак', 3490); SELECT * FROM wishlist ORDER BY id"
+        ],
+        "wrong": [
+          "CREATE TABLE wishlist (id INTEGER PRIMARY KEY, product VARCHAR NOT NULL, price DECIMAL(10,2)); INSERT INTO wishlist VALUES (1, 'Наушники', 4990), (2, 'Рюкзак', 3490); SELECT * FROM wishlist ORDER BY id",
+          "CREATE TABLE wishlist (id INTEGER PRIMARY KEY, name VARCHAR NOT NULL, price DECIMAL(10,2)); INSERT INTO wishlist VALUES (1, 'Наушники', 4990), (2, 'Рюкзак', 3490), (3, 'Книга', 690); SELECT * FROM wishlist ORDER BY id"
+        ]
+      }
+    },
+    {
+      "id": "update-no-where",
+      "title": "Забытый WHERE",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Аналитик хотел обнулить цену одного товара-подарка, но написал так:\n\n```sql\nUPDATE products SET price = 0;\n```\n\nЧто произойдёт?",
+      "options": [
+        {
+          "text": "Цена станет нулевой у всех товаров в таблице",
+          "correct": true,
+          "explain": "Без `WHERE` команда меняет все строки. Поэтому сначала пишут `SELECT … WHERE …`, смотрят, какие строки попадут под условие, и только потом меняют `SELECT` на `UPDATE` с тем же `WHERE`."
+        },
+        {
+          "text": "База выдаст ошибку, потому что не указано, какой товар менять",
+          "explain": "К сожалению, нет: команда без условия совершенно законна, база просто изменит всё."
+        },
+        {
+          "text": "Изменится только первая строка таблицы",
+          "explain": "У строк в базе нет «первой» по умолчанию, а `UPDATE` без условия затрагивает все строки."
+        },
+        {
+          "text": "Ничего: без WHERE команда не выполняется",
+          "explain": "Выполняется — и меняет все строки сразу."
+        }
+      ],
+      "hints": [
+        "`WHERE` выбирает, к каким строкам применить изменение. А если условия нет вообще?"
+      ]
+    },
+    {
+      "id": "moscow-2026",
+      "title": "Таблица новых москвичей",
+      "difficulty": 2,
+      "sandbox": true,
+      "prompt": [
+        "Маркетингу нужен отдельный список покупателей **из Москвы**, которые зарегистрировались **в 2026 году**.",
+        "",
+        "Создай из запроса таблицу `moscow_2026` со столбцами `customer_id`, `full_name`, `registration_date`. Затем проверь её одной строкой:",
+        "- `customers_cnt` — сколько покупателей попало в таблицу;",
+        "- `first_date` — самая ранняя дата регистрации;",
+        "- `last_date` — самая поздняя."
+      ],
+      "starter": "CREATE TABLE moscow_2026 AS\n\n\nSELECT COUNT(*) AS customers_cnt,\n       MIN(registration_date) AS first_date,\n       MAX(registration_date) AS last_date\nFROM moscow_2026;\n",
+      "solution": "CREATE TABLE moscow_2026 AS\nSELECT customer_id, full_name, registration_date\nFROM customers\nWHERE city = 'Москва'\n  AND registration_date >= '2026-01-01';\n\nSELECT COUNT(*) AS customers_cnt,\n       MIN(registration_date) AS first_date,\n       MAX(registration_date) AS last_date\nFROM moscow_2026;",
+      "checkColumnNames": true,
+      "hints": [
+        "После `CREATE TABLE moscow_2026 AS` идёт обычный `SELECT` — тот, что ты написал бы для простой выборки.",
+        "Два условия: `city = 'Москва'` и `registration_date >= '2026-01-01'`. Не забудь точку с запятой после первого запроса."
+      ],
+      "mistakes": [
+        {
+          "pattern": "SELECT",
+          "flags": "i",
+          "unless": "CREATE\\s+TABLE",
+          "message": "В задании нужно именно создать таблицу `moscow_2026`, а уже потом посчитать по ней итоги."
+        }
+      ],
+      "explanation": "`CREATE TABLE … AS SELECT` — самый частый способ, которым аналитики сохраняют выборку: дальше с таблицей можно работать много раз, не повторяя условия.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE moscow_2026 (customer_id INTEGER, full_name VARCHAR, registration_date DATE); INSERT INTO moscow_2026 SELECT customer_id, full_name, registration_date FROM customers WHERE city = 'Москва' AND registration_date BETWEEN '2026-01-01' AND '2026-12-31'; SELECT COUNT(*) AS customers_cnt, MIN(registration_date) AS first_date, MAX(registration_date) AS last_date FROM moscow_2026"
+        ],
+        "wrong": [
+          "CREATE TABLE moscow_2026 AS SELECT customer_id, full_name, registration_date FROM customers WHERE city = 'Москва'; SELECT COUNT(*) AS customers_cnt, MIN(registration_date) AS first_date, MAX(registration_date) AS last_date FROM moscow_2026",
+          "CREATE TABLE moscow_2026 AS SELECT customer_id, full_name, registration_date FROM customers WHERE registration_date >= '2026-01-01'; SELECT COUNT(*) AS customers_cnt, MIN(registration_date) AS first_date, MAX(registration_date) AS last_date FROM moscow_2026"
+        ]
+      }
+    },
+    {
+      "id": "books-discount",
+      "title": "Скидка на книги",
+      "difficulty": 2,
+      "sandbox": true,
+      "prompt": [
+        "В магазине акция: **все книги** (категория `'Книги'`) дешевле на **15%**. Измени цены в таблице `products`: новая цена — старая, умноженная на 0.85 и округлённая до копеек.",
+        "",
+        "Чтобы проверить, что изменились только книги, выведи **сумму цен всех товаров** каталога после изменения — столбец `total_price`."
+      ],
+      "starter": "-- Сначала посмотри, какие строки изменятся:\n-- SELECT product_name, price FROM products WHERE category = 'Книги';\n\nUPDATE products\n\n\nSELECT SUM(price) AS total_price\nFROM products;\n",
+      "solution": "UPDATE products\nSET price = ROUND(price * 0.85, 2)\nWHERE category = 'Книги';\n\nSELECT SUM(price) AS total_price\nFROM products;",
+      "checkColumnNames": true,
+      "hints": [
+        "Шаблон: `UPDATE products SET price = … WHERE …;`",
+        "Новая цена считается из старой: `price * 0.85`. Округление до копеек — `ROUND(…, 2)`.",
+        "Без `WHERE category = 'Книги'` скидка достанется всему каталогу."
+      ],
+      "mistakes": [
+        {
+          "pattern": "UPDATE",
+          "flags": "i",
+          "unless": "WHERE",
+          "message": "В `UPDATE` нет `WHERE` — значит, скидка применилась ко всем товарам, а не только к книгам."
+        }
+      ],
+      "explanation": "Сумма цен всего каталога — простая «контрольная сумма». Если бы скидка случайно ушла на все товары, сумма упала бы на сотни тысяч. Перед любым изменением полезно знать, какое число должно получиться после.",
+      "selfTest": {
+        "correct": [
+          "UPDATE products SET price = price * 0.85 WHERE category = 'Книги'; SELECT SUM(price) AS total_price FROM products",
+          "UPDATE products SET price = ROUND(price - price * 0.15, 2) WHERE category IN ('Книги'); SELECT SUM(price) AS total_price FROM products"
+        ],
+        "wrong": [
+          "UPDATE products SET price = ROUND(price * 0.85, 2); SELECT SUM(price) AS total_price FROM products",
+          "UPDATE products SET price = ROUND(price * 0.15, 2) WHERE category = 'Книги'; SELECT SUM(price) AS total_price FROM products",
+          "SELECT SUM(price) AS total_price FROM products"
+        ]
+      }
+    },
+    {
+      "id": "delete-cancelled",
+      "title": "Убираем отменённые заказы",
+      "difficulty": 2,
+      "sandbox": true,
+      "prompt": [
+        "Для отчёта нужна таблица заказов без отменённых. Удали из `orders` все заказы со статусом `'cancelled'`.",
+        "",
+        "Потом выведи одной строкой: `orders_left` — сколько заказов осталось, и `amount_total` — сумма `amount` по оставшимся."
+      ],
+      "solution": "DELETE FROM orders\nWHERE status = 'cancelled';\n\nSELECT COUNT(*)    AS orders_left,\n       SUM(amount) AS amount_total\nFROM orders;",
+      "checkColumnNames": true,
+      "hints": [
+        "Шаблон: `DELETE FROM orders WHERE …;` — дальше обычный `SELECT` с агрегатами.",
+        "Проверь себя заранее: сколько отменённых заказов? `SELECT COUNT(*) FROM orders WHERE status = 'cancelled'`."
+      ],
+      "mistakes": [
+        {
+          "pattern": "DELETE",
+          "flags": "i",
+          "unless": "WHERE",
+          "message": "В `DELETE` нет `WHERE` — так удаляются все строки таблицы."
+        }
+      ],
+      "explanation": "Было 14 815 заказов, отменённых — 912, осталось 13 903. В настоящей базе удалённые строки обычно не вернуть, поэтому вместо `DELETE` аналитики чаще создают новую таблицу без лишних строк (`CREATE TABLE … AS SELECT … WHERE status <> 'cancelled'`), а исходные данные не трогают.",
+      "selfTest": {
+        "correct": [
+          "DELETE FROM orders WHERE status IN ('cancelled'); SELECT COUNT(*) AS orders_left, SUM(amount) AS amount_total FROM orders"
+        ],
+        "wrong": [
+          "DELETE FROM orders WHERE status <> 'cancelled'; SELECT COUNT(*) AS orders_left, SUM(amount) AS amount_total FROM orders",
+          "DELETE FROM orders WHERE status IN ('cancelled', 'returned'); SELECT COUNT(*) AS orders_left, SUM(amount) AS amount_total FROM orders"
+        ]
+      }
+    },
+    {
+      "id": "primary-key-guard",
+      "title": "Ключ на страже",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Таблица создана так:\n\n```sql\nCREATE TABLE promo (code VARCHAR PRIMARY KEY, discount INTEGER NOT NULL);\nINSERT INTO promo VALUES ('SPRING', 10);\n```\n\nКакая из следующих команд завершится **ошибкой**?",
+      "options": [
+        {
+          "text": "INSERT INTO promo VALUES ('SPRING', 15);",
+          "correct": true,
+          "explain": "Код `SPRING` уже есть, а у первичного ключа значения не повторяются. База откажется добавлять вторую строку — и это защищает данные от дублей."
+        },
+        {
+          "text": "INSERT INTO promo VALUES ('SUMMER', 15);",
+          "explain": "Новый код и непустая скидка — всё по правилам, строка добавится."
+        },
+        {
+          "text": "UPDATE promo SET discount = 15 WHERE code = 'SPRING';",
+          "explain": "Менять значения можно: ключ остаётся уникальным, скидка не пустая."
+        }
+      ],
+      "hints": [
+        "Какие два правила проверяет первичный ключ? Нарушает ли их какая-нибудь из команд?"
+      ]
+    },
+    {
+      "id": "margin-column",
+      "title": "Новый столбец: маржинальность",
+      "difficulty": 3,
+      "sandbox": true,
+      "prompt": [
+        "Добавь в таблицу `products` новый столбец `margin_pct` (тип `DECIMAL(5,1)`) и заполни его **маржинальностью в процентах**: `(price - cost_price) / price * 100`, округлённой до 1 знака.",
+        "",
+        "Затем выведи **5 товаров с самой высокой маржинальностью**: `product_id`, `product_name`, `margin_pct`. Сортировка — по `margin_pct` по убыванию, при равенстве — по `product_id`."
+      ],
+      "solution": "ALTER TABLE products ADD COLUMN margin_pct DECIMAL(5,1);\n\nUPDATE products\nSET margin_pct = ROUND((price - cost_price) / price * 100, 1);\n\nSELECT product_id, product_name, margin_pct\nFROM products\nORDER BY margin_pct DESC, product_id\nLIMIT 5;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Три команды: `ALTER TABLE … ADD COLUMN …`, потом `UPDATE … SET margin_pct = …` (здесь `WHERE` не нужен — заполняем все строки), потом `SELECT`.",
+        "Формула: `ROUND((price - cost_price) / price * 100, 1)`. Скобки вокруг разности обязательны.",
+        "Сортировка по двум столбцам: `ORDER BY margin_pct DESC, product_id`, и `LIMIT 5`."
+      ],
+      "explanation": "Здесь `UPDATE` без `WHERE` — правильное решение: новый столбец нужно заполнить у всех товаров. Важно не правило «всегда пиши WHERE», а понимание, какие строки должны измениться.",
+      "selfTest": {
+        "correct": [
+          "ALTER TABLE products ADD COLUMN margin_pct DECIMAL(5,1); UPDATE products SET margin_pct = (price - cost_price) * 100.0 / price; SELECT product_id, product_name, margin_pct FROM products ORDER BY margin_pct DESC, product_id LIMIT 5"
+        ],
+        "wrong": [
+          "ALTER TABLE products ADD COLUMN margin_pct DECIMAL(5,1); UPDATE products SET margin_pct = ROUND(price - cost_price / price * 100, 1); SELECT product_id, product_name, margin_pct FROM products ORDER BY margin_pct DESC, product_id LIMIT 5",
+          "ALTER TABLE products ADD COLUMN margin_pct DECIMAL(5,1); UPDATE products SET margin_pct = ROUND((price - cost_price) / cost_price * 100, 1); SELECT product_id, product_name, margin_pct FROM products ORDER BY margin_pct DESC, product_id LIMIT 5"
+        ]
+      }
+    }
+  ]
+}
