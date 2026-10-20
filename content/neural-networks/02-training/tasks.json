@@ -1,0 +1,196 @@
+{
+  "tasks": [
+    {
+      "id": "logloss",
+      "title": "Кросс-энтропия",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Сеть предсказала вероятности `p = [0.9, 0.2, 0.6, 0.05]` для четырёх клиентов с ответами `y = [1, 0, 1, 1]`. Посчитай бинарную кросс-энтропию (среднее `−[y·ln p + (1 − y)·ln(1 − p)]`). Округли до 3 знаков.",
+      "starter": "y = np.array([1, 0, 1, 1])\np = np.array([0.9, 0.2, 0.6, 0.05])\n\nloss = \nresult = round(loss, 3)",
+      "solution": "y = np.array([1, 0, 1, 1])\np = np.array([0.9, 0.2, 0.6, 0.05])\n\nloss = -np.mean(y * np.log(p) + (1 - y) * np.log(1 - p))\nresult = round(loss, 3)",
+      "hints": [
+        "Натуральный логарифм — `np.log`.",
+        "Не забудь минус перед средним."
+      ],
+      "explanation": "Потеря ≈ 0,96, и бо́льшая часть её от последнего клиента: модель дала ему 5%, а он вернулся (−ln 0,05 ≈ 3). Кросс-энтропия жёстко наказывает уверенные ошибки, поэтому модели учатся не быть самоуверенными.",
+      "selfTest": {
+        "correct": [
+          "import math\ny = [1, 0, 1, 1]\np = [0.9, 0.2, 0.6, 0.05]\nresult = round(sum(-math.log(pi) if yi else -math.log(1 - pi) for yi, pi in zip(y, p)) / 4, 3)"
+        ],
+        "wrong": [
+          "y = np.array([1, 0, 1, 1])\np = np.array([0.9, 0.2, 0.6, 0.05])\nresult = round(np.mean((y - p) ** 2), 3)",
+          "y = np.array([1, 0, 1, 1])\np = np.array([0.9, 0.2, 0.6, 0.05])\nresult = round(-np.mean(y * np.log(p)), 3)"
+        ]
+      }
+    },
+    {
+      "id": "learning-rate",
+      "title": "Скорость обучения",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Минимизируй `f(w) = (w − 3)²` градиентным спуском: старт `w = 0`, **10** шагов `w -= lr * 2 * (w - 3)`.",
+        "",
+        "Сделай это для двух скоростей: `lr = 0.1` и `lr = 1.1`. В `result` — список из двух итоговых `w`, округлённых до 2 знаков."
+      ],
+      "starter": "def descend(lr, steps=10):\n    w = 0.0\n    \n    return w\n\nresult = [round(descend(0.1), 2), round(descend(1.1), 2)]",
+      "solution": "def descend(lr, steps=10):\n    w = 0.0\n    for _ in range(steps):\n        w -= lr * 2 * (w - 3)\n    return w\n\nresult = [round(descend(0.1), 2), round(descend(1.1), 2)]",
+      "hints": [
+        "Внутри функции — цикл на `steps` шагов с `w -= lr * 2 * (w - 3)`."
+      ],
+      "explanation": "При 0,1 за 10 шагов w ≈ 2,68 — уверенно движется к 3. При 1,1 каждый шаг перепрыгивает минимум всё дальше, и w улетает к −15,6. Если потери при обучении сети растут или становятся NaN, первым делом уменьшают скорость обучения.",
+      "selfTest": {
+        "correct": [
+          "res = []\nfor lr in [0.1, 1.1]:\n    w = 0.0\n    for _ in range(10):\n        w = w - lr * 2 * (w - 3)\n    res.append(round(w, 2))\nresult = res"
+        ],
+        "wrong": [
+          "res = []\nfor lr in [0.1, 1.1]:\n    w = 0.0\n    for _ in range(10):\n        w = w + lr * 2 * (w - 3)\n    res.append(round(w, 2))\nresult = res",
+          "res = []\nfor lr in [0.1, 1.1]:\n    w = 0.0\n    for _ in range(10):\n        w = w - lr * (w - 3)\n    res.append(round(w, 2))\nresult = res"
+        ]
+      },
+      "orderMatters": true
+    },
+    {
+      "id": "backprop-xor",
+      "title": "Обратное распространение",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Допиши обучение сети 2 → 4 → 1 на XOR. Прямой проход и градиенты выходного слоя уже в заготовке. Добавь:",
+        "1. ошибку на скрытом слое: `d_h = (d_out @ W2.T) * h * (1 - h)`;",
+        "2. градиенты первого слоя: `dW1 = X.T @ d_h`, `db1 = d_h.sum(axis=0)`;",
+        "3. шаги для всех четырёх параметров: `W1 -= lr * dW1` и так далее.",
+        "",
+        "В `result` — округлённые до 0 или 1 выходы сети после 5000 эпох."
+      ],
+      "starter": "def sig(z):\n    return 1 / (1 + np.exp(-z))\n\nX = np.array([[0, 0], [0, 1], [1, 0], [1, 1]], float)\ny = np.array([[0], [1], [1], [0]], float)\n\nrng = np.random.default_rng(7)\nW1, b1 = rng.normal(0, 1, (2, 4)), np.zeros(4)\nW2, b2 = rng.normal(0, 1, (4, 1)), np.zeros(1)\nlr = 1.0\nfor epoch in range(5000):\n    h = sig(X @ W1 + b1)\n    out = sig(h @ W2 + b2)\n    d_out = (out - y) / len(X)\n    dW2, db2 = h.T @ d_out, d_out.sum(axis=0)\n    # допиши обратный проход и шаги\n    \n\nresult = [int(v) for v in np.round(out.ravel())]",
+      "solution": "def sig(z):\n    return 1 / (1 + np.exp(-z))\n\nX = np.array([[0, 0], [0, 1], [1, 0], [1, 1]], float)\ny = np.array([[0], [1], [1], [0]], float)\n\nrng = np.random.default_rng(7)\nW1, b1 = rng.normal(0, 1, (2, 4)), np.zeros(4)\nW2, b2 = rng.normal(0, 1, (4, 1)), np.zeros(1)\nlr = 1.0\nfor epoch in range(5000):\n    h = sig(X @ W1 + b1)\n    out = sig(h @ W2 + b2)\n    d_out = (out - y) / len(X)\n    dW2, db2 = h.T @ d_out, d_out.sum(axis=0)\n    d_h = (d_out @ W2.T) * h * (1 - h)\n    dW1, db1 = X.T @ d_h, d_h.sum(axis=0)\n    W1 -= lr * dW1\n    b1 -= lr * db1\n    W2 -= lr * dW2\n    b2 -= lr * db2\n\nresult = [int(v) for v in np.round(out.ravel())]",
+      "hints": [
+        "Строки внутри цикла после `dW2, db2 = …`: `d_h = …`, `dW1, db1 = …`, затем четыре строки `-= lr * …`.",
+        "Если выход застрял около 0,5 — проверь знаки: веса сдвигают **против** градиента (`-=`)."
+      ],
+      "explanation": "Сеть выучила XOR: [0, 1, 1, 0]. Это то, чего не мог перцептрон. Обратный проход — всего две строки на слой: ошибку слоя умножают на производную активации и «протягивают» к предыдущему слою через транспонированные веса.",
+      "selfTest": {
+        "correct": [
+          "def sig(z):\n    return 1 / (1 + np.exp(-z))\n\nX = np.array([[0, 0], [0, 1], [1, 0], [1, 1]], float)\ny = np.array([[0], [1], [1], [0]], float)\n\nrng = np.random.default_rng(7)\nW1, b1 = rng.normal(0, 1, (2, 4)), np.zeros(4)\nW2, b2 = rng.normal(0, 1, (4, 1)), np.zeros(1)\nlr = 1.0\nfor epoch in range(5000):\n    h = sig(X @ W1 + b1)\n    out = sig(h @ W2 + b2)\n    d_out = (out - y) / len(X)\n    dW2, db2 = h.T @ d_out, d_out.sum(axis=0)\n    g = d_out @ W2.T\n    d_h = g * h * (1 - h)\n    W2 = W2 - lr * dW2\n    b2 = b2 - lr * db2\n    W1 = W1 - lr * (X.T @ d_h)\n    b1 = b1 - lr * d_h.sum(axis=0)\n\nresult = [int(v) for v in np.round(out.ravel())]"
+        ],
+        "wrong": [
+          "def sig(z):\n    return 1 / (1 + np.exp(-z))\n\nX = np.array([[0, 0], [0, 1], [1, 0], [1, 1]], float)\ny = np.array([[0], [1], [1], [0]], float)\n\nrng = np.random.default_rng(7)\nW1, b1 = rng.normal(0, 1, (2, 4)), np.zeros(4)\nW2, b2 = rng.normal(0, 1, (4, 1)), np.zeros(1)\nlr = 1.0\nfor epoch in range(5000):\n    h = sig(X @ W1 + b1)\n    out = sig(h @ W2 + b2)\n    d_out = (out - y) / len(X)\n    dW2, db2 = h.T @ d_out, d_out.sum(axis=0)\n    W2 -= lr * dW2\n    b2 -= lr * db2\n\nresult = [int(v) for v in np.round(out.ravel())]",
+          "def sig(z):\n    return 1 / (1 + np.exp(-z))\n\nX = np.array([[0, 0], [0, 1], [1, 0], [1, 1]], float)\ny = np.array([[0], [1], [1], [0]], float)\n\nrng = np.random.default_rng(7)\nW1, b1 = rng.normal(0, 1, (2, 4)), np.zeros(4)\nW2, b2 = rng.normal(0, 1, (4, 1)), np.zeros(1)\nlr = 1.0\nfor epoch in range(30):\n    h = sig(X @ W1 + b1)\n    out = sig(h @ W2 + b2)\n    d_out = (out - y) / len(X)\n    dW2, db2 = h.T @ d_out, d_out.sum(axis=0)\n    d_h = (d_out @ W2.T) * h * (1 - h)\n    dW1, db1 = X.T @ d_h, d_h.sum(axis=0)\n    W1 -= lr * dW1\n    b1 -= lr * db1\n    W2 -= lr * dW2\n    b2 -= lr * db2\n\nresult = [int(v) for v in np.round(out.ravel())]"
+        ]
+      },
+      "orderMatters": true
+    },
+    {
+      "id": "early-stopping",
+      "title": "Ранняя остановка",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "В `val_loss` — потери на валидации после каждой эпохи (эпохи нумеруются с 1). Ранняя остановка с терпением `patience = 3`: обучение прекращается, когда потери **3 эпохи подряд** не опускаются ниже лучшего значения.",
+        "",
+        "Найди номер лучшей эпохи и номер эпохи, после которой обучение остановится. В `result` — `[лучшая эпоха, эпоха остановки]`."
+      ],
+      "starter": "val_loss = [0.69, 0.52, 0.44, 0.40, 0.38, 0.385, 0.379, 0.381, 0.39, 0.395, 0.41, 0.43]   # эпохи 1, 2, 3, …\npatience = 3\n\nbest = float(\"inf\")\nbest_epoch = 0\nwait = 0\nfor epoch, loss in enumerate(val_loss, start=1):\n    \n\nresult = [best_epoch, stop_epoch]",
+      "solution": "val_loss = [0.69, 0.52, 0.44, 0.40, 0.38, 0.385, 0.379, 0.381, 0.39, 0.395, 0.41, 0.43]   # эпохи 1, 2, 3, …\npatience = 3\n\nbest = float(\"inf\")\nbest_epoch = 0\nwait = 0\nfor epoch, loss in enumerate(val_loss, start=1):\n    if loss < best:\n        best, best_epoch, wait = loss, epoch, 0\n    else:\n        wait += 1\n        if wait >= patience:\n            stop_epoch = epoch\n            break\n\nresult = [best_epoch, stop_epoch]",
+      "hints": [
+        "Если потеря лучше рекорда — запомни её и эпоху, обнули счётчик `wait`.",
+        "Иначе увеличь `wait`; когда он дошёл до `patience`, запомни `stop_epoch` и выйди из цикла."
+      ],
+      "explanation": "Лучшая эпоха — 7 (0,379), а не 5: после небольшого ухудшения на 6-й эпохе потери ещё раз улучшились, и счётчик обнулился. Остановка — после 10-й эпохи, и модель возвращает веса 7-й эпохи (`restore_best_weights=True`). Дальше потери только росли: сеть начала переобучаться.",
+      "selfTest": {
+        "correct": [
+          "val_loss = [0.69, 0.52, 0.44, 0.40, 0.38, 0.385, 0.379, 0.381, 0.39, 0.395, 0.41, 0.43]   # эпохи 1, 2, 3, …\npatience = 3\nbest_epoch = int(np.argmin(val_loss)) + 1\nstop = None\nrec, w = 1e9, 0\nfor i, l in enumerate(val_loss, 1):\n    if l < rec:\n        rec, w = l, 0\n    else:\n        w += 1\n    if w == patience:\n        stop = i\n        break\nresult = [best_epoch, stop]"
+        ],
+        "wrong": [
+          "val_loss = [0.69, 0.52, 0.44, 0.40, 0.38, 0.385, 0.379, 0.381, 0.39, 0.395, 0.41, 0.43]   # эпохи 1, 2, 3, …\npatience = 3\nbest_epoch = 0\nwait = 0\nfor epoch in range(2, len(val_loss) + 1):\n    if val_loss[epoch - 1] < val_loss[epoch - 2]:\n        best_epoch = epoch\n    else:\n        wait += 1\n        if wait >= patience:\n            break\nresult = [best_epoch, epoch]"
+        ]
+      },
+      "orderMatters": true
+    },
+    {
+      "id": "steps-per-epoch",
+      "title": "Шагов за эпоху",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "В обучающей выборке **50 000** примеров, размер мини-батча **128**. Сколько шагов оптимизатора (обновлений весов) будет за одну эпоху? Последний неполный батч тоже считается.",
+      "answer": 391,
+      "hints": [
+        "Раздели и округли вверх."
+      ],
+      "wrongAnswers": [
+        {
+          "value": 390,
+          "message": "Последний неполный батч (80 примеров) — тоже шаг. Округляй вверх."
+        }
+      ],
+      "explanation": "50 000 / 128 = 390,6 → 391 шаг. За 20 эпох — 7 820 обновлений весов.",
+      "selfTest": {
+        "correct": [
+          "391"
+        ],
+        "wrong": [
+          "390"
+        ]
+      }
+    },
+    {
+      "id": "adam",
+      "title": "Что делает Adam",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Почему Adam — популярный оптимизатор по умолчанию?",
+      "options": [
+        {
+          "text": "Он сочетает инерцию (momentum) и свою скорость обучения для каждого веса, поэтому хорошо работает без тонкой настройки",
+          "correct": true,
+          "explain": "Обычно достаточно стандартной скорости 0,001, а дальше можно экспериментировать."
+        },
+        {
+          "text": "Он не использует градиенты",
+          "explain": "Использует — как и все эти оптимизаторы, он основан на градиентном спуске."
+        },
+        {
+          "text": "Он гарантирует глобальный минимум",
+          "explain": "Таких гарантий для нейросетей нет ни у одного оптимизатора."
+        },
+        {
+          "text": "Он отключает переобучение",
+          "explain": "От переобучения защищают регуляризация, dropout и ранняя остановка."
+        }
+      ],
+      "hints": [
+        "Из каких двух идей он собран?"
+      ]
+    },
+    {
+      "id": "overfit-curves",
+      "title": "Кривые обучения",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Потери на обучении падают каждую эпоху, а на валидации с 8-й эпохи растут. Что происходит и что делать?",
+      "options": [
+        {
+          "text": "Переобучение: включить раннюю остановку с лучшими весами, добавить dropout или регуляризацию, по возможности — данные",
+          "correct": true,
+          "explain": "Сеть начала запоминать обучающие примеры вместо общих закономерностей."
+        },
+        {
+          "text": "Недообучение: добавить эпох",
+          "explain": "Ещё эпохи только усилят переобучение."
+        },
+        {
+          "text": "Слишком маленькая скорость обучения",
+          "explain": "Тогда падали бы медленно обе кривые."
+        },
+        {
+          "text": "Всё хорошо: смотрим только на обучающие потери",
+          "explain": "Обучающие потери не показывают качество на новых данных."
+        }
+      ],
+      "hints": [
+        "Какая кривая показывает качество на новых данных?"
+      ]
+    }
+  ]
+}
