@@ -1,0 +1,207 @@
+{
+  "tasks": [
+    {
+      "id": "nf-violation",
+      "title": "Какая нормальная форма нарушена",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "В таблице позиций заказа с ключом (order_id, product_id) хранятся столбцы: количество, цена продажи и **название товара**. Какое правило нарушено?",
+      "options": [
+        {
+          "text": "2НФ: название зависит только от product_id, то есть от части ключа",
+          "correct": true,
+          "explain": "Название товара должно жить в таблице товаров. Иначе при переименовании придётся менять тысячи строк, и где-то останется старое название."
+        },
+        {
+          "text": "1НФ: в ячейке несколько значений",
+          "explain": "В каждой ячейке одно значение — 1НФ соблюдена."
+        },
+        {
+          "text": "Нарушений нет",
+          "explain": "Есть: столбец зависит не от всего составного ключа."
+        },
+        {
+          "text": "3НФ: зависимость между количеством и ценой",
+          "explain": "Количество и цена описывают позицию заказа целиком — это нормально."
+        }
+      ],
+      "hints": [
+        "От чего зависит название: от пары «заказ + товар» или только от товара?"
+      ]
+    },
+    {
+      "id": "grain",
+      "title": "Зерно таблицы фактов",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "В таблицу фактов продаж загрузили и строки «позиция заказа», и строки «итог заказа». Что пойдёт не так?",
+      "options": [
+        {
+          "text": "Суммы задвоятся: выручка каждого заказа посчитается и по позициям, и по итоговой строке",
+          "correct": true,
+          "explain": "В одной таблице фактов — одно зерно. Строки разного уровня детализации хранят в разных таблицах."
+        },
+        {
+          "text": "Ничего, так даже удобнее",
+          "explain": "Удобнее только до первой суммы по столбцу — она окажется вдвое больше."
+        },
+        {
+          "text": "Запросы станут быстрее",
+          "explain": "Скорость не главное: результат будет неверным."
+        },
+        {
+          "text": "Пропадут измерения",
+          "explain": "Измерения останутся, но факты смешаются."
+        }
+      ],
+      "hints": [
+        "Что получится при SUM по такой таблице?"
+      ]
+    },
+    {
+      "id": "star-build",
+      "title": "Построй маленькую звезду",
+      "difficulty": 2,
+      "sandbox": true,
+      "prompt": [
+        "Создай две таблицы звезды:",
+        "- `dim_product` — `product_id`, `product_name`, `category`, `brand` из `products`;",
+        "- `fact_sales` — зерно «позиция доставленного заказа»: `order_id`, `order_date`, `customer_id`, `product_id`, `quantity`, `revenue` (= `quantity × price`).",
+        "",
+        "Затем запросом к звезде выведи выручку по **брендам** категории `Электроника`, топ-5: `brand`, `revenue` (до целого), по убыванию."
+      ],
+      "starter": "CREATE TABLE dim_product AS\nSELECT \nFROM products;\n\nCREATE TABLE fact_sales AS\nSELECT \nFROM order_items oi\nJOIN orders o ON o.order_id = oi.order_id\nWHERE o.status = 'delivered';\n\nSELECT d.brand, ROUND(SUM(f.revenue)) AS revenue\nFROM fact_sales f\nJOIN dim_product d ON d.product_id = f.product_id\nWHERE d.category = 'Электроника'\nGROUP BY d.brand\nORDER BY revenue DESC\nLIMIT 5;",
+      "solution": "CREATE TABLE dim_product AS\nSELECT product_id, product_name, category, brand\nFROM products;\n\nCREATE TABLE fact_sales AS\nSELECT oi.order_id, o.order_date, o.customer_id, oi.product_id, oi.quantity,\n       oi.quantity * oi.price AS revenue\nFROM order_items oi\nJOIN orders o ON o.order_id = oi.order_id\nWHERE o.status = 'delivered';\n\nSELECT d.brand, ROUND(SUM(f.revenue)) AS revenue\nFROM fact_sales f\nJOIN dim_product d ON d.product_id = f.product_id\nWHERE d.category = 'Электроника'\nGROUP BY d.brand\nORDER BY revenue DESC\nLIMIT 5;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "В `fact_sales` дата и клиент берутся из `orders`, количество и цена — из `order_items`.",
+        "Выручка позиции: `oi.quantity * oi.price AS revenue`."
+      ],
+      "explanation": "Звезда: в центре узкая таблица фактов с ключами и числами, вокруг — понятные измерения. Любой новый отчёт — это `JOIN` факта с нужными измерениями и группировка.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE dim_product AS SELECT product_id, product_name, category, brand FROM products; CREATE TABLE fact_sales AS SELECT order_id, order_date, customer_id, product_id, quantity, quantity * oi.price AS revenue FROM order_items oi JOIN orders USING (order_id) WHERE status = 'delivered'; SELECT brand, ROUND(SUM(revenue)) AS revenue FROM fact_sales JOIN dim_product USING (product_id) WHERE category = 'Электроника' GROUP BY 1 ORDER BY 2 DESC LIMIT 5"
+        ],
+        "wrong": [
+          "CREATE TABLE dim_product AS SELECT product_id, product_name, category, brand FROM products; CREATE TABLE fact_sales AS SELECT order_id, order_date, customer_id, product_id, quantity, oi.price AS revenue FROM order_items oi JOIN orders USING (order_id) WHERE status = 'delivered'; SELECT brand, ROUND(SUM(revenue)) AS revenue FROM fact_sales JOIN dim_product USING (product_id) WHERE category = 'Электроника' GROUP BY 1 ORDER BY 2 DESC LIMIT 5"
+        ]
+      }
+    },
+    {
+      "id": "dim-date",
+      "title": "Календарь и дни без заказов",
+      "difficulty": 3,
+      "sandbox": true,
+      "prompt": [
+        "Создай измерение-календарь `dim_date` на каждый день с **1 января 2025** по **30 июня 2026**: столбцы `day` (тип `DATE`), `year`, `month`, `weekday` (`isodow`).",
+        "",
+        "Затем найди, в какие дни **не было ни одного заказа**: выведи `days_without_orders` — их число."
+      ],
+      "starter": "CREATE TABLE dim_date AS\nSELECT CAST(d AS DATE) AS day\nFROM range(DATE '2025-01-01', DATE '2026-07-01', INTERVAL 1 DAY) t(d);\n\nSELECT COUNT(*) AS days_without_orders\nFROM dim_date dd\n",
+      "solution": "CREATE TABLE dim_date AS\nSELECT CAST(d AS DATE) AS day,\n       year(d) AS year,\n       month(d) AS month,\n       isodow(d) AS weekday\nFROM range(DATE '2025-01-01', DATE '2026-07-01', INTERVAL 1 DAY) t(d);\n\nSELECT COUNT(*) AS days_without_orders\nFROM dim_date dd\nLEFT JOIN (SELECT DISTINCT order_date FROM orders) o ON o.order_date = dd.day\nWHERE o.order_date IS NULL;",
+      "checkColumnNames": true,
+      "hints": [
+        "`range(начало, конец, INTERVAL 1 DAY)` выдаёт все дни; конец не включается, поэтому 1 июля.",
+        "Дни без заказов: `LEFT JOIN` уникальных дат заказов и условие `o.order_date IS NULL`."
+      ],
+      "explanation": "Без календаря дни без заказов просто не видны: в таблице заказов их нет. Если ответ — ноль, значит, магазин работал каждый день. Календарь нужен и для честных рядов по дням: пустые дни должны показываться как ноль, а не пропадать.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE dim_date AS SELECT CAST(d AS DATE) AS day, year(d) AS year, month(d) AS month, isodow(d) AS weekday FROM range(DATE '2025-01-01', DATE '2026-07-01', INTERVAL 1 DAY) t(d); SELECT COUNT(*) AS days_without_orders FROM dim_date WHERE day NOT IN (SELECT order_date FROM orders)"
+        ],
+        "wrong": [
+          "CREATE TABLE dim_date AS SELECT CAST(d AS DATE) AS day FROM range(DATE '2025-01-01', DATE '2026-07-01', INTERVAL 1 DAY) t(d); SELECT COUNT(*) AS days_without_orders FROM dim_date WHERE day IN (SELECT order_date FROM orders)"
+        ]
+      }
+    },
+    {
+      "id": "scd2",
+      "title": "Город клиента на дату заказа (SCD2)",
+      "difficulty": 3,
+      "sandbox": true,
+      "prompt": [
+        "Клиент 1042 переехал. Создай таблицу версий `dim_customer_scd` (`customer_id`, `city`, `valid_from`, `valid_to`) с двумя строками:",
+        "- `Казань` с `2025-01-01` по `2026-03-14`;",
+        "- `Москва` с `2026-03-15` по `9999-12-31`.",
+        "",
+        "Затем для трёх «заказов» из CTE `sample_orders` выведи город **на дату заказа**: `order_id`, `order_date`, `city`. Сортировка по `order_id`."
+      ],
+      "starter": "CREATE TABLE dim_customer_scd (customer_id INTEGER, city VARCHAR, valid_from DATE, valid_to DATE);\nINSERT INTO dim_customer_scd VALUES\n    ;\n\nWITH sample_orders(order_id, customer_id, order_date) AS (\n    VALUES (1, 1042, DATE '2025-11-02'), (2, 1042, DATE '2026-03-15'), (3, 1042, DATE '2026-06-01')\n)\nSELECT \n",
+      "solution": "CREATE TABLE dim_customer_scd (customer_id INTEGER, city VARCHAR, valid_from DATE, valid_to DATE);\nINSERT INTO dim_customer_scd VALUES\n    (1042, 'Казань', '2025-01-01', '2026-03-14'),\n    (1042, 'Москва', '2026-03-15', '9999-12-31');\n\nWITH sample_orders(order_id, customer_id, order_date) AS (\n    VALUES (1, 1042, DATE '2025-11-02'), (2, 1042, DATE '2026-03-15'), (3, 1042, DATE '2026-06-01')\n)\nSELECT s.order_id, s.order_date, d.city\nFROM sample_orders s\nJOIN dim_customer_scd d\n  ON d.customer_id = s.customer_id\n AND s.order_date BETWEEN d.valid_from AND d.valid_to\nORDER BY s.order_id;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Две строки в `VALUES` через запятую.",
+        "Соединение по ключу **и** по дате: `s.order_date BETWEEN d.valid_from AND d.valid_to`."
+      ],
+      "explanation": "Заказ 15 марта попал в Москву: в этот день действует новая версия. При SCD1 все три заказа показали бы Москву, и отчёт «выручка по городам за 2025» оказался бы неверным.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE dim_customer_scd (customer_id INTEGER, city VARCHAR, valid_from DATE, valid_to DATE); INSERT INTO dim_customer_scd VALUES (1042, 'Казань', '2025-01-01', '2026-03-14'); INSERT INTO dim_customer_scd VALUES (1042, 'Москва', '2026-03-15', '9999-12-31'); WITH sample_orders(order_id, customer_id, order_date) AS (VALUES (1, 1042, DATE '2025-11-02'), (2, 1042, DATE '2026-03-15'), (3, 1042, DATE '2026-06-01')) SELECT order_id, order_date, city FROM sample_orders s, dim_customer_scd d WHERE d.customer_id = s.customer_id AND s.order_date >= d.valid_from AND s.order_date <= d.valid_to ORDER BY 1"
+        ],
+        "wrong": [
+          "CREATE TABLE dim_customer_scd (customer_id INTEGER, city VARCHAR, valid_from DATE, valid_to DATE); INSERT INTO dim_customer_scd VALUES (1042, 'Казань', '2025-01-01', '2026-03-14'), (1042, 'Москва', '2026-03-15', '9999-12-31'); WITH sample_orders(order_id, customer_id, order_date) AS (VALUES (1, 1042, DATE '2025-11-02'), (2, 1042, DATE '2026-03-15'), (3, 1042, DATE '2026-06-01')) SELECT order_id, order_date, city FROM sample_orders s JOIN dim_customer_scd d ON d.customer_id = s.customer_id AND d.valid_to = '9999-12-31' ORDER BY 1"
+        ]
+      }
+    },
+    {
+      "id": "scd-type",
+      "title": "SCD1 или SCD2",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "В измерении «Товар» исправили опечатку в названии: «Наушнки» → «Наушники». Какой тип обновления подходит?",
+      "options": [
+        {
+          "text": "SCD1 — просто перезаписать: история опечатки никому не нужна",
+          "correct": true,
+          "explain": "Версии хранят, когда важно, каким было значение в прошлом (город клиента, цена). Опечатка — не история, а ошибка."
+        },
+        {
+          "text": "SCD2 — новая версия строки",
+          "explain": "Можно, но бессмысленно: в отчётах за прошлое останется название с опечаткой."
+        },
+        {
+          "text": "Удалить товар и создать новый",
+          "explain": "Сломаются связи с прошлыми продажами."
+        },
+        {
+          "text": "Ничего не делать",
+          "explain": "Опечатка останется во всех отчётах."
+        }
+      ],
+      "hints": [
+        "Нужно ли видеть в отчётах за прошлый год старое название с ошибкой?"
+      ]
+    },
+    {
+      "id": "kimball-inmon",
+      "title": "Кимбалл или Инмон",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Небольшой компании за месяц нужен работающий отчёт по продажам, а потом постепенно — по складу и маркетингу. Какой подход естественнее?",
+      "options": [
+        {
+          "text": "Кимбалл: начать со звезды продаж с согласованными измерениями «Клиент» и «Календарь», потом добавлять звёзды по другим областям",
+          "correct": true,
+          "explain": "Подход Кимбалла позволяет быстро дать результат по одной области и расти постепенно — главное, чтобы общие измерения были одни и те же."
+        },
+        {
+          "text": "Инмон: сначала спроектировать полное корпоративное хранилище в 3НФ для всех отделов",
+          "explain": "Это надёжно, но долго: первый отчёт появится нескоро."
+        },
+        {
+          "text": "Хранить всё в одной таблице с сотней столбцов",
+          "explain": "Быстро начать можно, но с ростом это превратится в хаос."
+        },
+        {
+          "text": "Делать отчёты прямо из рабочей базы",
+          "explain": "Рабочая база не для тяжёлой аналитики и не хранит историю."
+        }
+      ],
+      "hints": [
+        "Что важнее на старте: быстро получить результат или сразу всё спроектировать?"
+      ]
+    }
+  ]
+}

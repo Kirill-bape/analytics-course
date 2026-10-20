@@ -1,0 +1,205 @@
+{
+  "tasks": [
+    {
+      "id": "which-table",
+      "title": "Хаб, линк или сателлит",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "В какую таблицу Data Vault попадёт **способ оплаты** заказа?",
+      "options": [
+        {
+          "text": "В сателлит заказа: это описательный атрибут, который может меняться",
+          "correct": true,
+          "explain": "Хаб хранит только бизнес-ключ (номер заказа), линк — связи, а все описания живут в сателлитах."
+        },
+        {
+          "text": "В хаб заказа",
+          "explain": "В хабе только ключ, по которому заказ узнают, без атрибутов."
+        },
+        {
+          "text": "В линк заказа и клиента",
+          "explain": "Линк хранит только связь между хабами."
+        },
+        {
+          "text": "В отдельный хаб «Способ оплаты»",
+          "explain": "Способ оплаты — не самостоятельная бизнес-сущность с ключом, а атрибут заказа."
+        }
+      ],
+      "hints": [
+        "Это ключ, связь или описание?"
+      ]
+    },
+    {
+      "id": "hub-customer",
+      "title": "Хаб клиентов",
+      "difficulty": 2,
+      "sandbox": true,
+      "prompt": [
+        "Создай хаб `hub_customer` со столбцами:",
+        "- `customer_hk` — `md5` от `customer_id`, приведённого к тексту;",
+        "- `customer_id`;",
+        "- `load_date` — `TIMESTAMP '2026-07-01 03:00:00'`;",
+        "- `record_source` — `'crm'`.",
+        "",
+        "Затем проверь хаб: выведи `row_count` — число строк и `unique_keys` — число уникальных хеш-ключей."
+      ],
+      "starter": "CREATE TABLE hub_customer AS\nSELECT \nFROM customers;\n\nSELECT COUNT(*) AS row_count, COUNT(DISTINCT customer_hk) AS unique_keys FROM hub_customer;",
+      "solution": "CREATE TABLE hub_customer AS\nSELECT md5(CAST(customer_id AS VARCHAR)) AS customer_hk,\n       customer_id,\n       TIMESTAMP '2026-07-01 03:00:00' AS load_date,\n       'crm' AS record_source\nFROM customers;\n\nSELECT COUNT(*) AS row_count, COUNT(DISTINCT customer_hk) AS unique_keys FROM hub_customer;",
+      "checkColumnNames": true,
+      "hints": [
+        "Хеш: `md5(CAST(customer_id AS VARCHAR))`."
+      ],
+      "explanation": "Числа совпадают — у каждого клиента свой хеш-ключ. Такую проверку уникальности ключей хаба делают после каждой загрузки.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE hub_customer AS SELECT md5(customer_id::VARCHAR) AS customer_hk, customer_id, TIMESTAMP '2026-07-01 03:00:00' AS load_date, 'crm' AS record_source FROM customers; SELECT COUNT(customer_hk) AS row_count, COUNT(DISTINCT customer_hk) AS unique_keys FROM hub_customer"
+        ],
+        "wrong": [
+          "CREATE TABLE hub_customer AS SELECT md5(city) AS customer_hk, customer_id, TIMESTAMP '2026-07-01 03:00:00' AS load_date, 'crm' AS record_source FROM customers; SELECT COUNT(*) AS row_count, COUNT(DISTINCT customer_hk) AS unique_keys FROM hub_customer"
+        ]
+      }
+    },
+    {
+      "id": "link-order-customer",
+      "title": "Линк заказ — клиент",
+      "difficulty": 2,
+      "sandbox": true,
+      "prompt": [
+        "Создай линк `link_order_customer`: `link_hk` (md5 от строки `order_id || '|' || customer_id`), `order_hk` (md5 от `order_id`), `customer_hk` (md5 от `customer_id`).",
+        "",
+        "Затем посчитай через линк, сколько заказов у клиента с `customer_id = 756`: соедини линк с хешем этого клиента. Столбец — `orders`."
+      ],
+      "starter": "CREATE TABLE link_order_customer AS\nSELECT \nFROM orders;\n\nSELECT COUNT(*) AS orders\nFROM link_order_customer\nWHERE customer_hk = md5('756');",
+      "solution": "CREATE TABLE link_order_customer AS\nSELECT md5(CAST(order_id AS VARCHAR) || '|' || CAST(customer_id AS VARCHAR)) AS link_hk,\n       md5(CAST(order_id AS VARCHAR)) AS order_hk,\n       md5(CAST(customer_id AS VARCHAR)) AS customer_hk\nFROM orders;\n\nSELECT COUNT(*) AS orders\nFROM link_order_customer\nWHERE customer_hk = md5('756');",
+      "checkColumnNames": true,
+      "hints": [
+        "Каждый хеш — `md5(CAST(… AS VARCHAR))`; для линка склей ключи через разделитель `||`."
+      ],
+      "explanation": "Хеш клиента можно посчитать где угодно: в CRM, в хранилище, в отчёте — он одинаковый. Поэтому хабы, линки и сателлиты из разных источников загружаются независимо и потом «сходятся» по хешам.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE link_order_customer AS SELECT md5(order_id::VARCHAR || '|' || customer_id::VARCHAR) AS link_hk, md5(order_id::VARCHAR) AS order_hk, md5(customer_id::VARCHAR) AS customer_hk FROM orders; SELECT COUNT(DISTINCT order_hk) AS orders FROM link_order_customer WHERE customer_hk = md5('756')"
+        ],
+        "wrong": [
+          "CREATE TABLE link_order_customer AS SELECT md5(order_id::VARCHAR) AS link_hk, md5(order_id::VARCHAR) AS order_hk, md5(customer_id::VARCHAR) AS customer_hk FROM orders; SELECT COUNT(*) AS orders FROM link_order_customer WHERE customer_hk = md5('757')"
+        ]
+      }
+    },
+    {
+      "id": "sat-history",
+      "title": "Сателлит хранит историю",
+      "difficulty": 3,
+      "sandbox": true,
+      "prompt": [
+        "Создай сателлит `sat_customer` (`customer_hk`, `city`, `load_date`) и загрузи в него первую версию для всех клиентов с `load_date = TIMESTAMP '2026-07-01 03:00:00'`.",
+        "",
+        "Затем имитируй изменение: клиент `1042` переехал — добавь для него **новую строку** с городом `'Москва'` и `load_date = TIMESTAMP '2026-07-02 03:00:00'` (старую не трогай).",
+        "",
+        "Выведи **актуальный** город клиента 1042 — строку с самой поздней `load_date`: столбцы `city`, `versions` (сколько версий у клиента в сателлите)."
+      ],
+      "starter": "CREATE TABLE sat_customer AS\nSELECT md5(CAST(customer_id AS VARCHAR)) AS customer_hk, city,\n       TIMESTAMP '2026-07-01 03:00:00' AS load_date\nFROM customers;\n\nINSERT INTO sat_customer VALUES ();\n\nSELECT \nFROM sat_customer\nWHERE customer_hk = md5('1042');",
+      "solution": "CREATE TABLE sat_customer AS\nSELECT md5(CAST(customer_id AS VARCHAR)) AS customer_hk, city,\n       TIMESTAMP '2026-07-01 03:00:00' AS load_date\nFROM customers;\n\nINSERT INTO sat_customer VALUES (md5('1042'), 'Москва', TIMESTAMP '2026-07-02 03:00:00');\n\nSELECT arg_max(city, load_date) AS city, COUNT(*) AS versions\nFROM sat_customer\nWHERE customer_hk = md5('1042');",
+      "checkColumnNames": true,
+      "hints": [
+        "Новая версия: `INSERT INTO sat_customer VALUES (md5('1042'), 'Москва', TIMESTAMP '2026-07-02 03:00:00')`.",
+        "Значение из строки с максимальной датой: `arg_max(city, load_date)`."
+      ],
+      "explanation": "`arg_max(значение, по чему)` — удобная функция «взять значение из строки с максимумом» (в ClickHouse — `argMax`). Обе версии остались в сателлите, поэтому можно узнать город и на любую прошлую дату.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE sat_customer AS SELECT md5(customer_id::VARCHAR) AS customer_hk, city, TIMESTAMP '2026-07-01 03:00:00' AS load_date FROM customers; INSERT INTO sat_customer VALUES (md5('1042'), 'Москва', TIMESTAMP '2026-07-02 03:00:00'); SELECT (SELECT city FROM sat_customer WHERE customer_hk = md5('1042') ORDER BY load_date DESC LIMIT 1) AS city, (SELECT COUNT(*) FROM sat_customer WHERE customer_hk = md5('1042')) AS versions"
+        ],
+        "wrong": [
+          "CREATE TABLE sat_customer AS SELECT md5(customer_id::VARCHAR) AS customer_hk, city, TIMESTAMP '2026-07-01 03:00:00' AS load_date FROM customers; UPDATE sat_customer SET city = 'Москва' WHERE customer_hk = md5('1042'); SELECT arg_max(city, load_date) AS city, COUNT(*) AS versions FROM sat_customer WHERE customer_hk = md5('1042')"
+        ]
+      }
+    },
+    {
+      "id": "dv-pros",
+      "title": "Почему Data Vault",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Компания подключает третью CRM, в которой у клиентов есть новые поля. Чем здесь помогает Data Vault?",
+      "options": [
+        {
+          "text": "Новые поля ложатся в новый сателлит у того же хаба клиентов — существующие таблицы и загрузки не меняются",
+          "correct": true,
+          "explain": "Это главное преимущество: модель расширяется добавлением, а не переделкой."
+        },
+        {
+          "text": "Data Vault сам строит отчёты для BI",
+          "explain": "Нет, для BI поверх него строят витрины."
+        },
+        {
+          "text": "Data Vault удаляет старые данные",
+          "explain": "Наоборот, хранит полную историю."
+        },
+        {
+          "text": "Ничем: придётся перестроить хаб",
+          "explain": "Хаб хранит только ключи — его менять не нужно."
+        }
+      ],
+      "hints": [
+        "Что меняется при добавлении источника: старые таблицы или появляются новые?"
+      ]
+    },
+    {
+      "id": "anchor",
+      "title": "Anchor Modeling",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Чем Anchor Modeling отличается от Data Vault в хранении атрибутов?",
+      "options": [
+        {
+          "text": "Каждый атрибут — отдельная таблица с историей; в Data Vault атрибуты группируются в сателлиты",
+          "correct": true,
+          "explain": "Это почти 6-я нормальная форма: максимальная гибкость ценой огромного числа таблиц."
+        },
+        {
+          "text": "Anchor хранит всё в одной широкой таблице",
+          "explain": "Наоборот — максимально «узкие» таблицы."
+        },
+        {
+          "text": "Anchor не хранит историю",
+          "explain": "Хранит: у каждого атрибута своя история изменений."
+        },
+        {
+          "text": "Никакой разницы",
+          "explain": "Разница в степени дробления: атрибут против группы атрибутов."
+        }
+      ],
+      "hints": [
+        "Сколько атрибутов в одной таблице Anchor?"
+      ]
+    },
+    {
+      "id": "where-reports",
+      "title": "Где искать отчётные данные",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Ты пришёл в компанию, в хранилище сотни таблиц `hub_…`, `link_…`, `sat_…`. Нужно посчитать выручку по городам. Откуда начать?",
+      "options": [
+        {
+          "text": "Найти слой витрин или спросить, где готовые модели для аналитики: Data Vault — детальный слой, отчёты строят поверх него",
+          "correct": true,
+          "explain": "Собирать выручку из хабов и сателлитов самому долго и легко ошибиться: обычно для этого уже есть витрина."
+        },
+        {
+          "text": "Написать запрос по хабам: в них всё главное",
+          "explain": "В хабах только ключи, без сумм и городов."
+        },
+        {
+          "text": "Выгрузить все сателлиты в Excel",
+          "explain": "Объём и сложность связей сделают это почти невозможным."
+        },
+        {
+          "text": "Скопировать таблицы к себе и переделать в звезду",
+          "explain": "Сначала проверь, нет ли готовых витрин, — скорее всего, есть."
+        }
+      ],
+      "hints": [
+        "Для кого строится Data Vault, а для кого — витрины?"
+      ]
+    }
+  ]
+}
