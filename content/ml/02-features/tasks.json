@@ -1,0 +1,187 @@
+{
+  "tasks": [
+    {
+      "id": "one-hot",
+      "title": "One-hot кодирование",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Закодируй канал привлечения клиента `customers[\"acquisition_channel\"]` методом one-hot с префиксом `ch` (`pd.get_dummies(..., prefix=\"ch\", dtype=int)`). В `result` положи сумму по каждому новому столбцу — сколько клиентов пришло из каждого канала.",
+      "starter": "channels = \nprint(channels.head())\n\nresult = ",
+      "solution": "channels = pd.get_dummies(customers[\"acquisition_channel\"], prefix=\"ch\", dtype=int)\nprint(channels.head())\n\nresult = channels.sum()",
+      "hints": [
+        "`pd.get_dummies(customers[\"acquisition_channel\"], prefix=\"ch\", dtype=int)`.",
+        "Сумма по столбцам — `channels.sum()`."
+      ],
+      "explanation": "Получилось 5 столбцов из 0 и 1, в каждой строке ровно одна единица. Сумма столбца равна числу клиентов из канала, то есть совпадает с `value_counts()`. Для линейных моделей один столбец часто удаляют (`drop_first=True`): он однозначно восстанавливается по остальным.",
+      "selfTest": {
+        "correct": [
+          "ch = customers[\"acquisition_channel\"].value_counts()\nch.index = \"ch_\" + ch.index\nresult = ch"
+        ],
+        "wrong": [
+          "result = pd.get_dummies(customers[\"acquisition_channel\"], dtype=int).sum()",
+          "result = pd.get_dummies(customers[\"city\"], prefix=\"ch\", dtype=int).sum()"
+        ]
+      }
+    },
+    {
+      "id": "impute-age",
+      "title": "Пропуски и флаг",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "В заготовке посчитан возраст клиентов на 1 июля 2026 (`age`); у части клиентов он пустой. Создай таблицу `features` с двумя признаками:",
+        "- `age` — возраст, где пропуски заполнены **медианой**;",
+        "- `age_missing` — 1, если возраст был пустым, иначе 0.",
+        "",
+        "В `result` положи список: `[медиана возраста, сумма столбца age_missing]`."
+      ],
+      "starter": "age = ((pd.Timestamp(\"2026-07-01\") - customers[\"birth_date\"]).dt.days / 365.25) // 1\n\nfeatures = pd.DataFrame({\n    \"age\": ,\n    \"age_missing\": ,\n})\n\nresult = ",
+      "solution": "age = ((pd.Timestamp(\"2026-07-01\") - customers[\"birth_date\"]).dt.days / 365.25) // 1\n\nfeatures = pd.DataFrame({\n    \"age\": age.fillna(age.median()),\n    \"age_missing\": age.isna().astype(int),\n})\n\nresult = [age.median(), features[\"age_missing\"].sum()]",
+      "hints": [
+        "Заполнение: `age.fillna(age.median())`.",
+        "Флаг: `age.isna().astype(int)`."
+      ],
+      "explanation": "Медиана — 34 года, заполнено 228 пропусков. Флаг сохраняет информацию о том, что значение было неизвестно: без него модель не отличит настоящих 34-летних от «заполненных».",
+      "selfTest": {
+        "correct": [
+          "age = ((pd.Timestamp(\"2026-07-01\") - customers[\"birth_date\"]).dt.days / 365.25) // 1\nm = float(np.nanmedian(age))\nresult = [m, int(age.isnull().sum())]"
+        ],
+        "wrong": [
+          "age = ((pd.Timestamp(\"2026-07-01\") - customers[\"birth_date\"]).dt.days / 365.25) // 1\nresult = [age.mean(), age.isna().sum()]"
+        ]
+      }
+    },
+    {
+      "id": "minmax",
+      "title": "Min-max масштабирование",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Приведи признаки `recency`, `frequency`, `monetary` из `df` к диапазону от 0 до 1 методом min-max. В `result` положи первые три строки получившейся таблицы, округлив до 3 знаков.",
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\ncols = [\"recency\", \"frequency\", \"monetary\"]\n\nscaled = \nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\ncols = [\"recency\", \"frequency\", \"monetary\"]\n\nscaled = (df[cols] - df[cols].min()) / (df[cols].max() - df[cols].min())\nresult = scaled.head(3).round(3)",
+      "hints": [
+        "Для всей таблицы сразу: `(df[cols] - df[cols].min()) / (df[cols].max() - df[cols].min())`."
+      ],
+      "explanation": "Теперь все три признака живут на одной шкале от 0 до 1, и при расчёте расстояний рубли не будут «перекрикивать» дни. Минус min-max — чувствительность к выбросам: один клиент с огромной суммой сожмёт всех остальных к нулю.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\ncols = [\"recency\", \"frequency\", \"monetary\"]\nx = df[cols]\nlo, hi = x.min(), x.max()\nresult = ((x - lo) / (hi - lo)).iloc[:3].round(3)"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\ncols = [\"recency\", \"frequency\", \"monetary\"]\nresult = ((df[cols] - df[cols].mean()) / df[cols].std()).head(3).round(3)",
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\ncols = [\"recency\", \"frequency\", \"monetary\"]\nresult = (df[cols] / df[cols].max()).head(3).round(3)"
+        ]
+      }
+    },
+    {
+      "id": "log-skew",
+      "title": "Логарифм против скошенности",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Посчитай коэффициент асимметрии (`.skew()`) признака `monetary` до и после преобразования `np.log1p`. В `result` — список из двух чисел, округлённых до 2 знаков: `[до, после]`.",
+      "starter": "import numpy as np\n\ncut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\n\nbefore = \nafter = \nresult = ",
+      "solution": "import numpy as np\n\ncut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\n\nbefore = df[\"monetary\"].skew()\nafter = np.log1p(df[\"monetary\"]).skew()\nresult = [round(before, 2), round(after, 2)]",
+      "hints": [
+        "Асимметрия: `df[\"monetary\"].skew()`.",
+        "После логарифма: `np.log1p(df[\"monetary\"]).skew()`."
+      ],
+      "explanation": "Асимметрия 2,5 означает длинный правый хвост: немногие клиенты тратят в десятки раз больше остальных. После логарифма она около −0,3 — распределение почти симметричное, и выбросы перестают доминировать.",
+      "selfTest": {
+        "correct": [
+          "import numpy as np\n\ncut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nm = df.monetary\nresult = [round(float(m.skew()), 2), round(float(pd.Series(np.log(m + 1)).skew()), 2)]"
+        ],
+        "wrong": [
+          "import numpy as np\n\ncut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nresult = [round(df.monetary.skew(), 2), round(np.sqrt(df.monetary).skew(), 2)]"
+        ]
+      }
+    },
+    {
+      "id": "rare-cities",
+      "title": "Редкие категории",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "В `customers[\"city\"]` 24 города и пропуски. Подготовь признак `city_group` для one-hot:",
+        "- 5 самых частых городов оставь как есть;",
+        "- остальные города замени на `\"другой\"`;",
+        "- пропуски — на `\"не указан\"`.",
+        "",
+        "В `result` положи `value_counts()` нового признака."
+      ],
+      "starter": "top5 = customers[\"city\"].value_counts().head(5).index\n\ncity_group = \nresult = ",
+      "solution": "top5 = customers[\"city\"].value_counts().head(5).index\n\ncity = customers[\"city\"]\ncity_group = city.where(city.isin(top5), \"другой\")\ncity_group = city_group.mask(city.isna(), \"не указан\")\nresult = city_group.value_counts()",
+      "hints": [
+        "`city.where(city.isin(top5), \"другой\")` оставит топ-5, остальное заменит. Пропуски тоже станут «другой».",
+        "Затем верни пропускам своё значение: `.mask(city.isna(), \"не указан\")`."
+      ],
+      "explanation": "Вместо 24 столбцов one-hot получится 7, и в каждом достаточно клиентов, чтобы модель выучила что-то надёжное. Порог «топ-N» подбирают так, чтобы в каждой группе было хотя бы несколько десятков объектов.",
+      "selfTest": {
+        "correct": [
+          "top5 = customers.city.value_counts().head(5).index\ndef g(c):\n    if pd.isna(c):\n        return \"не указан\"\n    return c if c in top5 else \"другой\"\nresult = customers.city.apply(g).value_counts()"
+        ],
+        "wrong": [
+          "top5 = customers.city.value_counts().head(5).index\nresult = customers.city.where(customers.city.isin(top5), \"другой\").value_counts()",
+          "top5 = customers.city.value_counts().head(5).index\nresult = customers.city.fillna(\"не указан\").where(lambda s: s.isin(top5), \"другой\").value_counts()"
+        ]
+      }
+    },
+    {
+      "id": "scaler-leakage",
+      "title": "Где считать среднее",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Перед обучением признаки стандартизируют: `(x − среднее) / std`. По каким данным считать среднее и std?",
+      "options": [
+        {
+          "text": "Только по обучающей выборке, а затем применить те же числа к тестовой",
+          "correct": true,
+          "explain": "Тестовая выборка изображает «будущие» данные: в момент обучения их статистики неизвестны."
+        },
+        {
+          "text": "По всем данным сразу — так точнее",
+          "explain": "Так информация из теста попадает в обучение, и оценка качества получается завышенной."
+        },
+        {
+          "text": "Отдельно по обучающей и отдельно по тестовой",
+          "explain": "Тогда одно и то же значение признака в двух выборках превратится в разные числа."
+        },
+        {
+          "text": "Неважно, на результат это не влияет",
+          "explain": "Влияет: это частый источник утечки данных."
+        }
+      ],
+      "hints": [
+        "Что из этого известно модели в момент обучения?"
+      ]
+    },
+    {
+      "id": "why-scale",
+      "title": "Зачем масштабировать",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Модель k-ближайших соседей ищет похожих клиентов по расстоянию между признаками `recency` (дни, до 455) и `monetary` (рубли, до 650 000). Что будет без масштабирования?",
+      "options": [
+        {
+          "text": "Расстояние будет определяться почти только суммой покупок, а давность покупки перестанет влиять",
+          "correct": true,
+          "explain": "Разница в 10 000 ₽ «весит» как 10 000 дней. Масштабирование уравнивает вклад признаков."
+        },
+        {
+          "text": "Ничего: модель сама учтёт единицы измерения",
+          "explain": "kNN просто считает расстояние — единиц он не знает."
+        },
+        {
+          "text": "Сильнее повлияет давность покупки",
+          "explain": "Наоборот: числа в днях намного меньше чисел в рублях."
+        },
+        {
+          "text": "Модель выдаст ошибку",
+          "explain": "Ошибки не будет, просто качество будет хуже."
+        }
+      ],
+      "hints": [
+        "Какой признак даёт бо́льшие разности?"
+      ]
+    }
+  ]
+}

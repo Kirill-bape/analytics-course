@@ -1,0 +1,217 @@
+{
+  "tasks": [
+    {
+      "id": "polyfit-line1",
+      "title": "Цена минуты простоя",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Для линии `line_id = 1` построй прямую `produced_units` от `downtime_min` через `np.polyfit(x, y, 1)`. Строки с пропусками простоя убери. В `result` положи **наклон** прямой, округлённый до 3 знаков.",
+      "starter": "p = production.dropna(subset=[\"downtime_min\"])\nline1 = \n\nslope, intercept = \nresult = ",
+      "solution": "p = production.dropna(subset=[\"downtime_min\"])\nline1 = p[p[\"line_id\"] == 1]\n\nslope, intercept = np.polyfit(line1[\"downtime_min\"], line1[\"produced_units\"], 1)\nresult = round(slope, 3)",
+      "hints": [
+        "`np.polyfit(x, y, 1)` возвращает `[наклон, сдвиг]`.",
+        "Порядок аргументов: сначала признак (`downtime_min`), потом цель (`produced_units`)."
+      ],
+      "explanation": "Наклон около −0,82: каждая минута простоя на линии 1 стоит почти единицу продукции, а час простоя — около 50 единиц. Такую оценку можно сразу перевести в деньги и сравнить со стоимостью профилактики.",
+      "selfTest": {
+        "correct": [
+          "from scipy import stats\np = production[production.line_id == 1].dropna(subset=[\"downtime_min\"])\nresult = round(stats.linregress(p.downtime_min, p.produced_units).slope, 3)"
+        ],
+        "wrong": [
+          "p = production.dropna(subset=[\"downtime_min\"])\nl = p[p.line_id == 1]\nresult = round(np.polyfit(l.produced_units, l.downtime_min, 1)[0], 3)",
+          "p = production.dropna(subset=[\"downtime_min\"])\nresult = round(np.polyfit(p.downtime_min, p.produced_units, 1)[0], 3)"
+        ]
+      }
+    },
+    {
+      "id": "lstsq",
+      "title": "Регрессия на двух признаках",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Построй линейную регрессию выпуска `produced_units` по двум признакам: `planned_units` и `downtime_min` (все линии, без пропусков).",
+        "",
+        "Собери матрицу `X` со столбцом единиц, найди веса через `np.linalg.lstsq` и положи в `result` список весов `[w0, w_план, w_простой]`, округлённых до 3 знаков."
+      ],
+      "starter": "p = production.dropna(subset=[\"downtime_min\"])\nX = \ny = p[\"produced_units\"].to_numpy()\n\nw, *_ = \nresult = ",
+      "solution": "p = production.dropna(subset=[\"downtime_min\"])\nX = np.column_stack([np.ones(len(p)), p[\"planned_units\"], p[\"downtime_min\"]])\ny = p[\"produced_units\"].to_numpy()\n\nw, *_ = np.linalg.lstsq(X, y, rcond=None)\nresult = [round(v, 3) for v in w]",
+      "hints": [
+        "`np.column_stack([np.ones(len(p)), p[\"planned_units\"], p[\"downtime_min\"]])`.",
+        "`np.linalg.lstsq(X, y, rcond=None)` возвращает четыре значения — веса первые."
+      ],
+      "explanation": "Выпуск ≈ 22,5 + 0,895 × план − 0,847 × минуты простоя. При неизменном плане минута простоя по всем линиям стоит около 0,85 единицы — почти как на линии 1. Это и есть «влияние при прочих равных».",
+      "selfTest": {
+        "correct": [
+          "p = production.dropna(subset=[\"downtime_min\"])\nA = np.c_[np.ones(len(p)), p.planned_units.to_numpy(), p.downtime_min.to_numpy()]\nw = np.linalg.solve(A.T @ A, A.T @ p.produced_units.to_numpy())\nresult = list(np.round(w, 3))"
+        ],
+        "wrong": [
+          "p = production.dropna(subset=[\"downtime_min\"])\nX = np.column_stack([p[\"planned_units\"], p[\"downtime_min\"]])\nw, *_ = np.linalg.lstsq(X, p[\"produced_units\"], rcond=None)\nresult = [0.0] + [round(v, 3) for v in w]"
+        ]
+      }
+    },
+    {
+      "id": "r2-mae",
+      "title": "Насколько хороша модель",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "В заготовке обучена регрессия из прошлого задания: прогнозы лежат в `pred`, факт — в `y`. Посчитай **R²** (до 4 знаков) и **MAE** (до 2 знаков). В `result` — список `[r2, mae]`.",
+      "starter": "p = production.dropna(subset=[\"downtime_min\"])\nX = np.column_stack([np.ones(len(p)), p[\"planned_units\"], p[\"downtime_min\"]])\ny = p[\"produced_units\"].to_numpy()\nw, *_ = np.linalg.lstsq(X, y, rcond=None)\npred = X @ w\n\nr2 = \nmae = \nresult = [round(r2, 4), round(mae, 2)]",
+      "solution": "p = production.dropna(subset=[\"downtime_min\"])\nX = np.column_stack([np.ones(len(p)), p[\"planned_units\"], p[\"downtime_min\"]])\ny = p[\"produced_units\"].to_numpy()\nw, *_ = np.linalg.lstsq(X, y, rcond=None)\npred = X @ w\n\nr2 = 1 - ((y - pred) ** 2).sum() / ((y - y.mean()) ** 2).sum()\nmae = np.abs(y - pred).mean()\nresult = [round(r2, 4), round(mae, 2)]",
+      "hints": [
+        "R²: `1 - ((y - pred) ** 2).sum() / ((y - y.mean()) ** 2).sum()`.",
+        "MAE: `np.abs(y - pred).mean()`."
+      ],
+      "explanation": "R² ≈ 0,977: план и простой объясняют почти весь разброс выпуска (в основном за счёт плана — у линий он очень разный). MAE ≈ 20 единиц: в среднем прогноз смены промахивается на 20 изделий. Для бизнеса понятнее MAE: её можно сравнить с типичным выпуском.",
+      "selfTest": {
+        "correct": [
+          "p = production.dropna(subset=[\"downtime_min\"])\nX = np.column_stack([np.ones(len(p)), p[\"planned_units\"], p[\"downtime_min\"]])\ny = p[\"produced_units\"].to_numpy()\nw, *_ = np.linalg.lstsq(X, y, rcond=None)\npred = X @ w\nres = y - pred\nr2 = 1 - np.var(res) / np.var(y)\nresult = [round(r2, 4), round(np.mean(np.abs(res)), 2)]"
+        ],
+        "wrong": [
+          "p = production.dropna(subset=[\"downtime_min\"])\nX = np.column_stack([np.ones(len(p)), p[\"planned_units\"], p[\"downtime_min\"]])\ny = p[\"produced_units\"].to_numpy()\nw, *_ = np.linalg.lstsq(X, y, rcond=None)\npred = X @ w\nr2 = 1 - ((y - pred) ** 2).sum() / (y ** 2).sum()\nresult = [round(r2, 4), round(np.sqrt(((y - pred) ** 2).mean()), 2)]"
+        ]
+      }
+    },
+    {
+      "id": "predict-by-hand",
+      "title": "Прогноз по формуле",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Модель выпуска: `выпуск = 22,5 + 0,9 × план − 0,85 × минуты простоя`. Какой прогноз для смены с планом **420** изделий и простоем **30** минут?",
+      "answer": 375,
+      "tolerance": 0.5,
+      "unit": "изделий",
+      "hints": [
+        "Подставь числа: 22,5 + 0,9 × 420 − 0,85 × 30."
+      ],
+      "wrongAnswers": [
+        {
+          "value": 426,
+          "message": "Простой уменьшает выпуск: у его коэффициента знак минус."
+        }
+      ],
+      "explanation": "22,5 + 378 − 25,5 = 375. Именно это делает `X @ w` для каждой строки.",
+      "selfTest": {
+        "correct": [
+          "375"
+        ],
+        "wrong": [
+          "426"
+        ]
+      }
+    },
+    {
+      "id": "sigmoid",
+      "title": "Сигмоида",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Логистическая регрессия выдала значения `z = [-2, 0, 1.5]` для трёх клиентов. Переведи их в вероятности сигмоидой `1 / (1 + e^(−z))`. В `result` — список вероятностей, округлённых до 3 знаков.",
+      "starter": "z = np.array([-2, 0, 1.5])\n\nprob = \nresult = ",
+      "solution": "z = np.array([-2, 0, 1.5])\n\nprob = 1 / (1 + np.exp(-z))\nresult = [round(v, 3) for v in prob]",
+      "hints": [
+        "`np.exp(-z)` считает экспоненту сразу для всего массива."
+      ],
+      "explanation": "z = 0 даёт ровно 0,5 — модель «не уверена». Отрицательные z дают вероятность меньше половины, положительные — больше.",
+      "selfTest": {
+        "correct": [
+          "import math\nresult = [round(1 / (1 + math.exp(-v)), 3) for v in [-2, 0, 1.5]]",
+          "from scipy.special import expit\nresult = list(np.round(expit(np.array([-2, 0, 1.5])), 3))"
+        ],
+        "wrong": [
+          "z = np.array([-2, 0, 1.5])\nresult = list(np.round(1 / (1 + np.exp(z)), 3))"
+        ]
+      }
+    },
+    {
+      "id": "logistic-gd",
+      "title": "Логистическая регрессия своими руками",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "В заготовке подготовлены стандартизированные признаки `recency` и `frequency` со столбцом единиц (`X`) и ответ `y` — вернулся ли клиент.",
+        "",
+        "Обучи логистическую регрессию градиентным спуском: веса `w` с нулей, **2000** шагов, скорость обучения **0.1**. Затем посчитай accuracy с порогом 0,5 (это то же самое, что `X @ w > 0`). В `result` — accuracy до 3 знаков."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nfeats = df[[\"recency\", \"frequency\"]]\nXs = ((feats - feats.mean()) / feats.std()).to_numpy()\nX = np.column_stack([np.ones(len(Xs)), Xs])\ny = df[\"returned\"].to_numpy()\n\nw = np.zeros(3)\nfor step in range(2000):\n    p = \n    w -= \n\nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nfeats = df[[\"recency\", \"frequency\"]]\nXs = ((feats - feats.mean()) / feats.std()).to_numpy()\nX = np.column_stack([np.ones(len(Xs)), Xs])\ny = df[\"returned\"].to_numpy()\n\nw = np.zeros(3)\nfor step in range(2000):\n    p = 1 / (1 + np.exp(-X @ w))\n    w -= 0.1 * X.T @ (p - y) / len(y)\n\nresult = round(((X @ w > 0).astype(int) == y).mean(), 3)",
+      "hints": [
+        "Вероятности: `p = 1 / (1 + np.exp(-X @ w))`.",
+        "Шаг: `w -= 0.1 * X.T @ (p - y) / len(y)`.",
+        "Предсказание класса: `(X @ w > 0).astype(int)`."
+      ],
+      "mistakes": [
+        {
+          "pattern": "w\\s*\\+=",
+          "message": "Градиент показывает направление **роста** ошибки, поэтому веса сдвигают в противоположную сторону: `w -= ...`."
+        }
+      ],
+      "explanation": "Модель на двух признаках угадывает 78% — лучше лучшего правила-порога (77%), потому что учитывает ещё и частоту покупок. Веса около −1,9 у давности и +1,0 у частоты: давность важнее.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nfeats = df[[\"recency\", \"frequency\"]]\nXs = ((feats - feats.mean()) / feats.std()).to_numpy()\nX = np.column_stack([np.ones(len(Xs)), Xs])\ny = df[\"returned\"].to_numpy()\nw = np.zeros(X.shape[1])\nfor _ in range(2000):\n    grad = X.T.dot(1 / (1 + np.exp(-X.dot(w))) - y) / X.shape[0]\n    w = w - 0.1 * grad\nprob = 1 / (1 + np.exp(-X.dot(w)))\nresult = round(float(np.mean((prob >= 0.5) == y)), 3)"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nfeats = df[[\"recency\", \"frequency\"]]\nXs = ((feats - feats.mean()) / feats.std()).to_numpy()\nX = np.column_stack([np.ones(len(Xs)), Xs])\ny = df[\"returned\"].to_numpy()\nw = np.zeros(3)\nfor _ in range(20):\n    p = 1 / (1 + np.exp(-X @ w))\n    w -= 0.1 * X.T @ (p - y) / len(y)\nresult = round(((X @ w > 0).astype(int) == y).mean(), 3)",
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nfeats = df[[\"recency\", \"frequency\"]]\nXs = ((feats - feats.mean()) / feats.std()).to_numpy()\nX = np.column_stack([np.ones(len(Xs)), Xs])\ny = df[\"returned\"].to_numpy()\nw = np.zeros(3)\nfor _ in range(2000):\n    p = 1 / (1 + np.exp(-X @ w))\n    w += 0.1 * X.T @ (p - y) / len(y)\nresult = round(((X @ w > 0).astype(int) == y).mean(), 3)"
+        ]
+      }
+    },
+    {
+      "id": "coef-meaning",
+      "title": "Как читать коэффициент",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "В регрессии `выпуск = 22,5 + 0,9 × план − 0,85 × простой` что означает коэффициент −0,85?",
+      "options": [
+        {
+          "text": "Каждая дополнительная минута простоя при том же плане уменьшает прогноз выпуска в среднем на 0,85 изделия",
+          "correct": true,
+          "explain": "Коэффициент — изменение прогноза при росте признака на единицу при прочих равных."
+        },
+        {
+          "text": "Простой снижает выпуск на 85%",
+          "explain": "Коэффициент измеряется в единицах цели на единицу признака, а не в процентах."
+        },
+        {
+          "text": "Простой объясняет 85% разброса выпуска",
+          "explain": "Долю объяснённого разброса показывает R², а не коэффициент."
+        },
+        {
+          "text": "Простой бывает в 85% смен",
+          "explain": "Коэффициент ничего не говорит о частоте простоев."
+        }
+      ],
+      "hints": [
+        "Что произойдёт с прогнозом, если простой вырастет на 1 минуту?"
+      ]
+    },
+    {
+      "id": "classify-or-regress",
+      "title": "Какая регрессия нужна",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Нужно оценить **вероятность**, что клиент откроет рассылку (да/нет). Какую модель взять?",
+      "options": [
+        {
+          "text": "Логистическую регрессию: она выдаёт вероятность от 0 до 1",
+          "correct": true,
+          "explain": "Целевая переменная бинарная, а сигмоида гарантирует ответ в диапазоне от 0 до 1."
+        },
+        {
+          "text": "Линейную регрессию по 0 и 1",
+          "explain": "Линейная модель может выдать −0,3 или 1,4 — это не вероятности."
+        },
+        {
+          "text": "Кластеризацию",
+          "explain": "Ответы известны по истории — это обучение с учителем."
+        },
+        {
+          "text": "np.polyfit второй степени",
+          "explain": "Это та же линейная регрессия, только с квадратом признака."
+        }
+      ],
+      "hints": [
+        "Чем ответ логистической регрессии отличается от линейной?"
+      ]
+    }
+  ]
+}

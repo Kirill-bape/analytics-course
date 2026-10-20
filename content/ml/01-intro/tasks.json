@@ -1,0 +1,193 @@
+{
+  "tasks": [
+    {
+      "id": "task-type",
+      "title": "Регрессия или классификация",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Магазин хочет заранее знать, **сколько рублей** клиент потратит в следующем месяце. Какая это задача?",
+      "options": [
+        {
+          "text": "Регрессия: предсказываем число",
+          "correct": true,
+          "explain": "Целевая переменная — сумма в рублях, то есть число на непрерывной шкале."
+        },
+        {
+          "text": "Классификация: предсказываем класс",
+          "explain": "Классификация отвечает на вопрос «к какой группе относится», например «купит / не купит»."
+        },
+        {
+          "text": "Кластеризация",
+          "explain": "Кластеризация ищет группы без правильных ответов, а здесь ответ (сумма) известен по истории."
+        },
+        {
+          "text": "Обучение с подкреплением",
+          "explain": "Здесь нет агента, который действует и получает награду."
+        }
+      ],
+      "hints": [
+        "Что за значение мы предсказываем — число или категорию?"
+      ]
+    },
+    {
+      "id": "unsupervised",
+      "title": "Задача без ответов",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Маркетолог просит «разбить клиентов на несколько групп со схожим поведением», но никаких готовых групп нет. Какой подход нужен?",
+      "options": [
+        {
+          "text": "Кластеризация — обучение без учителя",
+          "correct": true,
+          "explain": "Правильных ответов нет: алгоритм сам ищет группы похожих объектов."
+        },
+        {
+          "text": "Классификация",
+          "explain": "Для классификации нужны примеры с известными классами, а их нет."
+        },
+        {
+          "text": "Регрессия",
+          "explain": "Регрессия предсказывает число, а здесь нужно найти группы."
+        },
+        {
+          "text": "Без ML никак не обойтись, а с ML — любой метод",
+          "explain": "Метод зависит от задачи: здесь нет целевой переменной, значит, обучение без учителя."
+        }
+      ],
+      "hints": [
+        "Есть ли у нас правильные ответы для обучения?"
+      ]
+    },
+    {
+      "id": "baseline",
+      "title": "Базовая модель",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": [
+        "Заготовка строит учебный набор `df` (признаки клиентов на 1 апреля 2026 и ответ `returned` — вернулся ли клиент за следующие три месяца).",
+        "",
+        "Посчитай accuracy базовой модели «всегда отвечать самым частым классом»: долю самого частого значения `returned`. Округли до 3 знаков и положи в `result`."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\n\nshare_returned = df[\"returned\"].mean()\nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\n\nshare_returned = df[\"returned\"].mean()\nresult = round(max(share_returned, 1 - share_returned), 3)",
+      "hints": [
+        "Доля единиц — `df[\"returned\"].mean()`, доля нулей — `1 - …`.",
+        "Нужна бо́льшая из двух долей: `max(a, b)`."
+      ],
+      "explanation": "Вернулись 46,6% клиентов, значит, ответ «не вернётся» для всех угадывает 53,4%. Любая модель должна заметно обгонять это число, иначе она не нужна.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nresult = round(df[\"returned\"].value_counts(normalize=True).max(), 3)"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nresult = round(df[\"returned\"].mean(), 3)"
+        ]
+      }
+    },
+    {
+      "id": "rule-model",
+      "title": "Модель-правило",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Проверь правило «клиент вернётся, если с последней покупки прошло **не больше 60 дней**». Посчитай его accuracy — долю клиентов, для которых правило угадало `returned`. Округли до 3 знаков, ответ в `result`.",
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\n\npred = \nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\n\npred = (df[\"recency\"] <= 60).astype(int)\nresult = round((pred == df[\"returned\"]).mean(), 3)",
+      "hints": [
+        "Предсказание: `(df[\"recency\"] <= 60).astype(int)` — 1 или 0.",
+        "Доля совпадений: `(pred == df[\"returned\"]).mean()`."
+      ],
+      "explanation": "Одно простое правило угадывает 76% — на 23 пункта лучше базовой модели. Давность покупки — один из сильнейших признаков возврата клиента: это буква R в RFM-анализе.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nresult = round(((df.recency <= 60) == (df.returned == 1)).mean(), 3)"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nresult = round(((df.recency < 60).astype(int) != df.returned).mean(), 3)",
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nresult = round(((df.recency >= 60).astype(int) == df.returned).mean(), 3)"
+        ]
+      }
+    },
+    {
+      "id": "best-threshold",
+      "title": "Обучение: лучший порог",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "«Обучи» модель-правило: перебери пороги `t` от 10 до 300 дней с шагом 10 (`range(10, 310, 10)`) и для каждого посчитай accuracy правила «вернётся, если `recency <= t`».",
+        "",
+        "В `result` положи порог с **наибольшей** accuracy."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\n\naccs = {}\nfor t in range(10, 310, 10):\n    \n\nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\n\naccs = {}\nfor t in range(10, 310, 10):\n    pred = (df[\"recency\"] <= t).astype(int)\n    accs[t] = (pred == df[\"returned\"]).mean()\n\nresult = max(accs, key=accs.get)",
+      "hints": [
+        "Внутри цикла: `accs[t] = ((df[\"recency\"] <= t).astype(int) == df[\"returned\"]).mean()`.",
+        "Ключ с наибольшим значением: `max(accs, key=accs.get)`."
+      ],
+      "explanation": "Лучший порог — 70 дней, accuracy 77%. Именно так и выглядит обучение: перебор (или умный поиск) параметров, при которых модель меньше всего ошибается на примерах. У настоящих моделей параметров тысячи и миллионы, но идея та же.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nimport numpy as np\nts = np.arange(10, 310, 10)\nacc = [((df.recency <= t).astype(int) == df.returned).mean() for t in ts]\nresult = int(ts[int(np.argmax(acc))])"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\naccs = {t: ((df.recency <= t).astype(int) == df.returned).mean() for t in range(10, 310, 10)}\nresult = min(accs, key=accs.get)"
+        ]
+      }
+    },
+    {
+      "id": "leakage",
+      "title": "Подозрительно хорошая модель",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Коллега добавил в признаки «число заказов клиента в апреле 2026» и получил accuracy 99%. Целевая переменная — вернулся ли клиент с апреля по июнь. Что не так?",
+      "options": [
+        {
+          "text": "Утечка данных: признак взят из периода, который модель должна предсказать",
+          "correct": true,
+          "explain": "Заказ в апреле и есть «возврат». На момент предсказания (1 апреля) этого признака ещё не существует, поэтому в жизни модель не сработает."
+        },
+        {
+          "text": "Всё отлично, модель можно внедрять",
+          "explain": "Слишком хороший результат — повод искать ошибку, а не радоваться."
+        },
+        {
+          "text": "Нужно больше данных",
+          "explain": "Объём тут ни при чём: признак подсматривает в ответ."
+        },
+        {
+          "text": "Модель переобучилась на шум",
+          "explain": "Проблема не в шуме, а в признаке, известном только задним числом."
+        }
+      ],
+      "hints": [
+        "Известно ли значение этого признака 1 апреля?"
+      ]
+    },
+    {
+      "id": "accuracy-paradox",
+      "title": "Парадокс accuracy",
+      "difficulty": 2,
+      "type": "number",
+      "prompt": "Из 1000 клиентов банка за год уходят 50. Модель всегда отвечает «клиент не уйдёт». Какая у неё accuracy в процентах?",
+      "answer": 95,
+      "unit": "%",
+      "hints": [
+        "Сколько клиентов модель угадает, если всем скажет «не уйдёт»?"
+      ],
+      "wrongAnswers": [
+        {
+          "value": 5,
+          "message": "Это доля ушедших — тех, на ком модель как раз ошибается."
+        }
+      ],
+      "explanation": "950 из 1000 — 95% правильных ответов, но ни одного найденного уходящего клиента. При редком классе accuracy обманчива: смотрят на precision, recall и ROC AUC — о них в уроке про метрики.",
+      "selfTest": {
+        "correct": [
+          "95"
+        ],
+        "wrong": [
+          "5"
+        ]
+      }
+    }
+  ]
+}
