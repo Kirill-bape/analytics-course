@@ -1,0 +1,195 @@
+{
+  "tasks": [
+    {
+      "id": "greedy",
+      "title": "Жадный выбор",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Три баннера уже показывали (`shows`) и получили клики (`clicks`). Посчитай наблюдаемый CTR каждого и выбери баннер с наибольшим — так поступила бы «жадная» стратегия. В `result` — буква баннера.",
+      "starter": "shows = {\"A\": 1000, \"B\": 200, \"C\": 50}\nclicks = {\"A\": 40, \"B\": 11, \"C\": 1}\n\nctr = {name: clicks[name] / shows[name] for name in shows}\nresult = ",
+      "solution": "shows = {\"A\": 1000, \"B\": 200, \"C\": 50}\nclicks = {\"A\": 40, \"B\": 11, \"C\": 1}\n\nctr = {name: clicks[name] / shows[name] for name in shows}\nresult = max(ctr, key=ctr.get)",
+      "hints": [
+        "Ключ с наибольшим значением: `max(ctr, key=ctr.get)`."
+      ],
+      "explanation": "У баннера B наблюдаемый CTR 5,5% — лучший. Но про C мы знаем очень мало: 50 показов и 1 клик могли случиться и при CTR 7%. Жадная стратегия больше никогда не покажет C и не узнает этого.",
+      "selfTest": {
+        "correct": [
+          "shows = {\"A\": 1000, \"B\": 200, \"C\": 50}\nclicks = {\"A\": 40, \"B\": 11, \"C\": 1}\nresult = sorted(shows, key=lambda k: clicks[k] / shows[k])[-1]"
+        ],
+        "wrong": [
+          "shows = {\"A\": 1000, \"B\": 200, \"C\": 50}\nclicks = {\"A\": 40, \"B\": 11, \"C\": 1}\nresult = max(clicks, key=clicks.get)"
+        ]
+      }
+    },
+    {
+      "id": "ucb",
+      "title": "Индекс UCB",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Для тех же баннеров посчитай UCB1 = CTR + √(2 · ln N / n), где `N` — всего показов, `n` — показов баннера. В `result` — словарь `{баннер: UCB}`, значения до 3 знаков.",
+      "starter": "shows = {\"A\": 1000, \"B\": 200, \"C\": 50}\nclicks = {\"A\": 40, \"B\": 11, \"C\": 1}\n\nN = sum(shows.values())\nresult = {}\nfor name in shows:\n    \n",
+      "solution": "shows = {\"A\": 1000, \"B\": 200, \"C\": 50}\nclicks = {\"A\": 40, \"B\": 11, \"C\": 1}\n\nN = sum(shows.values())\nresult = {}\nfor name in shows:\n    ctr = clicks[name] / shows[name]\n    result[name] = round(ctr + np.sqrt(2 * np.log(N) / shows[name]), 3)\n",
+      "hints": [
+        "Натуральный логарифм: `np.log(N)`.",
+        "Бонус: `np.sqrt(2 * np.log(N) / shows[name])`."
+      ],
+      "explanation": "Наибольший UCB у C (0,55): его наблюдаемый CTR худший, но бонус за неизвестность огромный. UCB покажет C ещё несколько раз и либо убедится, что он плох, либо обнаружит, что он лучший. A показан 1000 раз, и его бонус уже маленький.",
+      "selfTest": {
+        "correct": [
+          "shows = {\"A\": 1000, \"B\": 200, \"C\": 50}\nclicks = {\"A\": 40, \"B\": 11, \"C\": 1}\nimport math\nN = 1250\nresult = {k: round(clicks[k] / shows[k] + math.sqrt(2 * math.log(N) / shows[k]), 3) for k in [\"A\", \"B\", \"C\"]}"
+        ],
+        "wrong": [
+          "shows = {\"A\": 1000, \"B\": 200, \"C\": 50}\nclicks = {\"A\": 40, \"B\": 11, \"C\": 1}\nN = sum(shows.values())\nresult = {k: round(clicks[k] / shows[k] + np.sqrt(2 * np.log10(N) / shows[k]), 3) for k in shows}",
+          "shows = {\"A\": 1000, \"B\": 200, \"C\": 50}\nclicks = {\"A\": 40, \"B\": 11, \"C\": 1}\nN = sum(shows.values())\nresult = {k: round(clicks[k] / shows[k] + np.sqrt(2 * np.log(N) / N), 3) for k in shows}"
+        ]
+      }
+    },
+    {
+      "id": "epsilon-greedy",
+      "title": "ε-жадный бандит",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Допиши симуляцию ε-жадного бандита на 5000 показов с `eps = 0.1`: выбери баннер (`random_arm`, если `explore`, иначе — с лучшим наблюдаемым `ctr`) и обнови счётчики показов и кликов.",
+        "",
+        "Порядок вызовов `rng` уже задан в заготовке — не меняй его. В `result` — список: `[доля показов лучшего баннера (номер 2), до 2 знаков; всего кликов]`."
+      ],
+      "starter": "rng = np.random.default_rng(1)\np_true = np.array([0.04, 0.05, 0.07])     # настоящие CTR — алгоритм их не знает\nshows, clicks = np.zeros(3), np.zeros(3)\neps = 0.1\n\nfor step in range(5000):\n    explore = rng.random() < eps\n    random_arm = rng.integers(3)\n    ctr = np.divide(clicks, shows, out=np.zeros(3), where=shows > 0)\n    arm = \n    click = rng.random() < p_true[arm]\n    # обнови shows и clicks\n    \n\nresult = [round(shows[2] / shows.sum(), 2), int(clicks.sum())]",
+      "solution": "rng = np.random.default_rng(1)\np_true = np.array([0.04, 0.05, 0.07])     # настоящие CTR — алгоритм их не знает\nshows, clicks = np.zeros(3), np.zeros(3)\neps = 0.1\n\nfor step in range(5000):\n    explore = rng.random() < eps\n    random_arm = rng.integers(3)\n    ctr = np.divide(clicks, shows, out=np.zeros(3), where=shows > 0)\n    arm = random_arm if explore else int(np.argmax(ctr))\n    click = rng.random() < p_true[arm]\n    shows[arm] += 1\n    clicks[arm] += click\n\nresult = [round(shows[2] / shows.sum(), 2), int(clicks.sum())]",
+      "hints": [
+        "Выбор: `arm = random_arm if explore else int(np.argmax(ctr))`.",
+        "Обновление: `shows[arm] += 1` и `clicks[arm] += click`."
+      ],
+      "explanation": "Бандит отдал лучшему баннеру 82% показов и собрал 337 кликов. Без исследования (`eps = 0`) алгоритм застрял бы на первом баннере, который случайно дал клик, — на худшем, с CTR 4%, — и собрал бы только 202 клика. A/B-тест с равными долями дал бы около 0,053 × 5000 ≈ 267 кликов.",
+      "selfTest": {
+        "correct": [
+          "rng = np.random.default_rng(1)\np_true = np.array([0.04, 0.05, 0.07])     # настоящие CTR — алгоритм их не знает\nshows, clicks = np.zeros(3), np.zeros(3)\neps = 0.1\nfor step in range(5000):\n    explore = rng.random() < eps\n    random_arm = rng.integers(3)\n    ctr = np.divide(clicks, shows, out=np.zeros(3), where=shows > 0)\n    arm = random_arm if explore else int(ctr.argmax())\n    click = rng.random() < p_true[arm]\n    shows[arm] = shows[arm] + 1\n    clicks[arm] = clicks[arm] + int(click)\nresult = [round(float(shows[2] / 5000), 2), int(clicks.sum())]"
+        ],
+        "wrong": [
+          "rng = np.random.default_rng(1)\np_true = np.array([0.04, 0.05, 0.07])     # настоящие CTR — алгоритм их не знает\nshows, clicks = np.zeros(3), np.zeros(3)\neps = 0.0\nfor step in range(5000):\n    explore = rng.random() < eps\n    random_arm = rng.integers(3)\n    ctr = np.divide(clicks, shows, out=np.zeros(3), where=shows > 0)\n    arm = random_arm if explore else int(np.argmax(ctr))\n    click = rng.random() < p_true[arm]\n    shows[arm] += 1\n    clicks[arm] += click\nresult = [round(shows[2] / shows.sum(), 2), int(clicks.sum())]"
+        ]
+      },
+      "orderMatters": true
+    },
+    {
+      "id": "q-update",
+      "title": "Шаг Q-обучения",
+      "difficulty": 2,
+      "type": "number",
+      "prompt": "Текущая оценка `Q(s, a) = 0,5`. Агент получил награду **1**, а лучшая оценка в следующем состоянии `max Q(s′) = 0,8`. Скорость обучения `α = 0,1`, коэффициент `γ = 0,9`. Какой станет `Q(s, a)` после обновления `Q ← Q + α(r + γ·max Q′ − Q)`?",
+      "answer": 0.622,
+      "tolerance": 0.0005,
+      "hints": [
+        "Сначала цель: r + γ·max Q′ = 1 + 0,9 × 0,8.",
+        "Затем: 0,5 + 0,1 × (цель − 0,5)."
+      ],
+      "wrongAnswers": [
+        {
+          "value": 1.72,
+          "message": "Это цель обновления. Q сдвигается к ней лишь на долю α = 0,1."
+        },
+        {
+          "value": 0.6,
+          "message": "Не забудь будущую награду: γ × max Q′ = 0,72."
+        }
+      ],
+      "explanation": "Цель = 1 + 0,72 = 1,72; ошибка = 1,72 − 0,5 = 1,22; новая оценка = 0,5 + 0,122 = 0,622. Маленький шаг α делает обучение устойчивым к случайностям отдельных наград.",
+      "selfTest": {
+        "correct": [
+          "0,622"
+        ],
+        "wrong": [
+          "1,72",
+          "0,6"
+        ]
+      }
+    },
+    {
+      "id": "rl-terms",
+      "title": "Что здесь награда",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Музыкальный сервис учит алгоритм выбирать следующий трек. Что разумно считать **наградой**?",
+      "options": [
+        {
+          "text": "Дослушал ли пользователь трек (или добавил в избранное), а пропуск — штраф",
+          "correct": true,
+          "explain": "Награда должна отражать то, ради чего работает система: удовольствие и вовлечённость слушателя."
+        },
+        {
+          "text": "Номер трека в каталоге",
+          "explain": "Это идентификатор, а не оценка результата."
+        },
+        {
+          "text": "Количество треков в каталоге",
+          "explain": "Это свойство среды, а не результат действия."
+        },
+        {
+          "text": "Время, которое алгоритм потратил на выбор",
+          "explain": "Это техническая метрика, а не цель системы."
+        }
+      ],
+      "hints": [
+        "Награда оценивает результат действия агента."
+      ]
+    },
+    {
+      "id": "bandit-vs-ab",
+      "title": "Бандит или A/B-тест",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Новостной сайт каждый час выбирает заголовок для главной новости из 5 вариантов; новость живёт несколько часов. Что подходит лучше?",
+      "options": [
+        {
+          "text": "Бандит: трафик быстро перетечёт к лучшему заголовку, пока новость актуальна",
+          "correct": true,
+          "explain": "Вариантов много, они живут недолго, а награда (клик) быстрая — идеальный случай для бандита."
+        },
+        {
+          "text": "Классический A/B-тест на две недели",
+          "explain": "Через две недели новость уже никому не нужна."
+        },
+        {
+          "text": "Показывать заголовок, который нравится редактору",
+          "explain": "Тогда мы не узнаем, что нравится читателям."
+        },
+        {
+          "text": "Показывать все 5 заголовков поровну, пока новость жива",
+          "explain": "Это A/B-тест без выводов: половину трафика потратим на слабые варианты."
+        }
+      ],
+      "hints": [
+        "Сколько живёт вариант и как быстро мы видим награду?"
+      ]
+    },
+    {
+      "id": "explore-why",
+      "title": "Зачем исследовать",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Почему бандит иногда показывает вариант, который по текущим данным выглядит хуже?",
+      "options": [
+        {
+          "text": "Оценки по малому числу показов ненадёжны: «худший» вариант может оказаться лучшим",
+          "correct": true,
+          "explain": "Без исследования алгоритм рискует навсегда застрять на неоптимальном варианте."
+        },
+        {
+          "text": "Чтобы честно разделить трафик поровну",
+          "explain": "Равные доли — это A/B-тест. Бандит, наоборот, перераспределяет трафик."
+        },
+        {
+          "text": "Из-за ошибки в алгоритме",
+          "explain": "Это намеренная часть стратегии."
+        },
+        {
+          "text": "Чтобы снизить общий CTR",
+          "explain": "Цель — в итоге собрать больше кликов, а не меньше."
+        }
+      ],
+      "hints": [
+        "Вспомни, что случилось с ε = 0 в симуляции."
+      ]
+    }
+  ]
+}

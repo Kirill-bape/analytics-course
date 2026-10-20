@@ -1,0 +1,186 @@
+{
+  "tasks": [
+    {
+      "id": "assign-step",
+      "title": "Шаг назначения",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Сделай вручную первый шаг k-means. Начальные центры — клиенты в строках 0, 500 и 1000 матрицы `X` (уже в заготовке).",
+        "",
+        "Посчитай квадраты расстояний от каждого клиента до каждого центра, отнеси клиента к ближайшему центру и посчитай размеры кластеров. В `result` — список из трёх чисел (`np.bincount(labels)`)."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ncenters = X[[0, 500, 1000]]\n\nd = \nlabels = \nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ncenters = X[[0, 500, 1000]]\n\nd = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)\nlabels = d.argmin(axis=1)\nresult = [int(n) for n in np.bincount(labels)]",
+      "hints": [
+        "Квадраты расстояний: `((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)` — таблица клиенты × центры.",
+        "Номер ближайшего центра: `d.argmin(axis=1)`."
+      ],
+      "explanation": "После первого шага кластеры сильно неравные — центры стояли случайно. Дальше центры сдвинутся в средние своих кластеров, и после нескольких повторов разбиение стабилизируется.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ncenters = X[[0, 500, 1000]]\nlabels = np.array([np.argmin([np.sum((x - c) ** 2) for c in centers]) for x in X])\nresult = list(np.bincount(labels, minlength=3))"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ncenters = X[[0, 500, 1000]]\nd = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)\nresult = list(np.bincount(d.argmax(axis=1)))"
+        ]
+      },
+      "orderMatters": true
+    },
+    {
+      "id": "update-step",
+      "title": "Шаг обновления",
+      "orderMatters": true,
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Продолжи: клиенты уже распределены по ближайшим центрам (`labels`). Пересчитай центры — среднее значение `X` по каждому кластеру. В `result` — массив новых центров 3 × 3, округлённый до 3 знаков.",
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ncenters = X[[0, 500, 1000]]\nd = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)\nlabels = d.argmin(axis=1)\n\nnew_centers = \nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ncenters = X[[0, 500, 1000]]\nd = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)\nlabels = d.argmin(axis=1)\n\nnew_centers = np.array([X[labels == j].mean(axis=0) for j in range(3)])\nresult = np.round(new_centers, 3)",
+      "hints": [
+        "Клиенты кластера `j`: `X[labels == j]`; среднее по столбцам — `.mean(axis=0)`."
+      ],
+      "explanation": "Каждый центр переехал в «центр тяжести» своих клиентов. Чередование «назначить → пересчитать» гарантированно уменьшает инерцию, поэтому алгоритм всегда сходится, хотя и не обязательно к лучшему возможному разбиению.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ncenters = X[[0, 500, 1000]]\nd = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)\nlabels = d.argmin(axis=1)\nres = pd.DataFrame(X).groupby(labels).mean().round(3).to_numpy()\nresult = res"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ncenters = X[[0, 500, 1000]]\nd = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)\nlabels = d.argmin(axis=1)\nresult = np.round(np.array([np.median(X[labels == j], axis=0) for j in range(3)]), 3)"
+        ]
+      }
+    },
+    {
+      "id": "profile",
+      "title": "Профиль кластеров",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Запусти `kmeans(X, 3)` из заготовки и построй профиль кластеров: для каждого кластера — средние `recency`, `frequency`, `monetary` и `returned` **в исходных единицах** (из `df`), округлённые до 1 знака.",
+        "",
+        "В `result` положи таблицу профиля (индекс — номер кластера)."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ndef kmeans(X, k, seed=0, iters=100):\n    rng = np.random.default_rng(seed)\n    centers = X[rng.choice(len(X), k, replace=False)]\n    for _ in range(iters):\n        d = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)\n        labels = d.argmin(axis=1)\n        new = np.array([X[labels == j].mean(axis=0) for j in range(k)])\n        if np.allclose(new, centers):\n            break\n        centers = new\n    inertia = ((X - centers[labels]) ** 2).sum()\n    return labels, centers, inertia\n\nlabels, centers, inertia = kmeans(X, 3)\n\nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ndef kmeans(X, k, seed=0, iters=100):\n    rng = np.random.default_rng(seed)\n    centers = X[rng.choice(len(X), k, replace=False)]\n    for _ in range(iters):\n        d = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)\n        labels = d.argmin(axis=1)\n        new = np.array([X[labels == j].mean(axis=0) for j in range(k)])\n        if np.allclose(new, centers):\n            break\n        centers = new\n    inertia = ((X - centers[labels]) ** 2).sum()\n    return labels, centers, inertia\n\nlabels, centers, inertia = kmeans(X, 3)\n\nresult = df.assign(cluster=labels).groupby(\"cluster\")[[\"recency\", \"frequency\", \"monetary\", \"returned\"]].mean().round(1)",
+      "hints": [
+        "Добавь номер кластера к исходной таблице: `df.assign(cluster=labels)`.",
+        "Затем `groupby(\"cluster\")[[...]].mean().round(1)`."
+      ],
+      "explanation": "Три сегмента читаются сразу: лояльные (давно с нами, ~12 заказов, 80% вернулись), случайные (~2 заказа, 40%) и ушедшие (почти год без покупок, 0%). Для каждого можно придумать своё действие: удерживать, растить, реактивировать или отпустить.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ndef kmeans(X, k, seed=0, iters=100):\n    rng = np.random.default_rng(seed)\n    centers = X[rng.choice(len(X), k, replace=False)]\n    for _ in range(iters):\n        d = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)\n        labels = d.argmin(axis=1)\n        new = np.array([X[labels == j].mean(axis=0) for j in range(k)])\n        if np.allclose(new, centers):\n            break\n        centers = new\n    inertia = ((X - centers[labels]) ** 2).sum()\n    return labels, centers, inertia\nlabels = kmeans(X, 3)[0]\nt = df[[\"recency\", \"frequency\", \"monetary\", \"returned\"]].copy()\nt[\"cluster\"] = labels\nresult = t.groupby(\"cluster\").mean().round(1)"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ndef kmeans(X, k, seed=0, iters=100):\n    rng = np.random.default_rng(seed)\n    centers = X[rng.choice(len(X), k, replace=False)]\n    for _ in range(iters):\n        d = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)\n        labels = d.argmin(axis=1)\n        new = np.array([X[labels == j].mean(axis=0) for j in range(k)])\n        if np.allclose(new, centers):\n            break\n        centers = new\n    inertia = ((X - centers[labels]) ** 2).sum()\n    return labels, centers, inertia\nlabels = kmeans(X, 3)[0]\nresult = pd.DataFrame(X, columns=[\"recency\", \"frequency\", \"monetary\"]).assign(returned=df[\"returned\"].to_numpy(), cluster=labels).groupby(\"cluster\").mean().round(1)"
+        ]
+      }
+    },
+    {
+      "id": "elbow",
+      "title": "Метод локтя",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Посчитай инерцию k-means для `k` от 1 до 6 (функция `kmeans` возвращает её третьим значением). В `result` — словарь `{k: инерция}`, инерция округлена до 1 знака.",
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ndef kmeans(X, k, seed=0, iters=100):\n    rng = np.random.default_rng(seed)\n    centers = X[rng.choice(len(X), k, replace=False)]\n    for _ in range(iters):\n        d = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)\n        labels = d.argmin(axis=1)\n        new = np.array([X[labels == j].mean(axis=0) for j in range(k)])\n        if np.allclose(new, centers):\n            break\n        centers = new\n    inertia = ((X - centers[labels]) ** 2).sum()\n    return labels, centers, inertia\n\nresult = {}\nfor k in range(1, 7):\n    \n",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ndef kmeans(X, k, seed=0, iters=100):\n    rng = np.random.default_rng(seed)\n    centers = X[rng.choice(len(X), k, replace=False)]\n    for _ in range(iters):\n        d = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)\n        labels = d.argmin(axis=1)\n        new = np.array([X[labels == j].mean(axis=0) for j in range(k)])\n        if np.allclose(new, centers):\n            break\n        centers = new\n    inertia = ((X - centers[labels]) ** 2).sum()\n    return labels, centers, inertia\n\nresult = {}\nfor k in range(1, 7):\n    labels, centers, inertia = kmeans(X, k)\n    result[k] = round(inertia, 1)\n",
+      "hints": [
+        "`labels, centers, inertia = kmeans(X, k)`."
+      ],
+      "explanation": "Инерция падает вдвое при переходе от 1 к 2 кластерам и ещё на треть — от 2 к 3. Дальше снижение замедляется: «локоть» около k = 3–4. Для бизнеса 3 сегмента с понятными действиями обычно полезнее, чем 6 трудноразличимых.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ndef kmeans(X, k, seed=0, iters=100):\n    rng = np.random.default_rng(seed)\n    centers = X[rng.choice(len(X), k, replace=False)]\n    for _ in range(iters):\n        d = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)\n        labels = d.argmin(axis=1)\n        new = np.array([X[labels == j].mean(axis=0) for j in range(k)])\n        if np.allclose(new, centers):\n            break\n        centers = new\n    inertia = ((X - centers[labels]) ** 2).sum()\n    return labels, centers, inertia\nresult = {k: round(float(kmeans(X, k)[2]), 1) for k in [1, 2, 3, 4, 5, 6]}"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nF = pd.DataFrame({\n    \"recency\": df[\"recency\"],\n    \"log_frequency\": np.log1p(df[\"frequency\"]),\n    \"log_monetary\": np.log1p(df[\"monetary\"]),\n})\nX = ((F - F.mean()) / F.std()).to_numpy()\ndef kmeans(X, k, seed=0, iters=100):\n    rng = np.random.default_rng(seed)\n    centers = X[rng.choice(len(X), k, replace=False)]\n    for _ in range(iters):\n        d = ((X[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)\n        labels = d.argmin(axis=1)\n        new = np.array([X[labels == j].mean(axis=0) for j in range(k)])\n        if np.allclose(new, centers):\n            break\n        centers = new\n    inertia = ((X - centers[labels]) ** 2).sum()\n    return labels, centers, inertia\nresult = {k: round(float(kmeans(X, k)[2]) / len(X), 1) for k in range(1, 7)}"
+        ]
+      }
+    },
+    {
+      "id": "pca-variance",
+      "title": "Главные компоненты",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Сделай PCA для четырёх числовых признаков производства (в заготовке — таблица `p`): стандартизируй столбцы, выполни `np.linalg.svd(Z, full_matrices=False)` и посчитай долю разброса каждой компоненты: `S² / сумма S²`.",
+        "",
+        "В `result` — список из четырёх долей, округлённых до 3 знаков."
+      ],
+      "starter": "p = production.dropna(subset=[\"downtime_min\"])[[\"planned_units\", \"produced_units\", \"defect_units\", \"downtime_min\"]]\n\nZ = \nU, S, Vt = \nexplained = \nresult = [round(v, 3) for v in explained]",
+      "solution": "p = production.dropna(subset=[\"downtime_min\"])[[\"planned_units\", \"produced_units\", \"defect_units\", \"downtime_min\"]]\n\nZ = ((p - p.mean()) / p.std()).to_numpy()\nU, S, Vt = np.linalg.svd(Z, full_matrices=False)\nexplained = S ** 2 / (S ** 2).sum()\nresult = [round(v, 3) for v in explained]",
+      "hints": [
+        "Стандартизация: `((p - p.mean()) / p.std()).to_numpy()`.",
+        "Доли: `S ** 2 / (S ** 2).sum()`."
+      ],
+      "explanation": "Первая компонента («масштаб смены»: план, выпуск и брак растут вместе) объясняет 62,5% разброса, вторая (в основном простой) — ещё 25%. Последняя почти пустая (0,2%): выпуск почти полностью выражается через план и простой, то есть один признак здесь лишний.",
+      "selfTest": {
+        "correct": [
+          "p = production.dropna(subset=[\"downtime_min\"])[[\"planned_units\", \"produced_units\", \"defect_units\", \"downtime_min\"]]\nZ = ((p - p.mean()) / p.std()).to_numpy()\nvals = np.sort(np.linalg.eigvalsh(np.cov(Z.T)))[::-1]\nresult = list(np.round(vals / vals.sum(), 3))"
+        ],
+        "wrong": [
+          "p = production.dropna(subset=[\"downtime_min\"])[[\"planned_units\", \"produced_units\", \"defect_units\", \"downtime_min\"]]\nZ = p.to_numpy() - p.to_numpy().mean(axis=0)\nS = np.linalg.svd(Z, compute_uv=False)\nresult = list(np.round(S ** 2 / (S ** 2).sum(), 3))",
+          "p = production.dropna(subset=[\"downtime_min\"])[[\"planned_units\", \"produced_units\", \"defect_units\", \"downtime_min\"]]\nZ = ((p - p.mean()) / p.std()).to_numpy()\nS = np.linalg.svd(Z, compute_uv=False)\nresult = list(np.round(S / S.sum(), 3))"
+        ]
+      },
+      "orderMatters": true
+    },
+    {
+      "id": "choose-k",
+      "title": "Сколько сегментов",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Инерция при k = 2, 3, 4, 5, 6: 2919, 1882, 1368, 1163, 942. Маркетинг готов вести не больше четырёх разных кампаний. Какое k выбрать?",
+      "options": [
+        {
+          "text": "3 или 4: после них инерция падает заметно медленнее, и столько сегментов маркетинг сможет обслужить",
+          "correct": true,
+          "explain": "Совпадение «локтя» и бизнес-ограничения — хороший аргумент. Окончательно решают профили: различимы ли сегменты."
+        },
+        {
+          "text": "6: инерция минимальна",
+          "explain": "Инерция всегда падает с ростом k: при k = числу клиентов она равна нулю."
+        },
+        {
+          "text": "1: всё равно все клиенты разные",
+          "explain": "Тогда сегментации нет вовсе."
+        },
+        {
+          "text": "Любое — k-means сам выберет правильное",
+          "explain": "k задаёт аналитик, алгоритм его не подбирает."
+        }
+      ],
+      "hints": [
+        "Почему минимальная инерция — плохой критерий?"
+      ]
+    },
+    {
+      "id": "dbscan",
+      "title": "Когда k-means не подходит",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Нужно найти на карте скопления точек продаж: скопления вытянутой формы вдоль улиц, а одиночные точки — шум. Какой метод подойдёт лучше k-means?",
+      "options": [
+        {
+          "text": "DBSCAN: ищет плотные области любой формы и отмечает редкие точки как выбросы",
+          "correct": true,
+          "explain": "k-means склонен к «круглым» кластерам и относит каждую точку к какому-то кластеру, даже шум."
+        },
+        {
+          "text": "PCA",
+          "explain": "PCA снижает размерность, а не ищет кластеры."
+        },
+        {
+          "text": "Логистическая регрессия",
+          "explain": "Это классификация с учителем, а ответов тут нет."
+        },
+        {
+          "text": "k-means с k = 100",
+          "explain": "Он разрежет вытянутые скопления на куски и не выделит шум."
+        }
+      ],
+      "hints": [
+        "Какой метод из урока работает с «плотностью»?"
+      ]
+    }
+  ]
+}

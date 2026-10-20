@@ -1,0 +1,218 @@
+{
+  "tasks": [
+    {
+      "id": "gini",
+      "title": "Индекс Джини",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Посчитай индекс Джини для целевой переменной `returned` по всем клиентам: `1 − p² − (1 − p)²`, где `p` — доля вернувшихся. Округли до 4 знаков, ответ в `result`.",
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\n\np = \nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\n\np = df[\"returned\"].mean()\nresult = round(1 - p ** 2 - (1 - p) ** 2, 4)",
+      "hints": [
+        "`p = df[\"returned\"].mean()`."
+      ],
+      "explanation": "Джини ≈ 0,498 — почти максимальная смесь (0,5), ведь классы почти поровну. Хороший вопрос дерева должен заметно снизить это число.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\np = df.returned.mean()\nresult = round(2 * p * (1 - p), 4)"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\np = df.returned.mean()\nresult = round(1 - p ** 2, 4)"
+        ]
+      }
+    },
+    {
+      "id": "best-split",
+      "title": "Лучший вопрос дерева",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Найди лучший первый вопрос дерева по признаку `recency` на **обучающей** выборке: перебери пороги `t` из `range(10, 460, 10)` и для каждого посчитай взвешенный Джини разбиения «`recency <= t`» функцией `split_gini(x, y, t)` из заготовки.",
+        "",
+        "В `result` положи порог с **наименьшим** взвешенным Джини."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ndef gini(y):\n    p = np.mean(y)\n    return 1 - p ** 2 - (1 - p) ** 2\n\ndef split_gini(x, y, t):\n    left, right = y[x <= t], y[x > t]\n    return (len(left) * gini(left) + len(right) * gini(right)) / len(y)\nx = train[\"recency\"].to_numpy()\ny = train[\"returned\"].to_numpy()\n\nscores = {}\nfor t in range(10, 460, 10):\n    \n\nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ndef gini(y):\n    p = np.mean(y)\n    return 1 - p ** 2 - (1 - p) ** 2\n\ndef split_gini(x, y, t):\n    left, right = y[x <= t], y[x > t]\n    return (len(left) * gini(left) + len(right) * gini(right)) / len(y)\nx = train[\"recency\"].to_numpy()\ny = train[\"returned\"].to_numpy()\n\nscores = {}\nfor t in range(10, 460, 10):\n    scores[t] = split_gini(x, y, t)\n\nresult = min(scores, key=scores.get)",
+      "hints": [
+        "В цикле: `scores[t] = split_gini(x, y, t)`.",
+        "Ключ с наименьшим значением: `min(scores, key=scores.get)`."
+      ],
+      "explanation": "Лучший порог — 100 дней: Джини падает с 0,50 до 0,34. Заметь, что порог отличается от того, что максимизировал accuracy в первом уроке (70 дней). Дерево оптимизирует чистоту групп, а не долю угаданных, и это разные критерии.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ndef gini(y):\n    p = np.mean(y)\n    return 1 - p ** 2 - (1 - p) ** 2\n\ndef split_gini(x, y, t):\n    left, right = y[x <= t], y[x > t]\n    return (len(left) * gini(left) + len(right) * gini(right)) / len(y)\nx = train[\"recency\"].to_numpy()\ny = train[\"returned\"].to_numpy()\nts = np.arange(10, 460, 10)\nresult = int(ts[np.argmin([split_gini(x, y, t) for t in ts])])"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ndef gini(y):\n    p = np.mean(y)\n    return 1 - p ** 2 - (1 - p) ** 2\n\ndef split_gini(x, y, t):\n    left, right = y[x <= t], y[x > t]\n    return (len(left) * gini(left) + len(right) * gini(right)) / len(y)\nx = train[\"recency\"].to_numpy()\ny = train[\"returned\"].to_numpy()\nscores = {t: split_gini(x, y, t) for t in range(10, 460, 10)}\nresult = max(scores, key=scores.get)"
+        ]
+      }
+    },
+    {
+      "id": "compare-features",
+      "title": "Какой признак лучше для первого вопроса",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Сравни два кандидата на первый вопрос дерева (на обучающей выборке):",
+        "- `recency` с порогами `range(10, 460, 10)`;",
+        "- `frequency` с порогами `range(1, 30)`.",
+        "",
+        "Для каждого признака найди **наименьший** взвешенный Джини. В `result` — `[лучший Джини recency, лучший Джини frequency]`, до 4 знаков."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ndef gini(y):\n    p = np.mean(y)\n    return 1 - p ** 2 - (1 - p) ** 2\n\ndef split_gini(x, y, t):\n    left, right = y[x <= t], y[x > t]\n    return (len(left) * gini(left) + len(right) * gini(right)) / len(y)\ny = train[\"returned\"].to_numpy()\n\nxr = train[\"recency\"].to_numpy()\nxf = train[\"frequency\"].to_numpy()\n\nbest_r = \nbest_f = \nresult = [round(best_r, 4), round(best_f, 4)]",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ndef gini(y):\n    p = np.mean(y)\n    return 1 - p ** 2 - (1 - p) ** 2\n\ndef split_gini(x, y, t):\n    left, right = y[x <= t], y[x > t]\n    return (len(left) * gini(left) + len(right) * gini(right)) / len(y)\ny = train[\"returned\"].to_numpy()\n\nxr = train[\"recency\"].to_numpy()\nxf = train[\"frequency\"].to_numpy()\n\nbest_r = min(split_gini(xr, y, t) for t in range(10, 460, 10))\nbest_f = min(split_gini(xf, y, t) for t in range(1, 30))\nresult = [round(best_r, 4), round(best_f, 4)]",
+      "hints": [
+        "`min(split_gini(xr, y, t) for t in range(10, 460, 10))` — лучший результат по давности."
+      ],
+      "explanation": "У давности лучший Джини 0,335, у частоты — 0,392. Дерево выберет первым вопросом давность покупки, а частоту задаст на следующем уровне. Так дерево и строит иерархию признаков.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ndef gini(y):\n    p = np.mean(y)\n    return 1 - p ** 2 - (1 - p) ** 2\n\ndef split_gini(x, y, t):\n    left, right = y[x <= t], y[x > t]\n    return (len(left) * gini(left) + len(right) * gini(right)) / len(y)\ny = train[\"returned\"].to_numpy()\nres = []\nfor col, ts in [(\"recency\", range(10, 460, 10)), (\"frequency\", range(1, 30))]:\n    v = train[col].to_numpy()\n    res.append(round(min([split_gini(v, y, t) for t in ts]), 4))\nresult = res"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ndef gini(y):\n    p = np.mean(y)\n    return 1 - p ** 2 - (1 - p) ** 2\n\ndef split_gini(x, y, t):\n    left, right = y[x <= t], y[x > t]\n    return (len(left) * gini(left) + len(right) * gini(right)) / len(y)\ny = train[\"returned\"].to_numpy()\nxr = train.recency.to_numpy()\nxf = train.frequency.to_numpy()\nresult = [round(max(split_gini(xr, y, t) for t in range(10, 460, 10)), 4), round(max(split_gini(xf, y, t) for t in range(1, 30)), 4)]"
+        ]
+      },
+      "orderMatters": true
+    },
+    {
+      "id": "stump-test",
+      "title": "Пенёк на тесте",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Дерево глубины 1 («пенёк») делит клиентов вопросом `recency <= 100`. В заготовке обучающая выборка уже разделена на `left` и `right`.",
+        "",
+        "Предсказание в каждом листе — **самый частый класс** среди обучающих клиентов листа (1, если доля вернувшихся > 0,5). Примени пенёк к `test` и посчитай accuracy до 3 знаков."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\nleft = train[train[\"recency\"] <= 100]\nright = train[train[\"recency\"] > 100]\n\nleaf_left = \nleaf_right = \n\npred = np.where(test[\"recency\"] <= 100, leaf_left, leaf_right)\nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\nleft = train[train[\"recency\"] <= 100]\nright = train[train[\"recency\"] > 100]\n\nleaf_left = int(left[\"returned\"].mean() > 0.5)\nleaf_right = int(right[\"returned\"].mean() > 0.5)\n\npred = np.where(test[\"recency\"] <= 100, leaf_left, leaf_right)\nresult = round((pred == test[\"returned\"]).mean(), 3)",
+      "hints": [
+        "Класс листа: `int(left[\"returned\"].mean() > 0.5)`.",
+        "Accuracy: `(pred == test[\"returned\"]).mean()`."
+      ],
+      "explanation": "В левом листе вернулись 70% обучающих клиентов (прогноз 1), в правом — 13% (прогноз 0). На тесте пенёк угадывает 75%. Один вопрос — и почти уровень логистической регрессии.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\nleft = train[train[\"recency\"] <= 100]\nright = train[train[\"recency\"] > 100]\npred = (test.recency <= 100).astype(int) if left.returned.mean() > 0.5 else 0\nresult = round(float((pred == test.returned).mean()), 3)"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\nleft = train[train[\"recency\"] <= 100]\nright = train[train[\"recency\"] > 100]\npred = np.where(test[\"recency\"] <= 100, 1, 0)\nresult = round((pred == train[\"returned\"].iloc[:len(pred)].to_numpy()).mean(), 3)"
+        ]
+      }
+    },
+    {
+      "id": "depth2",
+      "title": "Дерево глубины 2",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Добавь пеньку второй уровень: в **каждой** ветке задай вопрос `frequency <= 1`. Получится 4 листа.",
+        "",
+        "Для каждого листа найди самый частый класс по обучающей выборке, примени дерево к `test` и посчитай accuracy до 3 знаков. Функция `leaf(part)` из заготовки возвращает класс листа."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\nleft = train[train[\"recency\"] <= 100]\nright = train[train[\"recency\"] > 100]\n\ndef leaf(part):\n    return int(part[\"returned\"].mean() > 0.5)\n\nll = leaf(left[left[\"frequency\"] <= 1])\nlr = \nrl = \nrr = \n\npred = np.where(\n    test[\"recency\"] <= 100,\n    np.where(test[\"frequency\"] <= 1, ll, lr),\n    np.where(test[\"frequency\"] <= 1, rl, rr),\n)\nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\nleft = train[train[\"recency\"] <= 100]\nright = train[train[\"recency\"] > 100]\n\ndef leaf(part):\n    return int(part[\"returned\"].mean() > 0.5)\n\nll = leaf(left[left[\"frequency\"] <= 1])\nlr = leaf(left[left[\"frequency\"] > 1])\nrl = leaf(right[right[\"frequency\"] <= 1])\nrr = leaf(right[right[\"frequency\"] > 1])\n\npred = np.where(\n    test[\"recency\"] <= 100,\n    np.where(test[\"frequency\"] <= 1, ll, lr),\n    np.where(test[\"frequency\"] <= 1, rl, rr),\n)\nresult = round((pred == test[\"returned\"]).mean(), 3)",
+      "hints": [
+        "Лист «недавно, но один заказ»: `left[left[\"frequency\"] <= 1]`; «недавно и больше одного»: `left[left[\"frequency\"] > 1]`."
+      ],
+      "explanation": "Accuracy выросла с 75% до 78,7%. Второй вопрос нашёл важное взаимодействие: среди недавних покупателей вернулись 79% повторных и только 32% «одноразовых». Логистическая регрессия такое «и» сама не ловит — её пришлось бы подсказать новым признаком.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\nleft = train[train[\"recency\"] <= 100]\nright = train[train[\"recency\"] > 100]\ntr = train.assign(node=(train.recency <= 100).astype(str) + (train.frequency <= 1).astype(str))\nleaves = (tr.groupby(\"node\").returned.mean() > 0.5).astype(int)\nnode = (test.recency <= 100).astype(str) + (test.frequency <= 1).astype(str)\nresult = round(float((node.map(leaves) == test.returned).mean()), 3)"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\nleft = train[train[\"recency\"] <= 100]\nright = train[train[\"recency\"] > 100]\npred = np.where(test[\"recency\"] <= 100, 1, 0)\nresult = round((pred == test[\"returned\"]).mean(), 3)",
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\nleft = train[train[\"recency\"] <= 100]\nright = train[train[\"recency\"] > 100]\npred = np.where(test[\"recency\"] <= 100, np.where(test[\"frequency\"] <= 1, 1, 0), 0)\nresult = round((pred == test[\"returned\"]).mean(), 3)"
+        ]
+      }
+    },
+    {
+      "id": "overfit-depth",
+      "title": "Слишком глубокое дерево",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Дерево без ограничений даёт accuracy 100% на обучающей выборке и 64% на тестовой. Что делать?",
+      "options": [
+        {
+          "text": "Ограничить рост: `max_depth`, `min_samples_leaf` — и подобрать их кросс-валидацией",
+          "correct": true,
+          "explain": "Огромный разрыв train/test — классическое переобучение. Ограничения заставляют дерево учить общие закономерности, а не отдельные примеры."
+        },
+        {
+          "text": "Сделать дерево ещё глубже",
+          "explain": "Это усилит переобучение."
+        },
+        {
+          "text": "Проверять качество на обучающей выборке — там 100%",
+          "explain": "На обучающих данных переобученная модель всегда выглядит отлично."
+        },
+        {
+          "text": "Масштабировать признаки",
+          "explain": "Деревьям масштаб не важен: проблема не в нём."
+        }
+      ],
+      "hints": [
+        "Как называется ситуация, когда train ≫ test?"
+      ]
+    },
+    {
+      "id": "forest-vs-boosting",
+      "title": "Лес и бустинг",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Чем случайный лес отличается от градиентного бустинга?",
+      "options": [
+        {
+          "text": "В лесу деревья строятся независимо на случайных выборках, и их ответы усредняются; в бустинге каждое следующее дерево исправляет ошибки предыдущих",
+          "correct": true,
+          "explain": "Лес уменьшает разброс за счёт усреднения, бустинг — ошибку за счёт последовательного уточнения."
+        },
+        {
+          "text": "Лес использует одно глубокое дерево, бустинг — много",
+          "explain": "Оба метода — ансамбли из многих деревьев."
+        },
+        {
+          "text": "Бустинг работает только с текстами",
+          "explain": "Бустинг — главный метод именно для табличных данных."
+        },
+        {
+          "text": "Никакой разницы, это синонимы",
+          "explain": "Это два разных способа объединять деревья."
+        }
+      ],
+      "hints": [
+        "Параллельно или последовательно строятся деревья?"
+      ]
+    },
+    {
+      "id": "importance",
+      "title": "Важность признака",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "В модели оттока самым важным признаком оказалось «число обращений в поддержку». Менеджер предлагает спрятать кнопку поддержки, чтобы снизить отток. Что не так?",
+      "options": [
+        {
+          "text": "Важность признака — не причинность: обращения скорее симптом проблем, а не их причина",
+          "correct": true,
+          "explain": "Модель нашла связь, полезную для предсказания. Чтобы узнать, что будет при изменении, нужен эксперимент."
+        },
+        {
+          "text": "Всё верно: меньше обращений — меньше оттока",
+          "explain": "Клиенты уходят из-за проблем, а не из-за возможности о них сообщить."
+        },
+        {
+          "text": "Нужно удалить признак, раз он мешает",
+          "explain": "Для предсказания он полезен — проблема в выводе, а не в модели."
+        },
+        {
+          "text": "Важность признаков в деревьях всегда случайна",
+          "explain": "Она не случайна, но и не говорит о причинах."
+        }
+      ],
+      "hints": [
+        "Отвечает ли модель на вопрос «что будет, если изменить признак»?"
+      ]
+    }
+  ]
+}

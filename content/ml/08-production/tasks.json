@@ -1,0 +1,199 @@
+{
+  "tasks": [
+    {
+      "id": "json-model",
+      "title": "Модель в JSON",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "Сохрани модель-правило в текст JSON и загрузи обратно: словарь `model` превращается в строку `text` (`json.dumps`), а затем снова в словарь `loaded` (`json.loads`). В `result` положи порог из **загруженной** модели.",
+      "starter": "import json\n\nmodel = {\"name\": \"returned_v1\", \"trained_on\": \"2026-04-01\", \"feature\": \"recency\", \"threshold\": 70}\n\ntext = \nloaded = \nresult = ",
+      "solution": "import json\n\nmodel = {\"name\": \"returned_v1\", \"trained_on\": \"2026-04-01\", \"feature\": \"recency\", \"threshold\": 70}\n\ntext = json.dumps(model)\nloaded = json.loads(text)\nresult = loaded[\"threshold\"]",
+      "hints": [
+        "`json.dumps(model)` — словарь в строку, `json.loads(text)` — обратно."
+      ],
+      "explanation": "Текст JSON можно положить в git, в базу или передать другому сервису, и модель восстановится один в один. Для моделей scikit-learn используют `joblib`, но идея та же: обучили один раз — используем много раз.",
+      "selfTest": {
+        "correct": [
+          "import json\nmodel = {\"name\": \"returned_v1\", \"trained_on\": \"2026-04-01\", \"feature\": \"recency\", \"threshold\": 70}\nresult = json.loads(json.dumps(model, ensure_ascii=False)).get(\"threshold\")"
+        ],
+        "wrong": [
+          "import json\nmodel = {\"name\": \"returned_v1\", \"trained_on\": \"2026-04-01\", \"feature\": \"recency\", \"threshold\": 70}\nresult = json.dumps(model)"
+        ]
+      }
+    },
+    {
+      "id": "batch-scoring",
+      "title": "Ночной пакетный прогноз",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Логистическая регрессия обучена на срезе 1 апреля и сохранена в JSON (`model_text`): средние `mu` и отклонения `sd` для стандартизации, свободный член `w0` и веса `w`. Наступило 1 июля — посчитай прогнозы для **всех** клиентов на эту дату.",
+        "",
+        "1. Загрузи модель из JSON.",
+        "2. Стандартизируй признаки `now` **параметрами модели** (а не средними новых данных).",
+        "3. Посчитай вероятность возврата сигмоидой.",
+        "",
+        "В `result` — сколько клиентов получили вероятность больше 0,5."
+      ],
+      "starter": "import json\n\n# модель, обученная на срезе 1 апреля 2026\nmodel_text = '{\"mu\": {\"recency\": 129.44, \"frequency\": 5.85}, \"sd\": {\"recency\": 138.74, \"frequency\": 7.28}, \"w0\": -0.46, \"w\": {\"recency\": -1.88, \"frequency\": 1.02}}'\ndef make_dataset(cut):\n    cut = pd.Timestamp(cut)\n    hist = orders[orders[\"order_date\"] < cut]\n    d = hist.groupby(\"customer_id\").agg(frequency=(\"order_id\", \"count\"), last=(\"order_date\", \"max\"))\n    d[\"recency\"] = (cut - d[\"last\"]).dt.days\n    future = orders[(orders[\"order_date\"] >= cut) & (orders[\"order_date\"] < cut + pd.DateOffset(months=3))]\n    d[\"returned\"] = d.index.isin(future[\"customer_id\"]).astype(int)\n    return d\n\nnow = make_dataset(\"2026-07-01\")\n\nm = json.loads(model_text)\nz_rec = \nz_freq = \nlogit = \nprob = \nresult = ",
+      "solution": "import json\n\n# модель, обученная на срезе 1 апреля 2026\nmodel_text = '{\"mu\": {\"recency\": 129.44, \"frequency\": 5.85}, \"sd\": {\"recency\": 138.74, \"frequency\": 7.28}, \"w0\": -0.46, \"w\": {\"recency\": -1.88, \"frequency\": 1.02}}'\ndef make_dataset(cut):\n    cut = pd.Timestamp(cut)\n    hist = orders[orders[\"order_date\"] < cut]\n    d = hist.groupby(\"customer_id\").agg(frequency=(\"order_id\", \"count\"), last=(\"order_date\", \"max\"))\n    d[\"recency\"] = (cut - d[\"last\"]).dt.days\n    future = orders[(orders[\"order_date\"] >= cut) & (orders[\"order_date\"] < cut + pd.DateOffset(months=3))]\n    d[\"returned\"] = d.index.isin(future[\"customer_id\"]).astype(int)\n    return d\n\nnow = make_dataset(\"2026-07-01\")\n\nm = json.loads(model_text)\nz_rec = (now[\"recency\"] - m[\"mu\"][\"recency\"]) / m[\"sd\"][\"recency\"]\nz_freq = (now[\"frequency\"] - m[\"mu\"][\"frequency\"]) / m[\"sd\"][\"frequency\"]\nlogit = m[\"w0\"] + m[\"w\"][\"recency\"] * z_rec + m[\"w\"][\"frequency\"] * z_freq\nprob = 1 / (1 + np.exp(-logit))\nresult = int((prob > 0.5).sum())",
+      "hints": [
+        "Стандартизация: `(now[\"recency\"] - m[\"mu\"][\"recency\"]) / m[\"sd\"][\"recency\"]`.",
+        "`logit = w0 + w_rec × z_rec + w_freq × z_freq`, затем `1 / (1 + np.exp(-logit))`."
+      ],
+      "mistakes": [
+        {
+          "pattern": "now\\[[^\\]]+\\]\\.(mean|std)\\(",
+          "message": "Стандартизируй параметрами из модели (`m[\"mu\"]`, `m[\"sd\"]`), а не средними новых данных: модель училась на других числах."
+        }
+      ],
+      "explanation": "Около половины из 2358 клиентов получили вероятность выше 0,5. В реальном конвейере такая задача каждую ночь пишет прогнозы в таблицу, CRM берёт оттуда списки, и маркетинг решает, кому что предложить. Главное — подготовка признаков в точности как при обучении.",
+      "selfTest": {
+        "correct": [
+          "import json\n\n# модель, обученная на срезе 1 апреля 2026\nmodel_text = '{\"mu\": {\"recency\": 129.44, \"frequency\": 5.85}, \"sd\": {\"recency\": 138.74, \"frequency\": 7.28}, \"w0\": -0.46, \"w\": {\"recency\": -1.88, \"frequency\": 1.02}}'\ndef make_dataset(cut):\n    cut = pd.Timestamp(cut)\n    hist = orders[orders[\"order_date\"] < cut]\n    d = hist.groupby(\"customer_id\").agg(frequency=(\"order_id\", \"count\"), last=(\"order_date\", \"max\"))\n    d[\"recency\"] = (cut - d[\"last\"]).dt.days\n    future = orders[(orders[\"order_date\"] >= cut) & (orders[\"order_date\"] < cut + pd.DateOffset(months=3))]\n    d[\"returned\"] = d.index.isin(future[\"customer_id\"]).astype(int)\n    return d\nnow = make_dataset(\"2026-07-01\")\nm = json.loads(model_text)\nX = np.column_stack([(now[c] - m[\"mu\"][c]) / m[\"sd\"][c] for c in [\"recency\", \"frequency\"]])\nw = np.array([m[\"w\"][\"recency\"], m[\"w\"][\"frequency\"]])\nresult = int(((X @ w + m[\"w0\"]) > 0).sum())"
+        ],
+        "wrong": [
+          "import json\n\n# модель, обученная на срезе 1 апреля 2026\nmodel_text = '{\"mu\": {\"recency\": 129.44, \"frequency\": 5.85}, \"sd\": {\"recency\": 138.74, \"frequency\": 7.28}, \"w0\": -0.46, \"w\": {\"recency\": -1.88, \"frequency\": 1.02}}'\ndef make_dataset(cut):\n    cut = pd.Timestamp(cut)\n    hist = orders[orders[\"order_date\"] < cut]\n    d = hist.groupby(\"customer_id\").agg(frequency=(\"order_id\", \"count\"), last=(\"order_date\", \"max\"))\n    d[\"recency\"] = (cut - d[\"last\"]).dt.days\n    future = orders[(orders[\"order_date\"] >= cut) & (orders[\"order_date\"] < cut + pd.DateOffset(months=3))]\n    d[\"returned\"] = d.index.isin(future[\"customer_id\"]).astype(int)\n    return d\nnow = make_dataset(\"2026-07-01\")\nm = json.loads(model_text)\nz = (now[[\"recency\", \"frequency\"]] - now[[\"recency\", \"frequency\"]].mean()) / now[[\"recency\", \"frequency\"]].std()\nlogit = m[\"w0\"] + m[\"w\"][\"recency\"] * z[\"recency\"] + m[\"w\"][\"frequency\"] * z[\"frequency\"]\nresult = int((1 / (1 + np.exp(-logit)) > 0.5).sum())"
+        ]
+      }
+    },
+    {
+      "id": "psi",
+      "title": "Дрейф суммы заказа: PSI",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Проверь, сдвинулось ли распределение суммы заказа: обучающий период — I полугодие 2025 (`ref`), текущий — I полугодие 2026 (`cur`). Границы 10 корзин по децилям `ref` уже в `edges`.",
+        "",
+        "Посчитай доли `ref` и `cur` по корзинам (`np.histogram(x, edges)[0] / len(x)`) и PSI = Σ (cur − ref) × ln(cur / ref). В `result` — PSI до 4 знаков."
+      ],
+      "starter": "ref = orders[(orders[\"order_date\"] >= \"2025-01-01\") & (orders[\"order_date\"] < \"2025-07-01\")][\"amount\"]\ncur = orders[(orders[\"order_date\"] >= \"2026-01-01\") & (orders[\"order_date\"] < \"2026-07-01\")][\"amount\"]\n\nedges = np.quantile(ref, np.linspace(0, 1, 11))   # границы децилей обучающего периода\nedges[0], edges[-1] = -np.inf, np.inf\nref_share = \ncur_share = \npsi = \nresult = round(psi, 4)",
+      "solution": "ref = orders[(orders[\"order_date\"] >= \"2025-01-01\") & (orders[\"order_date\"] < \"2025-07-01\")][\"amount\"]\ncur = orders[(orders[\"order_date\"] >= \"2026-01-01\") & (orders[\"order_date\"] < \"2026-07-01\")][\"amount\"]\n\nedges = np.quantile(ref, np.linspace(0, 1, 11))   # границы децилей обучающего периода\nedges[0], edges[-1] = -np.inf, np.inf\nref_share = np.histogram(ref, edges)[0] / len(ref)\ncur_share = np.histogram(cur, edges)[0] / len(cur)\npsi = ((cur_share - ref_share) * np.log(cur_share / ref_share)).sum()\nresult = round(psi, 4)",
+      "hints": [
+        "Доли: `np.histogram(ref, edges)[0] / len(ref)` — около 0,1 в каждой корзине.",
+        "PSI: `((cur_share - ref_share) * np.log(cur_share / ref_share)).sum()`."
+      ],
+      "explanation": "PSI ≈ 0,01 — гораздо меньше 0,1: распределение суммы заказа за год почти не изменилось (медиана ~5 500 ₽ в оба периода). По этому признаку модель переобучать незачем. Такую проверку ставят в ежедневный мониторинг по всем признакам модели.",
+      "selfTest": {
+        "correct": [
+          "ref = orders[(orders[\"order_date\"] >= \"2025-01-01\") & (orders[\"order_date\"] < \"2025-07-01\")][\"amount\"]\ncur = orders[(orders[\"order_date\"] >= \"2026-01-01\") & (orders[\"order_date\"] < \"2026-07-01\")][\"amount\"]\n\nedges = np.quantile(ref, np.linspace(0, 1, 11))   # границы децилей обучающего периода\nedges[0], edges[-1] = -np.inf, np.inf\nr = np.bincount(np.searchsorted(edges, ref, side=\"right\") - 1, minlength=10) / len(ref)\nc = np.bincount(np.searchsorted(edges, cur, side=\"right\") - 1, minlength=10) / len(cur)\nresult = round(float(np.sum((c - r) * np.log(c / r))), 4)"
+        ],
+        "wrong": [
+          "ref = orders[(orders[\"order_date\"] >= \"2025-01-01\") & (orders[\"order_date\"] < \"2025-07-01\")][\"amount\"]\ncur = orders[(orders[\"order_date\"] >= \"2026-01-01\") & (orders[\"order_date\"] < \"2026-07-01\")][\"amount\"]\n\nedges = np.quantile(ref, np.linspace(0, 1, 11))   # границы децилей обучающего периода\nedges[0], edges[-1] = -np.inf, np.inf\nr = np.histogram(ref, edges)[0] / len(ref)\nc = np.histogram(cur, edges)[0] / len(cur)\nresult = round(float(np.sum(np.abs(c - r))), 4)"
+        ]
+      }
+    },
+    {
+      "id": "stability",
+      "title": "Работает ли правило в разные периоды",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Функция `make_dataset(cut)` строит набор «вернётся ли клиент за 3 месяца после даты среза». Проверь, насколько стабильно работает правило «вернётся, если `recency <= 70`» на четырёх срезах: `2025-07-01`, `2025-10-01`, `2026-01-01`, `2026-04-01`.",
+        "",
+        "В `result` — словарь `{дата среза: accuracy}`, accuracy до 3 знаков."
+      ],
+      "starter": "def make_dataset(cut):\n    cut = pd.Timestamp(cut)\n    hist = orders[orders[\"order_date\"] < cut]\n    d = hist.groupby(\"customer_id\").agg(frequency=(\"order_id\", \"count\"), last=(\"order_date\", \"max\"))\n    d[\"recency\"] = (cut - d[\"last\"]).dt.days\n    future = orders[(orders[\"order_date\"] >= cut) & (orders[\"order_date\"] < cut + pd.DateOffset(months=3))]\n    d[\"returned\"] = d.index.isin(future[\"customer_id\"]).astype(int)\n    return d\n\nresult = {}\nfor cut in [\"2025-07-01\", \"2025-10-01\", \"2026-01-01\", \"2026-04-01\"]:\n    d = make_dataset(cut)\n    \n",
+      "solution": "def make_dataset(cut):\n    cut = pd.Timestamp(cut)\n    hist = orders[orders[\"order_date\"] < cut]\n    d = hist.groupby(\"customer_id\").agg(frequency=(\"order_id\", \"count\"), last=(\"order_date\", \"max\"))\n    d[\"recency\"] = (cut - d[\"last\"]).dt.days\n    future = orders[(orders[\"order_date\"] >= cut) & (orders[\"order_date\"] < cut + pd.DateOffset(months=3))]\n    d[\"returned\"] = d.index.isin(future[\"customer_id\"]).astype(int)\n    return d\n\nresult = {}\nfor cut in [\"2025-07-01\", \"2025-10-01\", \"2026-01-01\", \"2026-04-01\"]:\n    d = make_dataset(cut)\n    pred = (d[\"recency\"] <= 70).astype(int)\n    result[cut] = round((pred == d[\"returned\"]).mean(), 3)\n",
+      "hints": [
+        "Внутри цикла: `result[cut] = round(((d[\"recency\"] <= 70).astype(int) == d[\"returned\"]).mean(), 3)`."
+      ],
+      "explanation": "Accuracy держится в коридоре 72–77%: правило устойчиво. Заметный провал в каком-то периоде был бы сигналом разобраться (сезонность, акция, сбой данных) и, возможно, переобучить модель. Такая проверка на исторических срезах называется **бэктестом**.",
+      "selfTest": {
+        "correct": [
+          "def make_dataset(cut):\n    cut = pd.Timestamp(cut)\n    hist = orders[orders[\"order_date\"] < cut]\n    d = hist.groupby(\"customer_id\").agg(frequency=(\"order_id\", \"count\"), last=(\"order_date\", \"max\"))\n    d[\"recency\"] = (cut - d[\"last\"]).dt.days\n    future = orders[(orders[\"order_date\"] >= cut) & (orders[\"order_date\"] < cut + pd.DateOffset(months=3))]\n    d[\"returned\"] = d.index.isin(future[\"customer_id\"]).astype(int)\n    return d\ncuts = [\"2025-07-01\", \"2025-10-01\", \"2026-01-01\", \"2026-04-01\"]\nresult = {c: round(float(((make_dataset(c).recency <= 70) == (make_dataset(c).returned == 1)).mean()), 3) for c in cuts}"
+        ],
+        "wrong": [
+          "def make_dataset(cut):\n    cut = pd.Timestamp(cut)\n    hist = orders[orders[\"order_date\"] < cut]\n    d = hist.groupby(\"customer_id\").agg(frequency=(\"order_id\", \"count\"), last=(\"order_date\", \"max\"))\n    d[\"recency\"] = (cut - d[\"last\"]).dt.days\n    future = orders[(orders[\"order_date\"] >= cut) & (orders[\"order_date\"] < cut + pd.DateOffset(months=3))]\n    d[\"returned\"] = d.index.isin(future[\"customer_id\"]).astype(int)\n    return d\nresult = {c: round(((make_dataset(c).recency < 60).astype(int) == make_dataset(c).returned).mean(), 3) for c in [\"2025-07-01\", \"2025-10-01\", \"2026-01-01\", \"2026-04-01\"]}"
+        ]
+      }
+    },
+    {
+      "id": "batch-vs-online",
+      "title": "Пакетно или онлайн",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Модель оттока нужна, чтобы раз в неделю отдел удержания звонил клиентам из «группы риска». Как её внедрить?",
+      "options": [
+        {
+          "text": "Пакетно: по расписанию считать вероятности для всех клиентов и записывать в таблицу, откуда их берёт CRM",
+          "correct": true,
+          "explain": "Решения принимаются раз в неделю, мгновенный ответ не нужен. Пакетный вариант проще и дешевле."
+        },
+        {
+          "text": "Онлайн-API с ответом за 10 мс",
+          "explain": "Сложнее и дороже, а скорость тут ничего не даёт."
+        },
+        {
+          "text": "Аналитик раз в неделю вручную запускает ноутбук и отправляет Excel",
+          "explain": "Ненадёжно: отпуск, болезнь, забытый шаг — и звонков не будет."
+        },
+        {
+          "text": "Внедрять не нужно — достаточно отчёта о качестве модели",
+          "explain": "Без внедрения модель не приносит пользы."
+        }
+      ],
+      "hints": [
+        "Как часто принимают решения по прогнозу?"
+      ]
+    },
+    {
+      "id": "leaderboard",
+      "title": "Публичный рейтинг Kaggle",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Участник Kaggle сделал 200 отправок, подбирая параметры по публичному рейтингу, и поднялся на 5-е место. После подсчёта приватного рейтинга он оказался на 300-м. Почему?",
+      "options": [
+        {
+          "text": "Он переобучился под публичную часть теста: улучшения были подгонкой под случайности этой части",
+          "correct": true,
+          "explain": "Это shake-up. Надёжнее ориентироваться на собственную кросс-валидацию."
+        },
+        {
+          "text": "Организаторы поменяли метрику",
+          "explain": "Метрика та же — изменились только данные для подсчёта."
+        },
+        {
+          "text": "Приватный рейтинг случайный",
+          "explain": "Он честно посчитан на отложенных данных, просто не тех, под которые подгоняли модель."
+        },
+        {
+          "text": "Нужно было сделать ещё больше отправок",
+          "explain": "Это только усилило бы подгонку."
+        }
+      ],
+      "hints": [
+        "Какая проблема из урока про валидацию здесь повторяется?"
+      ]
+    },
+    {
+      "id": "retrain",
+      "title": "Модель стала ошибаться",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "После запуска новой программы лояльности precision модели оттока упала с 0,74 до 0,55, а PSI признака «число заказов» вырос до 0,32. Что делать?",
+      "options": [
+        {
+          "text": "Разобраться в причине (поведение клиентов изменилось), переобучить модель на свежих данных и проверить её на отложенном периоде перед заменой",
+          "correct": true,
+          "explain": "Сильный дрейф и падение качества — сигнал, что мир изменился и модель устарела."
+        },
+        {
+          "text": "Ничего: модель уже проверена на тесте",
+          "explain": "Тест был на старых данных, а распределение признаков сильно сдвинулось."
+        },
+        {
+          "text": "Удалить признак «число заказов»",
+          "explain": "Признак полезен, просто его распределение стало другим — модель нужно переучить, а не калечить."
+        },
+        {
+          "text": "Сразу заменить модель новой без проверки",
+          "explain": "Новую модель тоже нужно проверить: на отложенных данных или в A/B-тесте."
+        }
+      ],
+      "hints": [
+        "Что означает PSI больше 0,25?"
+      ]
+    }
+  ]
+}
