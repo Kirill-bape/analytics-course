@@ -1,0 +1,203 @@
+{
+  "tasks": [
+    {
+      "id": "completeness",
+      "title": "Полнота данных о клиентах",
+      "difficulty": 1,
+      "prompt": "Проверь полноту таблицы `customers`: `total` — всего клиентов, `no_city_pct` — доля клиентов без города, `no_birth_pct` — без даты рождения (в %, до 1 знака).",
+      "starter": "SELECT COUNT(*) AS total,\n       \nFROM customers;",
+      "solution": "SELECT COUNT(*) AS total,\n       ROUND(100.0 * COUNT(*) FILTER (WHERE city IS NULL) / COUNT(*), 1) AS no_city_pct,\n       ROUND(100.0 * COUNT(*) FILTER (WHERE birth_date IS NULL) / COUNT(*), 1) AS no_birth_pct\nFROM customers;",
+      "checkColumnNames": true,
+      "hints": [
+        "Пустые: `COUNT(*) FILTER (WHERE city IS NULL)`.",
+        "Или через разницу: `COUNT(*) - COUNT(city)` — `COUNT(столбец)` не считает NULL."
+      ],
+      "explanation": "Город не указан у 2% клиентов — для отчёта по городам это допустимо, но такие клиенты должны попадать в отдельную строку «не указан», а не теряться. Дата рождения пустая у каждого тринадцатого: возрастной анализ стоит сопровождать оговоркой.",
+      "selfTest": {
+        "correct": [
+          "SELECT COUNT(*) AS total, ROUND(100.0 * (COUNT(*) - COUNT(city)) / COUNT(*), 1) AS no_city_pct, ROUND(100.0 * (COUNT(*) - COUNT(birth_date)) / COUNT(*), 1) AS no_birth_pct FROM customers"
+        ],
+        "wrong": [
+          "SELECT COUNT(*) AS total, ROUND(100.0 * COUNT(city) / COUNT(*), 1) AS no_city_pct, ROUND(100.0 * COUNT(birth_date) / COUNT(*), 1) AS no_birth_pct FROM customers"
+        ]
+      }
+    },
+    {
+      "id": "load-checks",
+      "title": "Проверки после загрузки",
+      "difficulty": 3,
+      "sandbox": true,
+      "prompt": [
+        "Заготовка имитирует неудачную ночную загрузку июньских заказов в `orders_load`. Напиши проверку качества одним запросом:",
+        "- `rows_total` — всего строк;",
+        "- `duplicate_ids` — лишних строк с повторяющимся `order_id`;",
+        "- `no_customer` — заказов без клиента;",
+        "- `delivery_before_order` — заказов, где доставка раньше заказа."
+      ],
+      "starter": "CREATE TABLE orders_load AS SELECT * FROM orders WHERE order_date >= '2026-06-01';\n-- сбой: заказы за 15 июня пришли дважды\nINSERT INTO orders_load SELECT * FROM orders WHERE order_date = '2026-06-15';\n-- у части заказов потерялся клиент\nUPDATE orders_load SET customer_id = NULL WHERE order_id % 97 = 0;\n-- у части дата доставки «уехала» раньше даты заказа\nUPDATE orders_load SET delivery_date = order_date - 2 WHERE order_id % 41 = 0 AND delivery_date IS NOT NULL;\n\nSELECT COUNT(*) AS rows_total,\n       \nFROM orders_load;",
+      "solution": "CREATE TABLE orders_load AS SELECT * FROM orders WHERE order_date >= '2026-06-01';\n-- сбой: заказы за 15 июня пришли дважды\nINSERT INTO orders_load SELECT * FROM orders WHERE order_date = '2026-06-15';\n-- у части заказов потерялся клиент\nUPDATE orders_load SET customer_id = NULL WHERE order_id % 97 = 0;\n-- у части дата доставки «уехала» раньше даты заказа\nUPDATE orders_load SET delivery_date = order_date - 2 WHERE order_id % 41 = 0 AND delivery_date IS NOT NULL;\n\nSELECT COUNT(*) AS rows_total,\n       COUNT(*) - COUNT(DISTINCT order_id) AS duplicate_ids,\n       COUNT(*) FILTER (WHERE customer_id IS NULL) AS no_customer,\n       COUNT(*) FILTER (WHERE delivery_date < order_date) AS delivery_before_order\nFROM orders_load;",
+      "checkColumnNames": true,
+      "hints": [
+        "Лишние строки: `COUNT(*) - COUNT(DISTINCT order_id)`.",
+        "Пропуск проверяют через `IS NULL`, а не `= NULL`."
+      ],
+      "mistakes": [
+        {
+          "pattern": "(WHERE|WHEN|AND|OR)\\s+\\w+\\s*=\\s*NULL",
+          "flags": "i",
+          "message": "Сравнение `= NULL` всегда даёт «неизвестно» и не находит ни одной строки. Пиши `IS NULL`."
+        }
+      ],
+      "explanation": "Все четыре проверки нашли нарушения, значит загрузку нужно остановить. В Airflow такой запрос ставят последним шагом: если хоть одно число больше нуля, витрина не обновляется, а команда получает уведомление.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE orders_load AS SELECT * FROM orders WHERE order_date >= '2026-06-01';\n-- сбой: заказы за 15 июня пришли дважды\nINSERT INTO orders_load SELECT * FROM orders WHERE order_date = '2026-06-15';\n-- у части заказов потерялся клиент\nUPDATE orders_load SET customer_id = NULL WHERE order_id % 97 = 0;\n-- у части дата доставки «уехала» раньше даты заказа\nUPDATE orders_load SET delivery_date = order_date - 2 WHERE order_id % 41 = 0 AND delivery_date IS NOT NULL;\nWITH d AS (SELECT order_id FROM orders_load GROUP BY 1 HAVING COUNT(*) > 1) SELECT COUNT(*) AS rows_total, (SELECT COUNT(*) FROM orders_load WHERE order_id IN (SELECT order_id FROM d)) / 2 AS duplicate_ids, SUM(CASE WHEN customer_id IS NULL THEN 1 ELSE 0 END) AS no_customer, SUM(CASE WHEN delivery_date < order_date THEN 1 ELSE 0 END) AS delivery_before_order FROM orders_load"
+        ],
+        "wrong": [
+          "CREATE TABLE orders_load AS SELECT * FROM orders WHERE order_date >= '2026-06-01';\n-- сбой: заказы за 15 июня пришли дважды\nINSERT INTO orders_load SELECT * FROM orders WHERE order_date = '2026-06-15';\n-- у части заказов потерялся клиент\nUPDATE orders_load SET customer_id = NULL WHERE order_id % 97 = 0;\n-- у части дата доставки «уехала» раньше даты заказа\nUPDATE orders_load SET delivery_date = order_date - 2 WHERE order_id % 41 = 0 AND delivery_date IS NOT NULL;\nSELECT COUNT(*) AS rows_total, COUNT(*) - COUNT(DISTINCT order_id) AS duplicate_ids, COUNT(*) FILTER (WHERE customer_id = NULL) AS no_customer, COUNT(*) FILTER (WHERE delivery_date < order_date) AS delivery_before_order FROM orders_load"
+        ]
+      }
+    },
+    {
+      "id": "orphans",
+      "title": "Позиции без заказа",
+      "difficulty": 2,
+      "sandbox": true,
+      "prompt": [
+        "В загрузке позиций `items_load` у части строк испорчен номер заказа. Проверь ссылочную целостность: найди позиции, для которых **нет заказа** в `orders`.",
+        "",
+        "Столбцы: `orphan_items` — таких позиций, `orphan_orders` — сколько разных несуществующих номеров заказов на них приходится."
+      ],
+      "starter": "CREATE TABLE items_load AS\nSELECT * FROM order_items\nWHERE order_id IN (SELECT order_id FROM orders WHERE order_date >= '2026-06-01');\n-- сбой: у части позиций испорчен номер заказа\nUPDATE items_load SET order_id = order_id + 100000 WHERE item_id % 37 = 0;\n\nSELECT \nFROM items_load i\nWHERE ",
+      "solution": "CREATE TABLE items_load AS\nSELECT * FROM order_items\nWHERE order_id IN (SELECT order_id FROM orders WHERE order_date >= '2026-06-01');\n-- сбой: у части позиций испорчен номер заказа\nUPDATE items_load SET order_id = order_id + 100000 WHERE item_id % 37 = 0;\n\nSELECT COUNT(*) AS orphan_items,\n       COUNT(DISTINCT i.order_id) AS orphan_orders\nFROM items_load i\nWHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.order_id = i.order_id);",
+      "checkColumnNames": true,
+      "hints": [
+        "Условие «нет пары»: `NOT EXISTS (SELECT 1 FROM orders o WHERE o.order_id = i.order_id)`.",
+        "Вариант: `LEFT JOIN orders o USING (order_id) WHERE o.order_id IS NULL`."
+      ],
+      "explanation": "Если строить выручку по товарам через `JOIN` с заказами, эти позиции молча пропадут из отчёта. Если без `JOIN` — попадут в отчёт без даты и клиента. Поэтому целостность проверяют сразу после загрузки.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE items_load AS\nSELECT * FROM order_items\nWHERE order_id IN (SELECT order_id FROM orders WHERE order_date >= '2026-06-01');\n-- сбой: у части позиций испорчен номер заказа\nUPDATE items_load SET order_id = order_id + 100000 WHERE item_id % 37 = 0;\nSELECT COUNT(*) AS orphan_items, COUNT(DISTINCT i.order_id) AS orphan_orders FROM items_load i LEFT JOIN orders o ON o.order_id = i.order_id WHERE o.order_id IS NULL"
+        ],
+        "wrong": [
+          "CREATE TABLE items_load AS\nSELECT * FROM order_items\nWHERE order_id IN (SELECT order_id FROM orders WHERE order_date >= '2026-06-01');\n-- сбой: у части позиций испорчен номер заказа\nUPDATE items_load SET order_id = order_id + 100000 WHERE item_id % 37 = 0;\nSELECT COUNT(*) AS orphan_items, COUNT(DISTINCT i.order_id) AS orphan_orders FROM items_load i JOIN orders o ON o.order_id = i.order_id"
+        ]
+      }
+    },
+    {
+      "id": "export-clients",
+      "title": "Обезличенная выгрузка",
+      "difficulty": 2,
+      "sandbox": true,
+      "prompt": [
+        "Подрядчик строит модель оттока. Подготовь для него таблицу `export_clients` **без персональных данных**:",
+        "- `client_key` — `md5` от `customer_id` (как текста);",
+        "- `birth_decade` — десятилетие рождения вместо даты: `year(birth_date) // 10 * 10` (1987 → 1980);",
+        "- `city`, `acquisition_channel`.",
+        "",
+        "ФИО и пол в выгрузку не включай. Затем проверь распределение: `birth_decade`, `clients` — сортировка по десятилетию, пустые в конце (`NULLS LAST`)."
+      ],
+      "starter": "CREATE TABLE export_clients AS\nSELECT \nFROM customers;\n\nSELECT birth_decade, COUNT(*) AS clients\nFROM export_clients\nGROUP BY birth_decade\nORDER BY birth_decade NULLS LAST;",
+      "solution": "CREATE TABLE export_clients AS\nSELECT md5(CAST(customer_id AS VARCHAR)) AS client_key,\n       year(birth_date) // 10 * 10       AS birth_decade,\n       city,\n       acquisition_channel\nFROM customers;\n\nSELECT birth_decade, COUNT(*) AS clients\nFROM export_clients\nGROUP BY birth_decade\nORDER BY birth_decade NULLS LAST;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Хеш: `md5(CAST(customer_id AS VARCHAR))`.",
+        "Десятилетие: `year(birth_date) // 10 * 10` — `//` делит нацело."
+      ],
+      "mistakes": [
+        {
+          "pattern": "full_name",
+          "flags": "i",
+          "message": "ФИО — персональные данные, подрядчику они не нужны. Убери `full_name` из выгрузки."
+        }
+      ],
+      "explanation": "Модели оттока нужны поведение и общие признаки, а не имена. Десятилетие вместо точной даты сильно снижает риск узнать человека. Хеш позволяет потом сопоставить ответы модели с клиентами внутри компании.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE export_clients AS SELECT md5(customer_id::VARCHAR) AS client_key, CAST(floor(year(birth_date) / 10) * 10 AS INTEGER) AS birth_decade, city, acquisition_channel FROM customers; SELECT birth_decade, COUNT(*) AS clients FROM export_clients GROUP BY 1 ORDER BY 1 NULLS LAST"
+        ],
+        "wrong": [
+          "CREATE TABLE export_clients AS SELECT md5(customer_id::VARCHAR) AS client_key, year(birth_date) // 10 AS birth_decade, city, acquisition_channel FROM customers; SELECT birth_decade, COUNT(*) AS clients FROM export_clients GROUP BY 1 ORDER BY 1 NULLS LAST"
+        ]
+      }
+    },
+    {
+      "id": "pii",
+      "title": "Данные для подрядчика",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Подрядчик просит «всю таблицу клиентов, чтобы ничего не упустить». Как поступить правильно?",
+      "options": [
+        {
+          "text": "Выяснить, какие поля нужны для задачи, убрать ФИО и контакты, заменить id хешем, обобщить даты и передать через защищённый канал по договору",
+          "correct": true,
+          "explain": "Минимум нужных данных, псевдонимизация и контролируемый доступ — базовые правила 152-ФЗ и здравого смысла."
+        },
+        {
+          "text": "Отправить CSV-файл со всей таблицей по почте — подрядчик ведь проверенный",
+          "explain": "Это передача персональных данных без необходимости и через незащищённый канал — прямой риск утечки и штрафа."
+        },
+        {
+          "text": "Удалить только столбец с ФИО, остальное отправить",
+          "explain": "По телефону, почте или сочетанию даты рождения и города человека всё ещё можно найти."
+        },
+        {
+          "text": "Отказать: с персональными данными работать нельзя",
+          "explain": "Работать можно — по правилам: с минимумом полей, обезличиванием и договором."
+        }
+      ],
+      "hints": [
+        "Что из таблицы на самом деле нужно для модели?"
+      ]
+    },
+    {
+      "id": "metric-definition",
+      "title": "Две разные выручки",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "На совещании в двух дашбордах выручка за май отличается на 6%. Выяснилось: один учитывает возвраты, другой — нет. Как предотвратить такое в будущем?",
+      "options": [
+        {
+          "text": "Утвердить одно определение «выручки» в словаре метрик или семантическом слое, назначить владельца и строить все дашборды на нём",
+          "correct": true,
+          "explain": "Единый источник правды: метрика описана один раз, и все отчёты берут её оттуда."
+        },
+        {
+          "text": "Удалить один из дашбордов",
+          "explain": "Проблема вернётся со следующим отчётом, если определение не зафиксировано."
+        },
+        {
+          "text": "Каждый раз выбирать ту цифру, что больше",
+          "explain": "Так решения будут приниматься по случайным цифрам."
+        },
+        {
+          "text": "Добавить на дашборды сноску «цифры могут отличаться»",
+          "explain": "Сноска не делает цифры правильными."
+        }
+      ],
+      "hints": [
+        "Где должно жить определение метрики?"
+      ]
+    },
+    {
+      "id": "quality-checklist",
+      "title": "Чек-лист качества своей витрины",
+      "difficulty": 2,
+      "type": "checklist",
+      "prompt": "Возьми таблицу или витрину из своего итогового проекта и пройди по ней проверки из урока. Отметь выполненные пункты.",
+      "items": [
+        "Число строк и период данных совпадают с ожидаемыми",
+        "Ключ таблицы уникален: нет дублей",
+        "Посчитал(а) долю пропусков в важных столбцах и решил(а), что с ними делать",
+        "Все ссылки (клиент, товар, заказ) ведут на существующие записи",
+        "Значения в допустимых границах: суммы > 0, даты не из будущего, статусы из списка",
+        "Поля не противоречат друг другу (например, доставка не раньше заказа)",
+        "В выгрузках нет лишних персональных данных",
+        "В README описано, что значит каждая метрика и откуда она считается"
+      ],
+      "hints": []
+    }
+  ]
+}

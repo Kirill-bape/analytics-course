@@ -1,0 +1,202 @@
+{
+  "tasks": [
+    {
+      "id": "schemaless",
+      "title": "Документы с разными полями",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "В `users` — выгрузка клиентов из MongoDB. Контакты хранятся по-разному: в старых документах — полями `phone` и `email` верхнего уровня, в новых — внутри вложенного `contacts`. Где-то поля нет, где-то оно пустое (`None` или `\"\"`).",
+        "",
+        "Посчитай, у скольких клиентов **нет ни одного контакта** — ни телефона, ни почты ни в каком виде. Число — в `result`."
+      ],
+      "starter": "users = [\n    {\"_id\": 1, \"name\": \"Анна\", \"phone\": \"+7 900 000-00-01\", \"city\": \"Москва\"},\n    {\"_id\": 2, \"name\": \"Олег\", \"email\": \"oleg@example.com\"},\n    {\"_id\": 3, \"name\": \"Ирина\", \"contacts\": {\"phone\": \"+7 900 000-00-03\"}},\n    {\"_id\": 4, \"name\": \"Пётр\", \"city\": \"Пермь\"},\n    {\"_id\": 5, \"name\": \"Мария\", \"phone\": None, \"email\": \"maria@example.com\"},\n    {\"_id\": 6, \"name\": \"Глеб\", \"contacts\": {\"email\": \"gleb@example.com\"}},\n    {\"_id\": 7, \"name\": \"Света\", \"phone\": \"\"},\n]\n\ndef has_contact(u):\n    contacts = u.get(\"contacts\", {})\n    \n\nresult = ",
+      "solution": "users = [\n    {\"_id\": 1, \"name\": \"Анна\", \"phone\": \"+7 900 000-00-01\", \"city\": \"Москва\"},\n    {\"_id\": 2, \"name\": \"Олег\", \"email\": \"oleg@example.com\"},\n    {\"_id\": 3, \"name\": \"Ирина\", \"contacts\": {\"phone\": \"+7 900 000-00-03\"}},\n    {\"_id\": 4, \"name\": \"Пётр\", \"city\": \"Пермь\"},\n    {\"_id\": 5, \"name\": \"Мария\", \"phone\": None, \"email\": \"maria@example.com\"},\n    {\"_id\": 6, \"name\": \"Глеб\", \"contacts\": {\"email\": \"gleb@example.com\"}},\n    {\"_id\": 7, \"name\": \"Света\", \"phone\": \"\"},\n]\n\ndef has_contact(u):\n    contacts = u.get(\"contacts\", {})\n    values = [u.get(\"phone\"), u.get(\"email\"), contacts.get(\"phone\"), contacts.get(\"email\")]\n    return any(values)\n\nresult = sum(1 for u in users if not has_contact(u))",
+      "hints": [
+        "`u.get(\"phone\")` вернёт `None`, если поля нет, — без ошибки.",
+        "`any([...])` даёт `False`, если все значения пустые: `None` и `\"\"` считаются ложью."
+      ],
+      "explanation": "Без контактов Пётр и Света: у Светы поле `phone` есть, но пустое. Обращение `u[\"phone\"]` упало бы на первом документе без этого поля, а проверка только верхнего уровня потеряла бы клиентов из новых документов.",
+      "selfTest": {
+        "correct": [
+          "users = [\n    {\"_id\": 1, \"name\": \"Анна\", \"phone\": \"+7 900 000-00-01\", \"city\": \"Москва\"},\n    {\"_id\": 2, \"name\": \"Олег\", \"email\": \"oleg@example.com\"},\n    {\"_id\": 3, \"name\": \"Ирина\", \"contacts\": {\"phone\": \"+7 900 000-00-03\"}},\n    {\"_id\": 4, \"name\": \"Пётр\", \"city\": \"Пермь\"},\n    {\"_id\": 5, \"name\": \"Мария\", \"phone\": None, \"email\": \"maria@example.com\"},\n    {\"_id\": 6, \"name\": \"Глеб\", \"contacts\": {\"email\": \"gleb@example.com\"}},\n    {\"_id\": 7, \"name\": \"Света\", \"phone\": \"\"},\n]\ndef contact(u):\n    c = u.get(\"contacts\") or {}\n    return bool(u.get(\"phone\") or u.get(\"email\") or c.get(\"phone\") or c.get(\"email\"))\nresult = len([u for u in users if not contact(u)])"
+        ],
+        "wrong": [
+          "users = [\n    {\"_id\": 1, \"name\": \"Анна\", \"phone\": \"+7 900 000-00-01\", \"city\": \"Москва\"},\n    {\"_id\": 2, \"name\": \"Олег\", \"email\": \"oleg@example.com\"},\n    {\"_id\": 3, \"name\": \"Ирина\", \"contacts\": {\"phone\": \"+7 900 000-00-03\"}},\n    {\"_id\": 4, \"name\": \"Пётр\", \"city\": \"Пермь\"},\n    {\"_id\": 5, \"name\": \"Мария\", \"phone\": None, \"email\": \"maria@example.com\"},\n    {\"_id\": 6, \"name\": \"Глеб\", \"contacts\": {\"email\": \"gleb@example.com\"}},\n    {\"_id\": 7, \"name\": \"Света\", \"phone\": \"\"},\n]\nresult = sum(1 for u in users if \"phone\" not in u and \"email\" not in u)",
+          "users = [\n    {\"_id\": 1, \"name\": \"Анна\", \"phone\": \"+7 900 000-00-01\", \"city\": \"Москва\"},\n    {\"_id\": 2, \"name\": \"Олег\", \"email\": \"oleg@example.com\"},\n    {\"_id\": 3, \"name\": \"Ирина\", \"contacts\": {\"phone\": \"+7 900 000-00-03\"}},\n    {\"_id\": 4, \"name\": \"Пётр\", \"city\": \"Пермь\"},\n    {\"_id\": 5, \"name\": \"Мария\", \"phone\": None, \"email\": \"maria@example.com\"},\n    {\"_id\": 6, \"name\": \"Глеб\", \"contacts\": {\"email\": \"gleb@example.com\"}},\n    {\"_id\": 7, \"name\": \"Света\", \"phone\": \"\"},\n]\nresult = sum(1 for u in users if not (u.get(\"phone\") or u.get(\"email\")))"
+        ]
+      }
+    },
+    {
+      "id": "mongo-find",
+      "title": "Запрос в MongoDB",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Какой запрос MongoDB соответствует SQL `SELECT * FROM orders WHERE status = 'delivered' AND amount > 5000`?",
+      "options": [
+        {
+          "text": "`db.orders.find({status: \"delivered\", amount: {$gt: 5000}})`",
+          "correct": true,
+          "explain": "Условия в одном объекте объединяются через «и», а `$gt` означает «больше»."
+        },
+        {
+          "text": "`db.orders.find({status: \"delivered\", amount: 5000})`",
+          "explain": "Так найдутся заказы ровно на 5000."
+        },
+        {
+          "text": "`db.orders.find({status: \"delivered\"}).count()`",
+          "explain": "Это число доставленных заказов без условия на сумму."
+        },
+        {
+          "text": "`db.orders.find({amount: {$lt: 5000}})`",
+          "explain": "`$lt` — «меньше», и статус не учтён."
+        }
+      ],
+      "hints": [
+        "«Больше» в MongoDB — `$gt` (greater than)."
+      ]
+    },
+    {
+      "id": "unwind-tags",
+      "title": "Развернуть списки: $unwind",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "В `catalog` у товаров есть список меток `tags` (у некоторых он пустой или отсутствует). Сделай таблицу, разверни метки в строки через `explode` и посчитай, **сколько товаров с каждой меткой**.",
+        "",
+        "В `result` — число товаров по меткам (метка → количество)."
+      ],
+      "starter": "catalog = [\n    {\"sku\": \"A1\", \"tags\": [\"хит\", \"скидка\"]},\n    {\"sku\": \"B7\", \"tags\": [\"новинка\"]},\n    {\"sku\": \"C3\", \"tags\": [\"хит\", \"новинка\", \"скидка\"]},\n    {\"sku\": \"D2\", \"tags\": []},\n    {\"sku\": \"E5\", \"tags\": [\"скидка\"]},\n    {\"sku\": \"F9\"},\n    {\"sku\": \"G4\", \"tags\": [\"хит\", \"скидка\"]},\n]\n\ndf = pd.DataFrame(catalog)\nprint(df)\n\nresult = ",
+      "solution": "catalog = [\n    {\"sku\": \"A1\", \"tags\": [\"хит\", \"скидка\"]},\n    {\"sku\": \"B7\", \"tags\": [\"новинка\"]},\n    {\"sku\": \"C3\", \"tags\": [\"хит\", \"новинка\", \"скидка\"]},\n    {\"sku\": \"D2\", \"tags\": []},\n    {\"sku\": \"E5\", \"tags\": [\"скидка\"]},\n    {\"sku\": \"F9\"},\n    {\"sku\": \"G4\", \"tags\": [\"хит\", \"скидка\"]},\n]\n\ndf = pd.DataFrame(catalog)\nprint(df)\n\nresult = df.explode(\"tags\")[\"tags\"].value_counts()",
+      "hints": [
+        "`df.explode(\"tags\")` превратит каждый элемент списка в отдельную строку.",
+        "Пустые списки и пропуски станут `NaN` — `value_counts()` их не считает."
+      ],
+      "explanation": "Это ровно то, что делает стадия `$unwind` в MongoDB или `unnest` в SQL: одна строка со списком превращается в несколько строк. После этого с данными работают как с обычной таблицей.",
+      "selfTest": {
+        "correct": [
+          "catalog = [\n    {\"sku\": \"A1\", \"tags\": [\"хит\", \"скидка\"]},\n    {\"sku\": \"B7\", \"tags\": [\"новинка\"]},\n    {\"sku\": \"C3\", \"tags\": [\"хит\", \"новинка\", \"скидка\"]},\n    {\"sku\": \"D2\", \"tags\": []},\n    {\"sku\": \"E5\", \"tags\": [\"скидка\"]},\n    {\"sku\": \"F9\"},\n    {\"sku\": \"G4\", \"tags\": [\"хит\", \"скидка\"]},\n]\nfrom collections import Counter\nc = Counter(t for p in catalog for t in p.get(\"tags\", []))\nresult = pd.Series(c)"
+        ],
+        "wrong": [
+          "catalog = [\n    {\"sku\": \"A1\", \"tags\": [\"хит\", \"скидка\"]},\n    {\"sku\": \"B7\", \"tags\": [\"новинка\"]},\n    {\"sku\": \"C3\", \"tags\": [\"хит\", \"новинка\", \"скидка\"]},\n    {\"sku\": \"D2\", \"tags\": []},\n    {\"sku\": \"E5\", \"tags\": [\"скидка\"]},\n    {\"sku\": \"F9\"},\n    {\"sku\": \"G4\", \"tags\": [\"хит\", \"скидка\"]},\n]\nresult = pd.DataFrame(catalog)[\"tags\"].astype(str).value_counts()"
+        ]
+      }
+    },
+    {
+      "id": "order-docs",
+      "title": "Заказ как документ",
+      "difficulty": 2,
+      "sandbox": true,
+      "prompt": [
+        "Собери заказы «как документы»: таблица `order_docs` со столбцами `order_id` и `products` — **список** `product_id` из `order_items` (`list(product_id)`).",
+        "",
+        "Затем по этой таблице посчитай, сколько заказов содержит 1, 2, 3… товарных позиций: столбцы `items` (длина списка, `len(products)`) и `orders`. Сортировка по `items`."
+      ],
+      "starter": "CREATE TABLE order_docs AS\nSELECT \nFROM order_items\nGROUP BY order_id;\n\nSELECT \n",
+      "solution": "CREATE TABLE order_docs AS\nSELECT order_id, list(product_id) AS products\nFROM order_items\nGROUP BY order_id;\n\nSELECT len(products) AS items, COUNT(*) AS orders\nFROM order_docs\nGROUP BY items\nORDER BY items;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Документ: `SELECT order_id, list(product_id) AS products … GROUP BY order_id`.",
+        "Длина списка — `len(products)`."
+      ],
+      "explanation": "В документной базе такой заказ хранился бы одним документом со списком позиций. Удобно, когда заказ всегда читают целиком; неудобно, когда нужна аналитика по товарам, — тогда список разворачивают обратно через `unnest`.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE order_docs AS SELECT order_id, list(product_id) AS products FROM order_items GROUP BY 1; SELECT items, COUNT(*) AS orders FROM (SELECT array_length(products) AS items FROM order_docs) GROUP BY 1 ORDER BY 1"
+        ],
+        "wrong": [
+          "CREATE TABLE order_docs AS SELECT order_id, list(product_id) AS products FROM order_items GROUP BY 1; SELECT len(products) AS items, COUNT(*) AS orders FROM order_docs WHERE len(products) > 1 GROUP BY 1 ORDER BY 1",
+          "CREATE TABLE order_docs AS SELECT order_id, list(product_id) AS products FROM order_items GROUP BY 1; SELECT len(products) AS items, COUNT(*) AS orders FROM order_docs GROUP BY 1 ORDER BY 2"
+        ]
+      }
+    },
+    {
+      "id": "redis-use",
+      "title": "Задача для Redis",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Для какой задачи Redis подходит лучше всего?",
+      "options": [
+        {
+          "text": "Хранить корзины и сессии пользователей и кэшировать тяжёлые ответы — читать нужно за миллисекунды",
+          "correct": true,
+          "explain": "Redis держит данные в памяти и отвечает мгновенно — идеально для кэша и сессий."
+        },
+        {
+          "text": "Хранить историю заказов за 5 лет для квартальных отчётов",
+          "explain": "История для отчётов — задача хранилища: Redis держит всё в дорогой памяти и не умеет сложные запросы."
+        },
+        {
+          "text": "Считать когорты и воронки по миллиардам событий",
+          "explain": "Это работа колоночного хранилища вроде ClickHouse."
+        },
+        {
+          "text": "Хранить бухгалтерские проводки с транзакциями",
+          "explain": "Для денег нужна реляционная база со строгими транзакциями."
+        }
+      ],
+      "hints": [
+        "В чём главная сила Redis?"
+      ]
+    },
+    {
+      "id": "cassandra-key",
+      "title": "Ключ партиции в Cassandra",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "В мессенджере главный запрос — «последние 50 сообщений чата». Как спроектировать таблицу сообщений в Cassandra?",
+      "options": [
+        {
+          "text": "Ключ партиции `chat_id`, сортировка внутри партиции по `sent_at` по убыванию",
+          "correct": true,
+          "explain": "Все сообщения чата лежат на одном сервере и уже отсортированы — запрос читает начало одной партиции."
+        },
+        {
+          "text": "Ключ партиции `sent_at`",
+          "explain": "Тогда сообщения одного чата окажутся на разных серверах, и запрос придётся собирать по всему кластеру."
+        },
+        {
+          "text": "Ключ партиции `message_id`, а нужные искать фильтром",
+          "explain": "Фильтр по неключевому полю в Cassandra — полный перебор кластера."
+        },
+        {
+          "text": "Одна партиция на всю таблицу",
+          "explain": "Одна огромная партиция ляжет на один сервер — пропадает смысл кластера."
+        }
+      ],
+      "hints": [
+        "В Cassandra таблицу проектируют под запрос: по чему он ищет?"
+      ]
+    },
+    {
+      "id": "cap",
+      "title": "Согласованность или доступность",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Связь между дата-центрами банка прервалась. Клиент запрашивает баланс, а сервер не может убедиться, что у него свежие данные. Что выбрать по теореме CAP?",
+      "options": [
+        {
+          "text": "Согласованность: временно отказать в операции, чем показать или списать неверную сумму",
+          "correct": true,
+          "explain": "Для денег ошибка дороже недоступности. А вот счётчик лайков спокойно выбирает доступность."
+        },
+        {
+          "text": "Доступность: показать последний известный баланс и разрешить списание",
+          "explain": "Так можно дважды потратить одни и те же деньги."
+        },
+        {
+          "text": "И то и другое: CAP не мешает",
+          "explain": "При разрыве сети приходится выбирать — в этом суть теоремы."
+        },
+        {
+          "text": "Перейти на Redis",
+          "explain": "Смена базы не отменяет выбор при разрыве сети."
+        }
+      ],
+      "hints": [
+        "Что хуже для банка: «попробуйте позже» или неверный баланс?"
+      ]
+    }
+  ]
+}

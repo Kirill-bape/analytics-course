@@ -1,0 +1,214 @@
+{
+  "tasks": [
+    {
+      "id": "mapreduce-avg",
+      "title": "Средний чек по кускам",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Заказы разрезаны на 4 куска `chunks`, как на 4 машины кластера. Посчитай **средний чек доставленных заказов по способу оплаты** в стиле MapReduce:",
+        "- **map**: для каждого куска — сумму и количество `amount` доставленных заказов по `payment_method`;",
+        "- **reduce**: сложи частичные суммы и количества и только потом раздели.",
+        "",
+        "В `result` — средний чек по способам оплаты, округлённый до 2 знаков."
+      ],
+      "starter": "chunks = [orders.iloc[i:i + 4000] for i in range(0, len(orders), 4000)]\n\n# map\nparts = \n\n# reduce\ntotal = \nresult = ",
+      "solution": "chunks = [orders.iloc[i:i + 4000] for i in range(0, len(orders), 4000)]\n\n# map\nparts = [c[c[\"status\"] == \"delivered\"].groupby(\"payment_method\")[\"amount\"].agg([\"sum\", \"count\"]) for c in chunks]\n\n# reduce\ntotal = pd.concat(parts).groupby(level=0).sum()\nresult = (total[\"sum\"] / total[\"count\"]).round(2)",
+      "hints": [
+        "Для одного куска: `c[c[\"status\"] == \"delivered\"].groupby(\"payment_method\")[\"amount\"].agg([\"sum\", \"count\"])`.",
+        "Объединение: `pd.concat(parts).groupby(level=0).sum()`, затем `total[\"sum\"] / total[\"count\"]`."
+      ],
+      "explanation": "Если усреднить средние по кускам, последний маленький кусок получит такой же вес, как большие, и ответ немного сдвинется. На миллиардах строк и сотнях машин такая ошибка бывает заметной. Поэтому распределённые движки считают среднее через сумму и количество.",
+      "selfTest": {
+        "correct": [
+          "d = orders[orders.status == 'delivered']\nresult = d.groupby('payment_method')['amount'].mean().round(2)"
+        ],
+        "wrong": [
+          "chunks = [orders.iloc[i:i + 4000] for i in range(0, len(orders), 4000)]\nmeans = [c[c.status == 'delivered'].groupby('payment_method')['amount'].mean() for c in chunks]\nresult = pd.concat(means).groupby(level=0).mean().round(2)"
+        ]
+      }
+    },
+    {
+      "id": "parquet-why",
+      "title": "Почему Parquet быстрее CSV",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Таблица на 2 млрд строк и 40 столбцов лежит в S3 в двух вариантах: CSV и Parquet. Почему запрос `SELECT SUM(amount)` по Parquet выполняется во много раз быстрее?",
+      "options": [
+        {
+          "text": "Parquet хранит данные по столбцам и сжатыми: читается только столбец `amount`, а не все 40",
+          "correct": true,
+          "explain": "Плюс типы уже известны (не нужно разбирать текст), а статистика min/max помогает пропускать куски."
+        },
+        {
+          "text": "В Parquet меньше строк",
+          "explain": "Строк столько же — меняется только способ хранения."
+        },
+        {
+          "text": "Parquet хранит заранее посчитанные суммы",
+          "explain": "Нет, там исходные данные. Хранится лишь статистика min/max по кускам."
+        },
+        {
+          "text": "CSV нельзя читать параллельно",
+          "explain": "Можно, но всё равно придётся прочитать и разобрать все 40 столбцов."
+        }
+      ],
+      "hints": [
+        "Вспомни, чем хорош ClickHouse."
+      ]
+    },
+    {
+      "id": "lazy",
+      "title": "Когда Spark начнёт считать",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": [
+        "В каком месте этого кода Spark впервые прочитает данные и начнёт вычисления?",
+        "",
+        "```py",
+        "df = spark.read.parquet(\"s3://shop/orders/\")          # 1",
+        "big = df.filter(F.col(\"amount\") > 10000)               # 2",
+        "by_day = big.groupBy(\"order_date\").count()             # 3",
+        "by_day.write.parquet(\"s3://shop/marts/big_orders/\")    # 4",
+        "```"
+      ],
+      "options": [
+        {
+          "text": "В строке 4: `write` — действие, а `filter` и `groupBy` — ленивые трансформации",
+          "correct": true,
+          "explain": "До действия Spark только строит план. Зато он видит весь план и, например, читает лишь нужные столбцы."
+        },
+        {
+          "text": "В строке 1: данные загружаются при чтении",
+          "explain": "При чтении Spark узнаёт только схему; сами данные читаются, когда понадобится результат."
+        },
+        {
+          "text": "В строке 2: фильтр сразу отбирает строки",
+          "explain": "`filter` — трансформация, она ленивая."
+        },
+        {
+          "text": "В строке 3: группировка требует вычислений",
+          "explain": "`groupBy().count()` в DataFrame API тоже трансформация."
+        }
+      ],
+      "hints": [
+        "Трансформации записывают план, действия его выполняют."
+      ]
+    },
+    {
+      "id": "shuffle",
+      "title": "Где будет shuffle",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Какая из операций Spark потребует пересылки данных между машинами (shuffle)?",
+      "options": [
+        {
+          "text": "`orders.groupBy(\"customer_id\").agg(F.sum(\"amount\"))`",
+          "correct": true,
+          "explain": "Заказы одного клиента разбросаны по разным машинам — чтобы сложить их, данные нужно переслать по ключу."
+        },
+        {
+          "text": "`orders.filter(F.col(\"status\") == \"delivered\")`",
+          "explain": "Каждая машина фильтрует свой кусок сама, пересылка не нужна."
+        },
+        {
+          "text": "`orders.withColumn(\"vat\", F.col(\"amount\") * 0.2)`",
+          "explain": "Новый столбец считается построчно, на месте."
+        },
+        {
+          "text": "`orders.select(\"order_id\", \"amount\")`",
+          "explain": "Выбор столбцов тоже не требует пересылки."
+        }
+      ],
+      "hints": [
+        "Какой операции нужны строки с одним ключом в одном месте?"
+      ]
+    },
+    {
+      "id": "spark-tasks",
+      "title": "Сколько задач запустит Spark",
+      "difficulty": 2,
+      "type": "number",
+      "prompt": "Spark читает **64 ГБ** файлов Parquet и делит их на партиции по **128 МБ**. Каждая партиция — отдельная задача. Сколько задач будет на этапе чтения? (1 ГБ = 1024 МБ.)",
+      "answer": 512,
+      "hints": [
+        "Переведи гигабайты в мегабайты и раздели на размер партиции."
+      ],
+      "wrongAnswers": [
+        {
+          "value": 500,
+          "message": "В одном гигабайте **1024** МБ, а не 1000."
+        },
+        {
+          "value": 0.5,
+          "message": "Раздели наоборот: объём данных на размер партиции."
+        }
+      ],
+      "explanation": "64 × 1024 / 128 = 512 задач. Если в кластере 128 ядер, задачи пройдут в 4 «волны».",
+      "selfTest": {
+        "correct": [
+          "512"
+        ],
+        "wrong": [
+          "500"
+        ]
+      }
+    },
+    {
+      "id": "partition-pruning",
+      "title": "Сколько прочитает запрос",
+      "difficulty": 3,
+      "prompt": [
+        "Заказы лежат в S3 папками по месяцам (`month=2025-01`, …). Аналитик строит отчёт за **II квартал 2026**. Посчитай одним запросом:",
+        "- `total_partitions` — сколько всего папок-месяцев;",
+        "- `read_partitions` — сколько из них прочитает запрос за II квартал;",
+        "- `read_pct` — какую долю всех строк он прочитает (в %, до 1 знака)."
+      ],
+      "starter": "SELECT COUNT(DISTINCT date_trunc('month', order_date)) AS total_partitions,\n       \nFROM orders;",
+      "solution": "SELECT COUNT(DISTINCT date_trunc('month', order_date)) AS total_partitions,\n       COUNT(DISTINCT date_trunc('month', order_date)) FILTER (WHERE order_date >= '2026-04-01' AND order_date < '2026-07-01') AS read_partitions,\n       ROUND(100.0 * COUNT(*) FILTER (WHERE order_date >= '2026-04-01' AND order_date < '2026-07-01') / COUNT(*), 1) AS read_pct\nFROM orders;",
+      "checkColumnNames": true,
+      "hints": [
+        "II квартал: `order_date >= '2026-04-01' AND order_date < '2026-07-01'`.",
+        "Условие на часть строк внутри агрегата — `FILTER (WHERE …)`."
+      ],
+      "explanation": "Запрос откроет 3 папки из 18 и прочитает меньше четверти строк. На реальных объёмах это разница между секундами и минутами — и между маленьким и большим счётом за облако. Поэтому в запросах к большим таблицам всегда ставят фильтр по столбцу партиционирования.",
+      "selfTest": {
+        "correct": [
+          "WITH m AS (SELECT date_trunc('month', order_date) AS month, COUNT(*) AS n FROM orders GROUP BY 1) SELECT COUNT(*) AS total_partitions, COUNT(*) FILTER (WHERE month BETWEEN '2026-04-01' AND '2026-06-01') AS read_partitions, ROUND(100.0 * SUM(n) FILTER (WHERE month BETWEEN '2026-04-01' AND '2026-06-01') / SUM(n), 1) AS read_pct FROM m"
+        ],
+        "wrong": [
+          "SELECT COUNT(DISTINCT date_trunc('month', order_date)) AS total_partitions, COUNT(DISTINCT date_trunc('month', order_date)) FILTER (WHERE order_date >= '2026-04-01' AND order_date < '2026-06-30') AS read_partitions, ROUND(100.0 * COUNT(*) FILTER (WHERE order_date >= '2026-04-01' AND order_date < '2026-06-30') / COUNT(*), 1) AS read_pct FROM orders"
+        ]
+      }
+    },
+    {
+      "id": "lakehouse",
+      "title": "Что добавляет Iceberg",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Данные уже лежат в S3 в Parquet. Зачем поверх них подключать табличный формат Apache Iceberg или Delta Lake?",
+      "options": [
+        {
+          "text": "Чтобы появились транзакции, UPDATE/DELETE, история версий и безопасное изменение схемы",
+          "correct": true,
+          "explain": "Так озеро файлов получает свойства хранилища — это и есть Lakehouse."
+        },
+        {
+          "text": "Чтобы файлы занимали меньше места",
+          "explain": "Сжатием занимается сам Parquet."
+        },
+        {
+          "text": "Чтобы данные можно было открыть в Excel",
+          "explain": "Excel тут ни при чём."
+        },
+        {
+          "text": "Чтобы не нужен был движок вроде Spark или Trino",
+          "explain": "Движок всё равно нужен: Iceberg — формат таблиц, а не система вычислений."
+        }
+      ],
+      "hints": [
+        "Чего не хватает «голому» озеру по сравнению с хранилищем?"
+      ]
+    }
+  ]
+}
