@@ -1,0 +1,192 @@
+{
+  "tasks": [
+    {
+      "id": "distance",
+      "title": "Расстояние между клиентами",
+      "difficulty": 1,
+      "type": "python",
+      "prompt": "В заготовке признаки `recency` и `frequency` стандартизированы (`z`). Посчитай евклидово расстояние между клиентами с `customer_id` **1** и **3** (`z.loc[1]` и `z.loc[3]`). Округли до 3 знаков, ответ в `result`.",
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\ncols = [\"recency\", \"frequency\"]\nz = (df[cols] - df[cols].mean()) / df[cols].std()\n\na, b = z.loc[1], z.loc[3]\nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\ncols = [\"recency\", \"frequency\"]\nz = (df[cols] - df[cols].mean()) / df[cols].std()\n\na, b = z.loc[1], z.loc[3]\nresult = round(np.sqrt(((a - b) ** 2).sum()), 3)",
+      "hints": [
+        "Формула: корень из суммы квадратов разностей — `np.sqrt(((a - b) ** 2).sum())`.",
+        "Или короче: `np.linalg.norm(a - b)`."
+      ],
+      "explanation": "Клиент 1 покупает часто и недавно, клиент 3 — один раз и давно, поэтому расстояние большое: почти 5 стандартных отклонений. Для k-NN эти клиенты точно не «соседи».",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\ncols = [\"recency\", \"frequency\"]\nz = (df[cols] - df[cols].mean()) / df[cols].std()\nresult = round(float(np.linalg.norm(z.loc[1].to_numpy() - z.loc[3].to_numpy())), 3)"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\ncols = [\"recency\", \"frequency\"]\nz = (df[cols] - df[cols].mean()) / df[cols].std()\nresult = round(float(np.abs(z.loc[1] - z.loc[3]).sum()), 3)",
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\na, b = df.loc[1, [\"recency\", \"frequency\"]], df.loc[3, [\"recency\", \"frequency\"]]\nresult = round(float(np.linalg.norm(a - b)), 3)"
+        ]
+      }
+    },
+    {
+      "id": "knn-vote",
+      "title": "Голосование соседей",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Заготовка готовит k-NN: стандартизирует признаки по обучающей выборке, считает расстояния `d` (тест × обучение) и упорядочивает соседей (`order` — номера обучающих клиентов от ближайшего к дальнему для каждого тестового).",
+        "",
+        "Возьми **15** ближайших соседей, предскажи класс голосованием большинства (доля вернувшихся среди соседей > 0,5) и посчитай accuracy на тесте. В `result` — accuracy до 3 знаков."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ncols = [\"recency\", \"frequency\"]\nmu, sd = train[cols].mean(), train[cols].std()\nXtr = ((train[cols] - mu) / sd).to_numpy()\nXte = ((test[cols] - mu) / sd).to_numpy()\nytr, yte = train[\"returned\"].to_numpy(), test[\"returned\"].to_numpy()\nd = np.sqrt(((Xte[:, None, :] - Xtr[None, :, :]) ** 2).sum(axis=2))\norder = np.argsort(d, axis=1, kind=\"stable\")\n\nnearest = \npred = \nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ncols = [\"recency\", \"frequency\"]\nmu, sd = train[cols].mean(), train[cols].std()\nXtr = ((train[cols] - mu) / sd).to_numpy()\nXte = ((test[cols] - mu) / sd).to_numpy()\nytr, yte = train[\"returned\"].to_numpy(), test[\"returned\"].to_numpy()\nd = np.sqrt(((Xte[:, None, :] - Xtr[None, :, :]) ** 2).sum(axis=2))\norder = np.argsort(d, axis=1, kind=\"stable\")\n\nnearest = order[:, :15]\npred = (ytr[nearest].mean(axis=1) > 0.5).astype(int)\nresult = round((pred == yte).mean(), 3)",
+      "hints": [
+        "Номера 15 ближайших: `order[:, :15]`.",
+        "`ytr[nearest]` — ответы соседей, таблица 588 × 15. Доля единиц по строкам: `.mean(axis=1)`."
+      ],
+      "explanation": "k-NN на двух признаках угадывает 77,7% тестовых клиентов — на уровне логистической регрессии. Никаких весов модель не подбирала: она просто смотрит на похожих клиентов из прошлого.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ncols = [\"recency\", \"frequency\"]\nmu, sd = train[cols].mean(), train[cols].std()\nXtr = ((train[cols] - mu) / sd).to_numpy()\nXte = ((test[cols] - mu) / sd).to_numpy()\nytr, yte = train[\"returned\"].to_numpy(), test[\"returned\"].to_numpy()\nd = np.sqrt(((Xte[:, None, :] - Xtr[None, :, :]) ** 2).sum(axis=2))\norder = np.argsort(d, axis=1, kind=\"stable\")\nvotes = np.array([ytr[row[:15]].sum() for row in order])\nresult = round(float(((votes >= 8).astype(int) == yte).mean()), 3)"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ncols = [\"recency\", \"frequency\"]\nmu, sd = train[cols].mean(), train[cols].std()\nXtr = ((train[cols] - mu) / sd).to_numpy()\nXte = ((test[cols] - mu) / sd).to_numpy()\nytr, yte = train[\"returned\"].to_numpy(), test[\"returned\"].to_numpy()\nd = np.sqrt(((Xte[:, None, :] - Xtr[None, :, :]) ** 2).sum(axis=2))\norder = np.argsort(d, axis=1, kind=\"stable\")\nnearest = order[:, -15:]\npred = (ytr[nearest].mean(axis=1) > 0.5).astype(int)\nresult = round((pred == yte).mean(), 3)",
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ncols = [\"recency\", \"frequency\"]\nmu, sd = train[cols].mean(), train[cols].std()\nXtr = ((train[cols] - mu) / sd).to_numpy()\nXte = ((test[cols] - mu) / sd).to_numpy()\nytr, yte = train[\"returned\"].to_numpy(), test[\"returned\"].to_numpy()\nd = np.sqrt(((Xte[:, None, :] - Xtr[None, :, :]) ** 2).sum(axis=2))\norder = np.argsort(d, axis=1, kind=\"stable\")\nnearest = order[:, :15]\npred = (ytr[nearest].mean(axis=1) > 0.5).astype(int)\nresult = round((pred == ytr[:len(pred)]).mean(), 3)"
+        ]
+      }
+    },
+    {
+      "id": "knn-k",
+      "title": "Подбор k",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": "Посчитай accuracy k-NN на тесте для `k` из списка `[1, 5, 15, 51, 151]`. В `result` положи словарь `{k: accuracy}` с accuracy, округлённой до 3 знаков.",
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ncols = [\"recency\", \"frequency\"]\nmu, sd = train[cols].mean(), train[cols].std()\nXtr = ((train[cols] - mu) / sd).to_numpy()\nXte = ((test[cols] - mu) / sd).to_numpy()\nytr, yte = train[\"returned\"].to_numpy(), test[\"returned\"].to_numpy()\nd = np.sqrt(((Xte[:, None, :] - Xtr[None, :, :]) ** 2).sum(axis=2))\norder = np.argsort(d, axis=1, kind=\"stable\")\n\nresult = {}\nfor k in [1, 5, 15, 51, 151]:\n    \n",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ncols = [\"recency\", \"frequency\"]\nmu, sd = train[cols].mean(), train[cols].std()\nXtr = ((train[cols] - mu) / sd).to_numpy()\nXte = ((test[cols] - mu) / sd).to_numpy()\nytr, yte = train[\"returned\"].to_numpy(), test[\"returned\"].to_numpy()\nd = np.sqrt(((Xte[:, None, :] - Xtr[None, :, :]) ** 2).sum(axis=2))\norder = np.argsort(d, axis=1, kind=\"stable\")\n\nresult = {}\nfor k in [1, 5, 15, 51, 151]:\n    pred = (ytr[order[:, :k]].mean(axis=1) > 0.5).astype(int)\n    result[k] = round((pred == yte).mean(), 3)\n",
+      "hints": [
+        "Внутри цикла — то же, что в прошлом задании, но с `order[:, :k]`."
+      ],
+      "explanation": "При k = 1 модель повторяет единственного соседа вместе с его случайностями: на обучающих данных она угадывает 92%, а на тесте только 74% — это переобучение. Лучший результат здесь при k = 51 (80%), а дальше граница слишком сглаживается. В реальной работе k выбирают кросс-валидацией на обучающих данных, а не по тесту.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ncols = [\"recency\", \"frequency\"]\nmu, sd = train[cols].mean(), train[cols].std()\nXtr = ((train[cols] - mu) / sd).to_numpy()\nXte = ((test[cols] - mu) / sd).to_numpy()\nytr, yte = train[\"returned\"].to_numpy(), test[\"returned\"].to_numpy()\nd = np.sqrt(((Xte[:, None, :] - Xtr[None, :, :]) ** 2).sum(axis=2))\norder = np.argsort(d, axis=1, kind=\"stable\")\nks = [1, 5, 15, 51, 151]\nresult = dict(zip(ks, [round(float(((ytr[order[:, :k]].sum(axis=1) * 2 > k).astype(int) == yte).mean()), 3) for k in ks]))"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ncols = [\"recency\", \"frequency\"]\nmu, sd = train[cols].mean(), train[cols].std()\nXtr = ((train[cols] - mu) / sd).to_numpy()\nXte = ((test[cols] - mu) / sd).to_numpy()\nytr, yte = train[\"returned\"].to_numpy(), test[\"returned\"].to_numpy()\nd = np.sqrt(((Xte[:, None, :] - Xtr[None, :, :]) ** 2).sum(axis=2))\norder = np.argsort(d, axis=1, kind=\"stable\")\nresult = {k: round(((ytr[order[:, :k]].mean(axis=1) >= 0.5).astype(int) == yte).mean(), 3) for k in [2, 6, 16, 52, 152]}"
+        ]
+      }
+    },
+    {
+      "id": "knn-scaling",
+      "title": "Масштаб решает",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Функция `knn_accuracy(Xtr, Xte)` из заготовки считает accuracy k-NN с k = 15. Сравни два варианта на признаках `recency` и `monetary`:",
+        "- без масштабирования — признаки как есть;",
+        "- со стандартизацией по обучающей выборке.",
+        "",
+        "В `result` — список `[accuracy без масштабирования, accuracy со стандартизацией]`."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ncols = [\"recency\", \"monetary\"]\nytr, yte = train[\"returned\"].to_numpy(), test[\"returned\"].to_numpy()\n\ndef knn_accuracy(Xtr, Xte, k=15):\n    d = np.sqrt(((Xte[:, None, :] - Xtr[None, :, :]) ** 2).sum(axis=2))\n    nearest = np.argsort(d, axis=1, kind=\"stable\")[:, :k]\n    pred = (ytr[nearest].mean(axis=1) > 0.5).astype(int)\n    return round((pred == yte).mean(), 3)\n\nraw = knn_accuracy(train[cols].to_numpy(), test[cols].to_numpy())\n\nmu, sd = \nscaled = \n\nresult = [raw, scaled]",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ncols = [\"recency\", \"monetary\"]\nytr, yte = train[\"returned\"].to_numpy(), test[\"returned\"].to_numpy()\n\ndef knn_accuracy(Xtr, Xte, k=15):\n    d = np.sqrt(((Xte[:, None, :] - Xtr[None, :, :]) ** 2).sum(axis=2))\n    nearest = np.argsort(d, axis=1, kind=\"stable\")[:, :k]\n    pred = (ytr[nearest].mean(axis=1) > 0.5).astype(int)\n    return round((pred == yte).mean(), 3)\n\nraw = knn_accuracy(train[cols].to_numpy(), test[cols].to_numpy())\n\nmu, sd = train[cols].mean(), train[cols].std()\nscaled = knn_accuracy(((train[cols] - mu) / sd).to_numpy(), ((test[cols] - mu) / sd).to_numpy())\n\nresult = [raw, scaled]",
+      "hints": [
+        "`mu, sd = train[cols].mean(), train[cols].std()` — статистики только по обучению.",
+        "И обучающие, и тестовые признаки преобразуй одними и теми же `mu` и `sd`."
+      ],
+      "explanation": "Без масштабирования accuracy падает до 68%: соседей выбирают почти только по сумме покупок в рублях, а давность в днях не влияет. После стандартизации — 76%. Одна строка подготовки признаков дала +8 пунктов.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ncols = [\"recency\", \"monetary\"]\nytr, yte = train[\"returned\"].to_numpy(), test[\"returned\"].to_numpy()\n\ndef knn_accuracy(Xtr, Xte, k=15):\n    d = np.sqrt(((Xte[:, None, :] - Xtr[None, :, :]) ** 2).sum(axis=2))\n    nearest = np.argsort(d, axis=1, kind=\"stable\")[:, :k]\n    pred = (ytr[nearest].mean(axis=1) > 0.5).astype(int)\n    return round((pred == yte).mean(), 3)\na = train[cols].to_numpy()\nb = test[cols].to_numpy()\nm, s = a.mean(axis=0), a.std(axis=0, ddof=1)\nresult = [knn_accuracy(a, b), knn_accuracy((a - m) / s, (b - m) / s)]"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\ncols = [\"recency\", \"monetary\"]\nytr, yte = train[\"returned\"].to_numpy(), test[\"returned\"].to_numpy()\n\ndef knn_accuracy(Xtr, Xte, k=15):\n    d = np.sqrt(((Xte[:, None, :] - Xtr[None, :, :]) ** 2).sum(axis=2))\n    nearest = np.argsort(d, axis=1, kind=\"stable\")[:, :k]\n    pred = (ytr[nearest].mean(axis=1) > 0.5).astype(int)\n    return round((pred == yte).mean(), 3)\nraw = knn_accuracy(train[cols].to_numpy(), test[cols].to_numpy())\nresult = [raw, raw]"
+        ]
+      },
+      "orderMatters": true
+    },
+    {
+      "id": "bayes-spam",
+      "title": "Теорема Байеса",
+      "difficulty": 2,
+      "type": "number",
+      "prompt": "Спам составляет **10%** писем. Слово «бесплатно» встречается в **50%** спам-писем и в **2%** обычных. Письмо содержит это слово. С какой вероятностью оно спам? Ответ — в процентах, до целого.",
+      "answer": 74,
+      "tolerance": 0.6,
+      "unit": "%",
+      "hints": [
+        "Числитель: P(спам) × P(слово | спам) = 0,1 × 0,5.",
+        "Знаменатель: то же + P(не спам) × P(слово | не спам) = 0,9 × 0,02."
+      ],
+      "wrongAnswers": [
+        {
+          "value": 50,
+          "message": "50% — это P(слово | спам). Нужна обратная вероятность P(спам | слово) по теореме Байеса."
+        }
+      ],
+      "explanation": "0,05 / (0,05 + 0,018) ≈ 0,735, то есть около 74%. Хотя слово в 25 раз чаще встречается в спаме, обычных писем намного больше, поэтому до 100% далеко.",
+      "selfTest": {
+        "correct": [
+          "74",
+          "73,5"
+        ],
+        "wrong": [
+          "50"
+        ]
+      }
+    },
+    {
+      "id": "svm-kernel",
+      "title": "Когда нужно ядро",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "На графике точки класса 1 образуют кольцо вокруг точек класса 0. Какой вариант SVM справится?",
+      "options": [
+        {
+          "text": "SVM с RBF-ядром: оно позволяет построить нелинейную (круговую) границу",
+          "correct": true,
+          "explain": "Ядро неявно переводит данные в пространство, где кольцо отделяется плоскостью."
+        },
+        {
+          "text": "Линейный SVM",
+          "explain": "Прямая не может отделить внутренний круг от внешнего кольца."
+        },
+        {
+          "text": "Любой SVM без масштабирования",
+          "explain": "Масштабирование SVM как раз нужно, и оно не решает проблему формы границы."
+        },
+        {
+          "text": "Никакой: SVM работает только с прямыми",
+          "explain": "Именно для нелинейных границ и придуманы ядра."
+        }
+      ],
+      "hints": [
+        "Можно ли отделить круг прямой линией?"
+      ]
+    },
+    {
+      "id": "nb-use",
+      "title": "Где хорош наивный Байес",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Нужно быстро сделать первую модель, которая раскладывает 50 000 обращений в поддержку по темам («доставка», «оплата», «возврат») по тексту. С чего начать?",
+      "options": [
+        {
+          "text": "С наивного Байеса на «мешке слов»: он быстро обучается на текстах и даёт хороший baseline",
+          "correct": true,
+          "explain": "Классика для текстов. Потом его можно сравнить с моделями посложнее."
+        },
+        {
+          "text": "С k-NN на сырых текстах",
+          "explain": "Тексты сначала нужно превратить в числа, а k-NN на десятках тысяч слов-признаков медленный."
+        },
+        {
+          "text": "С линейной регрессии",
+          "explain": "Тема обращения — класс, а не число."
+        },
+        {
+          "text": "С кластеризации",
+          "explain": "Темы известны и размечены, значит, это обучение с учителем."
+        }
+      ],
+      "hints": [
+        "Какой метод из урока особенно хорош для текстов?"
+      ]
+    }
+  ]
+}

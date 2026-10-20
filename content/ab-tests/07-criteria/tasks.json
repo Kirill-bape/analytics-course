@@ -19,7 +19,8 @@
         "wrong": [
           "from scipy import stats\nck = ab_users.query(\"experiment == 'checkout_v2'\")\nra = ck[ck.group_name == \"A\"].revenue\nrb = ck[ck.group_name == \"B\"].revenue\nresult = [round(rb.mean() - ra.mean(), 1), round(stats.mannwhitneyu(ra, rb).pvalue, 4)]"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "z-proportions",
@@ -76,7 +77,8 @@
         "wrong": [
           "import numpy as np\nck = ab_users[ab_users.experiment == \"checkout_v2\"]\nA = ck[ck.group_name == \"A\"].revenue.to_numpy()\nB = ck[ck.group_name == \"B\"].revenue.to_numpy()\nrng = np.random.default_rng(3)\nd = []\nfor _ in range(1000):\n    sa = rng.choice(A, len(A))\n    sb = rng.choice(B, len(B))\n    d.append(np.median(sb) - np.median(sa))\nresult = [round(x, 1) for x in np.percentile(d, [2.5, 97.5])]"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "multiple-chance",

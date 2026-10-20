@@ -49,7 +49,8 @@
         "wrong": [
           "age = ((pd.Timestamp(\"2026-07-01\") - customers[\"birth_date\"]).dt.days / 365.25) // 1\nresult = [age.mean(), age.isna().sum()]"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "minmax",
@@ -93,7 +94,8 @@
         "wrong": [
           "import numpy as np\n\ncut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nresult = [round(df.monetary.skew(), 2), round(np.sqrt(df.monetary).skew(), 2)]"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "rare-cities",

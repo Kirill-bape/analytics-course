@@ -46,7 +46,8 @@
         "wrong": [
           "from scipy import stats\nck = ab_users[ab_users.experiment == \"checkout_v2\"]\nA = ck[ck.group_name == \"A\"].revenue\nB = ck[ck.group_name == \"B\"].revenue\nresult = [round(stats.ttest_ind(B, A, equal_var=False).statistic, 2), round(stats.ttest_ind(B.clip(upper=B.quantile(0.99)), A.clip(upper=A.quantile(0.99)), equal_var=False).statistic, 2)]"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "stratified-effect",
@@ -121,7 +122,8 @@
         "wrong": [
           "import numpy as np\n\nrng = np.random.default_rng(5)\nn = 5000\nx = rng.gamma(2, 200, size=2 * n)\ngroup = np.repeat([\"A\", \"B\"], n)\neffect = np.where(group == \"B\", 15, 0)\ny = 0.8 * x + rng.normal(0, 150, size=2 * n) + effect\nth = np.cov(y, x)[0, 1] / x.var(ddof=1)\nyc = y - th * x\nb = group == \"B\"\nresult = [round(y[b].mean() - y[~b].mean(), 1), round(yc[b].mean(), 1)]"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "cuped-n",

@@ -89,7 +89,8 @@
         "wrong": [
           "def get_page(page):\n    \"\"\"Имитация API: 230 заказов, по 50 на страницу.\"\"\"\n    start = (page - 1) * 50\n    return [{\"order_id\": 5000 + i, \"amount\": 100 + (i * 37) % 900} for i in range(start, min(start + 50, 230))]\nrows = []\nfor p in range(1, 4):\n    rows += get_page(p)\nresult = [len(rows), sum(r[\"amount\"] for r in rows)]"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "regex-prices",

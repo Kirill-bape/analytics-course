@@ -24,7 +24,8 @@
           "def price_with_discount(price, pct=10):\n    return round(price * pct / 100, 2)\nresult = [price_with_discount(4990), price_with_discount(4990, 25)]",
           "def price_with_discount(price, pct=25):\n    return round(price * (1 - pct / 100), 2)\nresult = [price_with_discount(4990), price_with_discount(4990, 25)]"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "return-many",
@@ -160,7 +161,8 @@
         "wrong": [
           "class Report:\n    def __init__(self, title, data):\n        self.title, self.data = title, data\n    def total(self):\n        return self.data.amount.sum()\n    def avg_check(self):\n        return round(self.data.amount.median(), 2)\nd = orders[(orders.status == \"delivered\") & (orders.order_date >= \"2026-06-01\")]\nr = Report(\"x\", d)\nresult = [r.total(), r.avg_check()]"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "counter-cities",

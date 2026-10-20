@@ -1,0 +1,242 @@
+{
+  "tasks": [
+    {
+      "id": "split",
+      "title": "Разбиение на train и test",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "Раздели `df` на обучающую и тестовую выборки: перемешай номера строк генератором `np.random.default_rng(42)` (`rng.permutation(len(df))`), первые 30% (`int(len(df) * 0.3)`) отдай в `test`, остальные — в `train`.",
+        "",
+        "В `result` — список: `[строк в train, строк в test, доля вернувшихся в test (до 3 знаков)]`."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\n\nrng = np.random.default_rng(42)\nidx = \nn_test = \ntrain, test = \n\nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\n\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nn_test = int(len(df) * 0.3)\ntrain, test = df.iloc[idx[n_test:]], df.iloc[idx[:n_test]]\n\nresult = [len(train), len(test), round(test[\"returned\"].mean(), 3)]",
+      "hints": [
+        "`idx = rng.permutation(len(df))` — номера строк в случайном порядке.",
+        "Тест: `df.iloc[idx[:n_test]]`, обучение: `df.iloc[idx[n_test:]]`."
+      ],
+      "explanation": "Доля вернувшихся в тесте (48%) близка к общей (46,6%) — разбиение получилось представительным. Если классы редкие, используют **стратифицированное** разбиение: доли классов в train и test сохраняются точно.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nperm = np.random.default_rng(42).permutation(len(df))\nk = int(len(df) * 0.3)\ntest = df.iloc[perm[:k]]\nresult = [len(df) - k, k, round(float(test.returned.mean()), 3)]"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nk = int(len(df) * 0.3)\ntest = df.iloc[:k]\nresult = [len(df) - k, k, round(test.returned.mean(), 3)]"
+        ]
+      },
+      "orderMatters": true
+    },
+    {
+      "id": "confusion",
+      "title": "Матрица ошибок",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "Для правила «вернётся, если `recency <= 60`» посчитай четыре клетки матрицы ошибок. В `result` — список `[TP, FP, FN, TN]`.",
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\npred = (df[\"recency\"] <= 60).astype(int)\ny = df[\"returned\"]\n\ntp = ((pred == 1) & (y == 1)).sum()\nfp = \nfn = \ntn = \nresult = [tp, fp, fn, tn]",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\npred = (df[\"recency\"] <= 60).astype(int)\ny = df[\"returned\"]\n\ntp = ((pred == 1) & (y == 1)).sum()\nfp = ((pred == 1) & (y == 0)).sum()\nfn = ((pred == 0) & (y == 1)).sum()\ntn = ((pred == 0) & (y == 0)).sum()\nresult = [tp, fp, fn, tn]",
+      "hints": [
+        "FP — предсказали 1, а на самом деле 0.",
+        "FN — предсказали 0, а на самом деле 1."
+      ],
+      "explanation": "Правило нашло 687 вернувшихся, пропустило 226 и подняло 236 ложных тревог. Сумма всех клеток — 1960, все клиенты.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\npred = (df[\"recency\"] <= 60).astype(int)\ny = df[\"returned\"]\nct = pd.crosstab(y, pred)\nresult = [ct.loc[1, 1], ct.loc[0, 1], ct.loc[1, 0], ct.loc[0, 0]]"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\npred = (df[\"recency\"] <= 60).astype(int)\ny = df[\"returned\"]\nct = pd.crosstab(y, pred)\nresult = [ct.loc[1, 1], ct.loc[1, 0], ct.loc[0, 1], ct.loc[0, 0]]"
+        ]
+      },
+      "orderMatters": true
+    },
+    {
+      "id": "precision-recall",
+      "title": "Precision, recall, F1",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": "По клеткам матрицы ошибок из заготовки посчитай precision, recall и F1 для того же правила. В `result` — список трёх чисел, округлённых до 3 знаков.",
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\npred = (df[\"recency\"] <= 60).astype(int)\ny = df[\"returned\"]\ntp = ((pred == 1) & (y == 1)).sum()\nfp = ((pred == 1) & (y == 0)).sum()\nfn = ((pred == 0) & (y == 1)).sum()\n\nprecision = \nrecall = \nf1 = \nresult = [round(precision, 3), round(recall, 3), round(f1, 3)]",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\npred = (df[\"recency\"] <= 60).astype(int)\ny = df[\"returned\"]\ntp = ((pred == 1) & (y == 1)).sum()\nfp = ((pred == 1) & (y == 0)).sum()\nfn = ((pred == 0) & (y == 1)).sum()\n\nprecision = tp / (tp + fp)\nrecall = tp / (tp + fn)\nf1 = 2 * precision * recall / (precision + recall)\nresult = [round(precision, 3), round(recall, 3), round(f1, 3)]",
+      "hints": [
+        "precision = TP / (TP + FP), recall = TP / (TP + FN).",
+        "F1 = 2·P·R / (P + R)."
+      ],
+      "explanation": "Из названных «вернётся» правда вернулись 74%, а найдено 75% всех вернувшихся. Здесь precision и recall почти равны, но при другом пороге они разойдутся — следующее задание про это.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\npred = (df[\"recency\"] <= 60).astype(int)\ny = df[\"returned\"]\ntp = int(((pred == 1) & (y == 1)).sum())\np = tp / int(pred.sum())\nr = tp / int(y.sum())\nresult = [round(p, 3), round(r, 3), round(2 / (1 / p + 1 / r), 3)]"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\npred = (df[\"recency\"] <= 60).astype(int)\ny = df[\"returned\"]\ntp = ((pred == 1) & (y == 1)).sum()\nfp = ((pred == 1) & (y == 0)).sum()\nfn = ((pred == 0) & (y == 1)).sum()\np = tp / (tp + fn)\nr = tp / (tp + fp)\nresult = [round(r, 3), round(p, 3), round(p * r, 3)]"
+        ]
+      },
+      "orderMatters": true
+    },
+    {
+      "id": "recall-target",
+      "title": "Порог под требование бизнеса",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Маркетинг хочет отправить предложение так, чтобы охватить **не меньше 90%** клиентов, которые вернутся (recall ≥ 0,9), — и при этом как можно меньше лишних.",
+        "",
+        "Перебери пороги `t` из `range(10, 460, 10)` для правила «вернётся, если `recency <= t`» и найди **наименьший** порог с recall ≥ 0,9. В `result` — `[порог, precision при нём (до 3 знаков)]`."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\ny = df[\"returned\"]\n\nfor t in range(10, 460, 10):\n    pred = (df[\"recency\"] <= t).astype(int)\n    \n\nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\ny = df[\"returned\"]\n\nfor t in range(10, 460, 10):\n    pred = (df[\"recency\"] <= t).astype(int)\n    tp = ((pred == 1) & (y == 1)).sum()\n    recall = tp / y.sum()\n    precision = tp / pred.sum()\n    if recall >= 0.9:\n        break\n\nresult = [t, round(precision, 3)]",
+      "hints": [
+        "Внутри цикла посчитай recall = TP / (все вернувшиеся) и precision = TP / (все предсказанные).",
+        "Как только recall ≥ 0,9 — `break`: пороги идут по возрастанию, значит, это наименьший."
+      ],
+      "explanation": "Порог 110 дней охватывает 91% вернувшихся, но точность падает до 69%: почти треть получателей предложения не вернулись бы. Если бы маркетинг довольствовался 75% охвата, хватило бы порога 60 дней с точностью 74%. Выбор порога — бизнес-решение о цене ошибок.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrows = []\nfor t in range(10, 460, 10):\n    p = df.recency <= t\n    tp = (p & (df.returned == 1)).sum()\n    rows.append((t, tp / df.returned.sum(), tp / p.sum()))\nt, r, pr = next(x for x in rows if x[1] >= 0.9)\nresult = [t, round(pr, 3)]"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\ny = df.returned\nfor t in range(10, 460, 10):\n    pred = (df.recency <= t).astype(int)\n    tp = ((pred == 1) & (y == 1)).sum()\n    if tp / pred.sum() >= 0.9:\n        break\nresult = [t, round(tp / pred.sum(), 3)]"
+        ]
+      },
+      "orderMatters": true
+    },
+    {
+      "id": "roc-auc",
+      "title": "ROC AUC своими руками",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Оценка модели — `score = -recency` (чем недавнее покупка, тем выше оценка). Посчитай ROC AUC как **долю пар** «вернувшийся — не вернувшийся», где у вернувшегося оценка **выше**. Ничьи считай за половину.",
+        "",
+        "Подсказка: сравнить все пары сразу помогает numpy — `pos[:, None] > neg[None, :]` даёт таблицу сравнений. В `result` — AUC до 4 знаков."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nscore = -df[\"recency\"].to_numpy()\ny = df[\"returned\"].to_numpy()\npos, neg = score[y == 1], score[y == 0]\n\nauc = \nresult = round(auc, 4)",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nscore = -df[\"recency\"].to_numpy()\ny = df[\"returned\"].to_numpy()\npos, neg = score[y == 1], score[y == 0]\n\nauc = (pos[:, None] > neg[None, :]).mean() + 0.5 * (pos[:, None] == neg[None, :]).mean()\nresult = round(auc, 4)",
+      "hints": [
+        "`(pos[:, None] > neg[None, :]).mean()` — доля пар, где вернувшийся выше.",
+        "Ничьи: `0.5 * (pos[:, None] == neg[None, :]).mean()`."
+      ],
+      "explanation": "AUC ≈ 0,85: в 85% пар давность покупки правильно упорядочивает клиентов. Это то же число, что даёт `roc_auc_score` в scikit-learn или статистика Манна — Уитни, делённая на число пар.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nfrom scipy import stats\ny = df.returned.to_numpy()\ns = -df.recency.to_numpy()\nu = stats.mannwhitneyu(s[y == 1], s[y == 0]).statistic\nresult = round(u / ((y == 1).sum() * (y == 0).sum()), 4)"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\ny = df.returned.to_numpy()\ns = df.recency.to_numpy()\npos, neg = s[y == 1], s[y == 0]\nresult = round((pos[:, None] > neg[None, :]).mean() + 0.5 * (pos[:, None] == neg[None, :]).mean(), 4)",
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\ny = df.returned.to_numpy()\ns = -df.recency.to_numpy()\npos, neg = s[y == 1], s[y == 0]\nresult = round((pos[:, None] > neg[None, :]).mean(), 4)"
+        ]
+      }
+    },
+    {
+      "id": "kfold",
+      "title": "Кросс-валидация",
+      "difficulty": 3,
+      "type": "python",
+      "prompt": [
+        "Оцени модель-порог 5-кратной кросс-валидацией. В заготовке строки перемешаны и разбиты на 5 частей `folds`, а функция `best_threshold(train)` подбирает лучший порог на обучающих данных.",
+        "",
+        "Для каждой части `k`: обучающие данные — все остальные части, подбери на них порог и посчитай accuracy правила на части `k`. В `result` — среднее пяти accuracy до 3 знаков."
+      ],
+      "starter": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nfolds = np.array_split(idx, 5)\n\ndef best_threshold(train):\n    accs = {t: ((train[\"recency\"] <= t).astype(int) == train[\"returned\"]).mean() for t in range(10, 310, 10)}\n    return max(accs, key=accs.get)\n\naccs = []\nfor k in range(5):\n    test = df.iloc[folds[k]]\n    train = \n    t = \n    accs.append()\n\nresult = ",
+      "solution": "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nfolds = np.array_split(idx, 5)\n\ndef best_threshold(train):\n    accs = {t: ((train[\"recency\"] <= t).astype(int) == train[\"returned\"]).mean() for t in range(10, 310, 10)}\n    return max(accs, key=accs.get)\n\naccs = []\nfor k in range(5):\n    test = df.iloc[folds[k]]\n    train = df.iloc[np.concatenate([folds[j] for j in range(5) if j != k])]\n    t = best_threshold(train)\n    accs.append(((test[\"recency\"] <= t).astype(int) == test[\"returned\"]).mean())\n\nresult = round(np.mean(accs), 3)",
+      "hints": [
+        "Обучающие строки: `np.concatenate([folds[j] for j in range(5) if j != k])`.",
+        "Accuracy на части: `((test[\"recency\"] <= t).astype(int) == test[\"returned\"]).mean()`."
+      ],
+      "explanation": "Средняя accuracy на отложенных частях — 76,4%, а на отдельных частях она колеблется от 73% до 78%. Значит, одно случайное разбиение могло дать оценку на 2–3 пункта лучше или хуже. Кросс-валидация показывает и среднее, и этот разброс.",
+      "selfTest": {
+        "correct": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nfolds = np.array_split(idx, 5)\n\ndef best_threshold(train):\n    accs = {t: ((train[\"recency\"] <= t).astype(int) == train[\"returned\"]).mean() for t in range(10, 310, 10)}\n    return max(accs, key=accs.get)\nres = []\nfor k, f in enumerate(folds):\n    mask = np.ones(len(df), bool)\n    mask[f] = False\n    t = best_threshold(df[mask])\n    te = df.iloc[f]\n    res.append(((te.recency <= t) == (te.returned == 1)).mean())\nresult = round(sum(res) / 5, 3)"
+        ],
+        "wrong": [
+          "cut = pd.Timestamp(\"2026-04-01\")\nhist = orders[orders[\"order_date\"] < cut]\ndf = hist.groupby(\"customer_id\").agg(\n    frequency=(\"order_id\", \"count\"),\n    monetary=(\"amount\", \"sum\"),\n    last=(\"order_date\", \"max\"),\n    first=(\"order_date\", \"min\"),\n)\ndf[\"recency\"] = (cut - df[\"last\"]).dt.days\ndf[\"tenure\"] = (cut - df[\"first\"]).dt.days\ndf[\"returned\"] = df.index.isin(orders.loc[orders[\"order_date\"] >= cut, \"customer_id\"]).astype(int)\nrng = np.random.default_rng(42)\nidx = rng.permutation(len(df))\nfolds = np.array_split(idx, 5)\n\ndef best_threshold(train):\n    accs = {t: ((train[\"recency\"] <= t).astype(int) == train[\"returned\"]).mean() for t in range(10, 310, 10)}\n    return max(accs, key=accs.get)\naccs = []\nfor k in range(5):\n    test = df.iloc[folds[k]]\n    t = best_threshold(test)\n    accs.append(((test.recency <= t).astype(int) == test.returned).mean())\nresult = round(np.mean(accs), 3)"
+        ]
+      }
+    },
+    {
+      "id": "recall-calc",
+      "title": "Полнота на пальцах",
+      "difficulty": 1,
+      "type": "number",
+      "prompt": "Модель оттока отметила **200** клиентов как «уйдут». Из них действительно ушли **150**. Всего за период ушли **300** клиентов. Какой у модели **recall** в процентах?",
+      "answer": 50,
+      "unit": "%",
+      "hints": [
+        "Recall — какую долю всех ушедших нашла модель."
+      ],
+      "wrongAnswers": [
+        {
+          "value": 75,
+          "message": "Это precision: доля верных среди отмеченных. Recall считают от всех ушедших."
+        }
+      ],
+      "explanation": "Нашли 150 из 300 ушедших — 50%. Precision при этом 75% (150 из 200 отмеченных).",
+      "selfTest": {
+        "correct": [
+          "50"
+        ],
+        "wrong": [
+          "75"
+        ]
+      }
+    },
+    {
+      "id": "metric-choice",
+      "title": "Метрика для мошенничества",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Мошеннических операций 0,1%. Пропустить мошенника очень дорого, а проверка подозрительной операции стоит недорого. На какую метрику смотреть в первую очередь?",
+      "options": [
+        {
+          "text": "Recall (при приемлемом precision): важно найти как можно больше мошенников",
+          "correct": true,
+          "explain": "Пропуск дорог, ложная тревога дешёвая — значит, приоритет у полноты."
+        },
+        {
+          "text": "Accuracy",
+          "explain": "Модель «мошенников нет» даст 99,9% accuracy и не найдёт ни одного."
+        },
+        {
+          "text": "Precision любой ценой",
+          "explain": "Высокая точность при низкой полноте означает много пропущенных мошенников."
+        },
+        {
+          "text": "R²",
+          "explain": "R² — метрика регрессии, а здесь классификация."
+        }
+      ],
+      "hints": [
+        "Какая ошибка дороже: ложная тревога или пропуск?"
+      ]
+    },
+    {
+      "id": "time-split",
+      "title": "Разбиение для прогноза продаж",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Модель прогнозирует продажи по дням. Как разделить данные за 2025–2026 годы на обучение и тест?",
+      "options": [
+        {
+          "text": "По времени: обучиться на данных до какой-то даты, проверить на следующих месяцах",
+          "correct": true,
+          "explain": "Так проверка повторяет реальную работу модели: предсказывать будущее по прошлому."
+        },
+        {
+          "text": "Случайно перемешать дни: 70% на обучение, 30% на тест",
+          "explain": "Тогда модель учится на днях «после» тестовых и подсматривает в будущее — оценка будет завышенной."
+        },
+        {
+          "text": "Взять в тест каждый второй день",
+          "explain": "Соседние дни очень похожи, проверка снова окажется слишком лёгкой."
+        },
+        {
+          "text": "Тест не нужен: хватит R² на обучении",
+          "explain": "На обучающих данных качество всегда выглядит лучше, чем будет в жизни."
+        }
+      ],
+      "hints": [
+        "Как модель будет использоваться в жизни?"
+      ]
+    }
+  ]
+}

@@ -47,7 +47,8 @@
         "wrong": [
           "p = production.dropna(subset=[\"downtime_min\"])\nX = np.column_stack([p[\"planned_units\"], p[\"downtime_min\"]])\nw, *_ = np.linalg.lstsq(X, p[\"produced_units\"], rcond=None)\nresult = [0.0] + [round(v, 3) for v in w]"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "r2-mae",
@@ -69,7 +70,8 @@
         "wrong": [
           "p = production.dropna(subset=[\"downtime_min\"])\nX = np.column_stack([np.ones(len(p)), p[\"planned_units\"], p[\"downtime_min\"]])\ny = p[\"produced_units\"].to_numpy()\nw, *_ = np.linalg.lstsq(X, y, rcond=None)\npred = X @ w\nr2 = 1 - ((y - pred) ** 2).sum() / (y ** 2).sum()\nresult = [round(r2, 4), round(np.sqrt(((y - pred) ** 2).mean()), 2)]"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "predict-by-hand",
@@ -119,7 +121,8 @@
         "wrong": [
           "z = np.array([-2, 0, 1.5])\nresult = list(np.round(1 / (1 + np.exp(z)), 3))"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "logistic-gd",

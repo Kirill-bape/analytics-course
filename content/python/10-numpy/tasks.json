@@ -88,7 +88,8 @@
           "import numpy as np\nx = orders[\"amount\"].to_numpy()\nbig = x >= 20000\nresult = [round(big.mean(), 4), round(x[big].sum() / x.sum(), 4)]",
           "import numpy as np\nx = orders.loc[orders[\"status\"] == \"delivered\", \"amount\"].to_numpy()\nbig = x > 20000\nresult = [round(big.mean(), 4), round(big.sum() / x.sum(), 4)]"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "dice-sim",
@@ -140,7 +141,8 @@
         "wrong": [
           "import numpy as np\nrng = np.random.default_rng(7)\nx = orders.loc[orders[\"status\"] == \"delivered\", \"amount\"].to_numpy()\nres = []\nfor i in range(500):\n    s = rng.choice(x, size=len(x), replace=True)\n    res.append(np.median(s))\nresult = [round(v) for v in np.percentile(res, [2.5, 97.5])]"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "norm-tail",

@@ -136,7 +136,8 @@
         "wrong": [
           "from scipy import stats\nbn = ab_users[ab_users[\"experiment\"] == \"checkout_v2\"]\na = bn[bn[\"group_name\"] == \"A\"]\nb = bn[bn[\"group_name\"] == \"B\"]\nresult = [round((b.converted.mean() - a.converted.mean()) * 100, 2), round(stats.ttest_ind(b.converted, a.converted, equal_var=False).pvalue, 3), round(b.revenue.mean() - a.revenue.mean(), 1), round(stats.ttest_ind(b.revenue, a.revenue, equal_var=False).pvalue, 3)]"
         ]
-      }
+      },
+      "orderMatters": true
     },
     {
       "id": "case3-decision",
