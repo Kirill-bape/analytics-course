@@ -1,0 +1,208 @@
+{
+  "tasks": [
+    {
+      "id": "cron",
+      "title": "Расписание cron",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Что означает расписание `30 6 * * 1-5`?",
+      "options": [
+        {
+          "text": "В 06:30 по будням (с понедельника по пятницу)",
+          "correct": true,
+          "explain": "Поля: минута 30, час 6, любой день месяца, любой месяц, дни недели 1–5."
+        },
+        {
+          "text": "Каждые 30 минут шесть раз в день",
+          "explain": "Первые поля — конкретные минута и час, а не интервалы."
+        },
+        {
+          "text": "30-го числа в 06:00",
+          "explain": "30 стоит в поле минут, а день месяца — звёздочка."
+        },
+        {
+          "text": "С 1 по 5 число каждого месяца",
+          "explain": "1-5 стоит в последнем поле — это дни недели."
+        }
+      ],
+      "hints": [
+        "Порядок полей: минута, час, день месяца, месяц, день недели."
+      ]
+    },
+    {
+      "id": "topo-order",
+      "title": "В каком порядке запустятся задачи",
+      "difficulty": 2,
+      "type": "python",
+      "prompt": [
+        "В словаре `dag` для каждой задачи указаны задачи, которые должны завершиться **до** неё. С помощью `graphlib.TopologicalSorter` найди порядок, в котором задачи можно выполнять.",
+        "",
+        "В `result` положи **номер позиции** (с нуля) задачи `check_quality` в этом порядке. Подсказка: от выбора между независимыми задачами её позиция не зависит."
+      ],
+      "starter": "from graphlib import TopologicalSorter\n\ndag = {\n    \"build_core\": {\"extract_orders\", \"extract_clients\", \"extract_products\"},\n    \"build_sales_mart\": {\"build_core\"},\n    \"build_cohort_mart\": {\"build_core\"},\n    \"check_quality\": {\"build_sales_mart\", \"build_cohort_mart\"},\n    \"notify\": {\"check_quality\"},\n}\n\norder = \nresult = ",
+      "solution": "from graphlib import TopologicalSorter\n\ndag = {\n    \"build_core\": {\"extract_orders\", \"extract_clients\", \"extract_products\"},\n    \"build_sales_mart\": {\"build_core\"},\n    \"build_cohort_mart\": {\"build_core\"},\n    \"check_quality\": {\"build_sales_mart\", \"build_cohort_mart\"},\n    \"notify\": {\"check_quality\"},\n}\n\norder = list(TopologicalSorter(dag).static_order())\nresult = order.index(\"check_quality\")",
+      "hints": [
+        "`list(TopologicalSorter(dag).static_order())` — порядок выполнения.",
+        "Позиция — `order.index(\"check_quality\")`."
+      ],
+      "explanation": "До проверки качества должны отработать три выгрузки, детальный слой и обе витрины — шесть задач, поэтому её позиция 6. Обе витрины зависят только от детального слоя и в Airflow выполняются параллельно.",
+      "selfTest": {
+        "correct": [
+          "import graphlib\ndag = {\n    \"build_core\": {\"extract_orders\", \"extract_clients\", \"extract_products\"},\n    \"build_sales_mart\": {\"build_core\"},\n    \"build_cohort_mart\": {\"build_core\"},\n    \"check_quality\": {\"build_sales_mart\", \"build_cohort_mart\"},\n    \"notify\": {\"check_quality\"},\n}\nts = graphlib.TopologicalSorter(dag)\nresult = [t for t in ts.static_order()].index(\"check_quality\")"
+        ],
+        "wrong": [
+          "from graphlib import TopologicalSorter\ndag = {\n    \"build_core\": {\"extract_orders\", \"extract_clients\", \"extract_products\"},\n    \"build_sales_mart\": {\"build_core\"},\n    \"build_cohort_mart\": {\"build_core\"},\n    \"check_quality\": {\"build_sales_mart\", \"build_cohort_mart\"},\n    \"notify\": {\"check_quality\"},\n}\nresult = list(TopologicalSorter(dag).static_order()).index(\"notify\")"
+        ]
+      }
+    },
+    {
+      "id": "idempotent-load",
+      "title": "Идемпотентная загрузка дня",
+      "difficulty": 3,
+      "sandbox": true,
+      "prompt": [
+        "В заготовке витрина `mart` уже содержит дни до 29 июня 2026. Загрузка за **29 июня** «случайно» запускается **дважды**.",
+        "",
+        "Допиши загрузку так, чтобы она была идемпотентной: перед вставкой удаляй строки за этот день. Обе загрузки должны остаться в сценарии. В конце выведи `days` — число дней в витрине и `orders` — сумму заказов."
+      ],
+      "starter": "CREATE TABLE mart AS\nSELECT order_date, COUNT(*) AS orders FROM orders WHERE order_date < '2026-06-29' GROUP BY order_date;\n\n-- загрузка за 29 июня, первый запуск\n\nINSERT INTO mart SELECT order_date, COUNT(*) FROM orders WHERE order_date = '2026-06-29' GROUP BY order_date;\n\n-- загрузка за 29 июня, повторный запуск\n\nINSERT INTO mart SELECT order_date, COUNT(*) FROM orders WHERE order_date = '2026-06-29' GROUP BY order_date;\n\nSELECT COUNT(*) AS days, SUM(orders) AS orders FROM mart;",
+      "solution": "CREATE TABLE mart AS\nSELECT order_date, COUNT(*) AS orders FROM orders WHERE order_date < '2026-06-29' GROUP BY order_date;\n\n-- загрузка за 29 июня, первый запуск\nDELETE FROM mart WHERE order_date = '2026-06-29';\nINSERT INTO mart SELECT order_date, COUNT(*) FROM orders WHERE order_date = '2026-06-29' GROUP BY order_date;\n\n-- загрузка за 29 июня, повторный запуск\nDELETE FROM mart WHERE order_date = '2026-06-29';\nINSERT INTO mart SELECT order_date, COUNT(*) FROM orders WHERE order_date = '2026-06-29' GROUP BY order_date;\n\nSELECT COUNT(*) AS days, SUM(orders) AS orders FROM mart;",
+      "checkColumnNames": true,
+      "hints": [
+        "Перед каждым `INSERT` добавь `DELETE FROM mart WHERE order_date = '2026-06-29';`."
+      ],
+      "mistakes": [
+        {
+          "pattern": "INSERT",
+          "flags": "i",
+          "unless": "DELETE",
+          "message": "Без удаления повторный запуск задвоит день. Добавь `DELETE` перед каждой вставкой."
+        }
+      ],
+      "explanation": "Число дней совпадает с реальным, и заказы за 29 июня посчитаны один раз. Без `DELETE` день оказался бы в витрине дважды, а дашборд показал бы всплеск, которого не было.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE mart AS SELECT order_date, COUNT(*) AS orders FROM orders WHERE order_date < '2026-06-29' GROUP BY 1; DELETE FROM mart WHERE order_date >= '2026-06-29'; INSERT INTO mart SELECT order_date, COUNT(*) FROM orders WHERE order_date = '2026-06-29' GROUP BY 1; DELETE FROM mart WHERE order_date >= '2026-06-29'; INSERT INTO mart SELECT order_date, COUNT(*) FROM orders WHERE order_date = '2026-06-29' GROUP BY 1; SELECT COUNT(*) AS days, SUM(orders) AS orders FROM mart"
+        ],
+        "wrong": [
+          "CREATE TABLE mart AS SELECT order_date, COUNT(*) AS orders FROM orders WHERE order_date < '2026-06-29' GROUP BY 1; INSERT INTO mart SELECT order_date, COUNT(*) FROM orders WHERE order_date = '2026-06-29' GROUP BY 1; INSERT INTO mart SELECT order_date, COUNT(*) FROM orders WHERE order_date = '2026-06-29' GROUP BY 1; SELECT COUNT(*) AS days, SUM(orders) AS orders FROM mart"
+        ]
+      }
+    },
+    {
+      "id": "logical-date",
+      "title": "Логическая дата",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Задача выгружает заказы условием «`order_date = текущая дата − 1 день`». Её перезапустили через неделю, чтобы пересчитать 3 июня. Что получится?",
+      "options": [
+        {
+          "text": "Выгрузится не 3 июня, а вчерашний день относительно момента перезапуска — пересчёт сделает не то",
+          "correct": true,
+          "explain": "Поэтому задачи Airflow используют логическую дату запуска (`{{ ds }}`): перезапуск за 3 июня обработает именно 3 июня."
+        },
+        {
+          "text": "Всё правильно пересчитается",
+          "explain": "«Текущая дата» при перезапуске — уже другой день."
+        },
+        {
+          "text": "Задача упадёт с ошибкой",
+          "explain": "Не упадёт — и в этом опасность: молча обработает не тот день."
+        },
+        {
+          "text": "Выгрузятся все дни сразу",
+          "explain": "Нет, только один — но не тот."
+        }
+      ],
+      "hints": [
+        "Чему равна «текущая дата» в момент перезапуска?"
+      ]
+    },
+    {
+      "id": "retries",
+      "title": "Источник временно недоступен",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Ночью API рекламного кабинета иногда отвечает ошибкой, а через 10 минут снова работает. Как настроить задачу выгрузки?",
+      "options": [
+        {
+          "text": "Задать повторы (`retries=3`) с паузой (`retry_delay` 10–15 минут) и уведомление, если все попытки не помогли",
+          "correct": true,
+          "explain": "Временные сбои лечатся повторами, а постоянные должны дойти до людей через уведомление."
+        },
+        {
+          "text": "Запускать задачу каждую минуту",
+          "explain": "Это нагрузит API и создаст хаос с дублями."
+        },
+        {
+          "text": "Убрать задачу из DAG",
+          "explain": "Тогда данных о рекламе не будет совсем."
+        },
+        {
+          "text": "Ничего: пусть падает, утром разберёмся",
+          "explain": "Утром дашборды покажут неполные данные."
+        }
+      ],
+      "hints": [
+        "Сбой временный — что с ним делать автоматически?"
+      ]
+    },
+    {
+      "id": "quality-gate",
+      "title": "Проверка перед публикацией",
+      "difficulty": 2,
+      "sandbox": true,
+      "prompt": [
+        "Сделай «проверку качества» витрины перед публикацией. Создай `mart_check` — выручку доставленных заказов по дням, а затем одним запросом выведи результаты проверок:",
+        "- `days` — число дней в витрине;",
+        "- `duplicate_days` — сколько дней встречается больше одного раза;",
+        "- `empty_revenue` — дней с пустой или нулевой выручкой."
+      ],
+      "starter": "CREATE TABLE mart_check AS\nSELECT order_date, SUM(amount) FILTER (WHERE status = 'delivered') AS revenue\nFROM orders\nGROUP BY order_date;\n\nSELECT \n",
+      "solution": "CREATE TABLE mart_check AS\nSELECT order_date, SUM(amount) FILTER (WHERE status = 'delivered') AS revenue\nFROM orders\nGROUP BY order_date;\n\nSELECT COUNT(*) AS days,\n       COUNT(*) - COUNT(DISTINCT order_date) AS duplicate_days,\n       COUNT(*) FILTER (WHERE revenue IS NULL OR revenue = 0) AS empty_revenue\nFROM mart_check;",
+      "checkColumnNames": true,
+      "hints": [
+        "Дубли ключа: `COUNT(*) - COUNT(DISTINCT order_date)`.",
+        "Пустая выручка: `COUNT(*) FILTER (WHERE revenue IS NULL OR revenue = 0)`."
+      ],
+      "explanation": "Последние дни могут оказаться «пустыми»: заказы ещё не доставлены. Такая проверка в конце DAG либо пропускает витрину, либо останавливает публикацию и шлёт уведомление — и люди не видят неверных цифр.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE mart_check AS SELECT order_date, SUM(CASE WHEN status = 'delivered' THEN amount END) AS revenue FROM orders GROUP BY 1; SELECT COUNT(*) AS days, (SELECT COUNT(*) FROM (SELECT order_date FROM mart_check GROUP BY 1 HAVING COUNT(*) > 1)) AS duplicate_days, SUM(CASE WHEN COALESCE(revenue, 0) = 0 THEN 1 ELSE 0 END) AS empty_revenue FROM mart_check"
+        ],
+        "wrong": [
+          "CREATE TABLE mart_check AS SELECT order_date, SUM(CASE WHEN status = 'delivered' THEN amount END) AS revenue FROM orders GROUP BY 1; SELECT COUNT(*) AS days, 0 AS duplicate_days, COUNT(*) FILTER (WHERE revenue = 0) AS empty_revenue FROM mart_check"
+        ]
+      }
+    },
+    {
+      "id": "dbt",
+      "title": "Что делает dbt",
+      "difficulty": 1,
+      "type": "quiz",
+      "prompt": "Что делает dbt в конвейере данных?",
+      "options": [
+        {
+          "text": "Запускает SQL-модели внутри хранилища в правильном порядке, создаёт таблицы, проверяет тесты и строит документацию",
+          "correct": true,
+          "explain": "dbt — это «T» в ELT: трансформации SQL-запросами с хорошими инженерными привычками."
+        },
+        {
+          "text": "Выгружает данные из API сайтов",
+          "explain": "Выгрузкой занимаются другие инструменты; dbt работает с данными, уже лежащими в хранилище."
+        },
+        {
+          "text": "Рисует дашборды",
+          "explain": "Это задача BI-систем."
+        },
+        {
+          "text": "Заменяет хранилище",
+          "explain": "dbt работает поверх хранилища, а не вместо него."
+        }
+      ],
+      "hints": [
+        "Какая буква ELT про dbt?"
+      ]
+    }
+  ]
+}

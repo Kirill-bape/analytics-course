@@ -1,0 +1,189 @@
+{
+  "tasks": [
+    {
+      "id": "argmax-last",
+      "title": "Статус последнего заказа: arg_max",
+      "difficulty": 2,
+      "prompt": [
+        "Для каждого клиента найди статус его **последнего** заказа — с наибольшим `order_id` — функцией `arg_max(status, order_id)`. Затем посчитай, у скольких клиентов последний заказ в каждом статусе.",
+        "",
+        "Столбцы: `last_status`, `customers`. Сортировка по `customers` по убыванию."
+      ],
+      "starter": "WITH last AS (\n    SELECT customer_id, arg_max(status, order_id) AS last_status\n    FROM orders\n    GROUP BY customer_id\n)\nSELECT \n",
+      "solution": "WITH last AS (\n    SELECT customer_id, arg_max(status, order_id) AS last_status\n    FROM orders\n    GROUP BY customer_id\n)\nSELECT last_status, COUNT(*) AS customers\nFROM last\nGROUP BY last_status\nORDER BY customers DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "CTE уже даёт последний статус каждого клиента — осталось сгруппировать по нему."
+      ],
+      "explanation": "Без `arg_max` пришлось бы искать максимальный заказ подзапросом и соединять обратно. В ClickHouse этот приём (`argMax`) используют постоянно — например, чтобы взять актуальную версию строки.",
+      "selfTest": {
+        "correct": [
+          "SELECT o.status AS last_status, COUNT(*) AS customers FROM orders o JOIN (SELECT customer_id, MAX(order_id) AS mid FROM orders GROUP BY 1) m ON m.mid = o.order_id GROUP BY 1 ORDER BY 2 DESC"
+        ],
+        "wrong": [
+          "WITH last AS (SELECT customer_id, arg_min(status, order_id) AS last_status FROM orders GROUP BY 1) SELECT last_status, COUNT(*) AS customers FROM last GROUP BY 1 ORDER BY 2 DESC"
+        ]
+      }
+    },
+    {
+      "id": "approx-distinct",
+      "title": "Точно или приблизительно",
+      "difficulty": 2,
+      "prompt": "Посчитай число уникальных клиентов в заказах двумя способами: `exact` — точно (`COUNT(DISTINCT …)`), `approx` — приблизительно (`approx_count_distinct`), и `error_pct` — ошибку приближения в процентах от точного значения (по модулю, до 2 знаков).",
+      "starter": "SELECT COUNT(DISTINCT customer_id) AS exact,\n       \nFROM orders;",
+      "solution": "SELECT COUNT(DISTINCT customer_id) AS exact,\n       approx_count_distinct(customer_id) AS approx,\n       ROUND(100.0 * ABS(approx_count_distinct(customer_id) - COUNT(DISTINCT customer_id)) / COUNT(DISTINCT customer_id), 2) AS error_pct\nFROM orders;",
+      "checkColumnNames": true,
+      "hints": [
+        "`approx_count_distinct(customer_id)` — аналог `uniq` в ClickHouse.",
+        "Ошибка: `ABS(approx − exact) / exact × 100`."
+      ],
+      "explanation": "Ошибка порядка процента, зато на миллиардах строк приблизительный подсчёт в разы быстрее и требует мало памяти. Для дашбордов «сколько уникальных посетителей» этого достаточно; для финансовой отчётности считают точно.",
+      "selfTest": {
+        "correct": [
+          "WITH t AS (SELECT COUNT(DISTINCT customer_id) AS e, approx_count_distinct(customer_id) AS a FROM orders) SELECT e AS exact, a AS approx, ROUND(100.0 * ABS(a - e) / e, 2) AS error_pct FROM t"
+        ],
+        "wrong": [
+          "SELECT COUNT(customer_id) AS exact, approx_count_distinct(customer_id) AS approx, ROUND(100.0 * ABS(approx_count_distinct(customer_id) - COUNT(customer_id)) / COUNT(customer_id), 2) AS error_pct FROM orders"
+        ]
+      }
+    },
+    {
+      "id": "quantiles",
+      "title": "Квантили по группам",
+      "difficulty": 2,
+      "prompt": "Для доставленных заказов посчитай по способу оплаты медиану (`p50`) и 90-й процентиль (`p90`) суммы заказа функцией `quantile_cont` (до целого). Столбцы: `payment_method`, `p50`, `p90`. Сортировка по `p90` по убыванию.",
+      "starter": "SELECT payment_method,\n       \nFROM orders\nWHERE status = 'delivered'\nGROUP BY payment_method\nORDER BY p90 DESC;",
+      "solution": "SELECT payment_method,\n       ROUND(quantile_cont(amount, 0.5)) AS p50,\n       ROUND(quantile_cont(amount, 0.9)) AS p90\nFROM orders\nWHERE status = 'delivered'\nGROUP BY payment_method\nORDER BY p90 DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "`quantile_cont(amount, 0.5)` — медиана, `quantile_cont(amount, 0.9)` — 90-й процентиль."
+      ],
+      "explanation": "В ClickHouse то же самое: `quantile(0.5)(amount)` и `quantile(0.9)(amount)` (приблизительно) или `quantileExact`. Квантили лучше средних описывают скошенные суммы заказов.",
+      "selfTest": {
+        "correct": [
+          "SELECT payment_method, ROUND(median(amount)) AS p50, ROUND(quantile_cont(amount, 0.9)) AS p90 FROM orders WHERE status = 'delivered' GROUP BY 1 ORDER BY 3 DESC"
+        ],
+        "wrong": [
+          "SELECT payment_method, ROUND(AVG(amount)) AS p50, ROUND(quantile_cont(amount, 0.9)) AS p90 FROM orders WHERE status = 'delivered' GROUP BY 1 ORDER BY 3 DESC"
+        ]
+      }
+    },
+    {
+      "id": "dedup-versions",
+      "title": "Версии строк, как в ReplacingMergeTree",
+      "difficulty": 3,
+      "sandbox": true,
+      "prompt": [
+        "Заготовка создаёт журнал статусов `status_log`: у заказов с 20 июня 2026 есть строка «processing», а у тех, что продвинулись дальше, — ещё строка с новым статусом на день позже. Так выглядит таблица `ReplacingMergeTree` до фонового слияния: версии лежат рядом.",
+        "",
+        "Посчитай, сколько заказов в каждом **актуальном** статусе (версия с максимальным `updated_at`). Столбцы: `status`, `orders`. Сортировка по `orders` по убыванию."
+      ],
+      "starter": "CREATE TABLE status_log AS\nSELECT order_id, 'processing' AS status, CAST(order_date AS TIMESTAMP) AS updated_at\nFROM orders WHERE order_date >= '2026-06-20'\nUNION ALL\nSELECT order_id, status, CAST(order_date AS TIMESTAMP) + INTERVAL 1 DAY\nFROM orders WHERE order_date >= '2026-06-20' AND status <> 'processing';\n\nSELECT \n",
+      "solution": "CREATE TABLE status_log AS\nSELECT order_id, 'processing' AS status, CAST(order_date AS TIMESTAMP) AS updated_at\nFROM orders WHERE order_date >= '2026-06-20'\nUNION ALL\nSELECT order_id, status, CAST(order_date AS TIMESTAMP) + INTERVAL 1 DAY\nFROM orders WHERE order_date >= '2026-06-20' AND status <> 'processing';\n\nWITH actual AS (\n    SELECT order_id, arg_max(status, updated_at) AS status\n    FROM status_log\n    GROUP BY order_id\n)\nSELECT status, COUNT(*) AS orders\nFROM actual\nGROUP BY status\nORDER BY orders DESC;",
+      "orderMatters": true,
+      "checkColumnNames": true,
+      "hints": [
+        "Сначала по каждому заказу возьми актуальный статус: `arg_max(status, updated_at)` с `GROUP BY order_id`.",
+        "Потом сгруппируй по полученному статусу."
+      ],
+      "explanation": "Если просто посчитать строки журнала по статусам, «processing» окажется у сотен заказов, которые давно доставлены. В ClickHouse для этого пишут `argMax` или `SELECT … FINAL`.",
+      "selfTest": {
+        "correct": [
+          "CREATE TABLE status_log AS\nSELECT order_id, 'processing' AS status, CAST(order_date AS TIMESTAMP) AS updated_at\nFROM orders WHERE order_date >= '2026-06-20'\nUNION ALL\nSELECT order_id, status, CAST(order_date AS TIMESTAMP) + INTERVAL 1 DAY\nFROM orders WHERE order_date >= '2026-06-20' AND status <> 'processing';\nSELECT status, COUNT(*) AS orders FROM (SELECT order_id, status, ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY updated_at DESC) AS rn FROM status_log) WHERE rn = 1 GROUP BY 1 ORDER BY 2 DESC"
+        ],
+        "wrong": [
+          "CREATE TABLE status_log AS\nSELECT order_id, 'processing' AS status, CAST(order_date AS TIMESTAMP) AS updated_at\nFROM orders WHERE order_date >= '2026-06-20'\nUNION ALL\nSELECT order_id, status, CAST(order_date AS TIMESTAMP) + INTERVAL 1 DAY\nFROM orders WHERE order_date >= '2026-06-20' AND status <> 'processing';\nSELECT status, COUNT(*) AS orders FROM status_log GROUP BY 1 ORDER BY 2 DESC"
+        ]
+      }
+    },
+    {
+      "id": "order-key",
+      "title": "Ключ сортировки",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Почти все запросы к таблице событий фильтруют по дате и по `user_id` («что делал пользователь X за неделю»). Какой `ORDER BY` в MergeTree подойдёт лучше?",
+      "options": [
+        {
+          "text": "`ORDER BY (user_id, event_date)` и `PARTITION BY toYYYYMM(event_date)`",
+          "correct": true,
+          "explain": "События одного пользователя лежат рядом, а партиции по месяцам позволяют пропускать ненужные периоды. Запрос читает минимум данных."
+        },
+        {
+          "text": "`ORDER BY event_id`",
+          "explain": "По номеру события почти не фильтруют — индекс не поможет."
+        },
+        {
+          "text": "`ORDER BY rand()`",
+          "explain": "Случайный порядок лишает индекс смысла."
+        },
+        {
+          "text": "Ключ не важен, ClickHouse и так быстрый",
+          "explain": "Ключ сортировки — главный рычаг скорости в ClickHouse."
+        }
+      ],
+      "hints": [
+        "По каким столбцам чаще всего фильтруют?"
+      ]
+    },
+    {
+      "id": "pk-not-unique",
+      "title": "Первичный ключ и дубли",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "В таблице MergeTree с `ORDER BY order_id` загрузку случайно запустили дважды. Что произошло?",
+      "options": [
+        {
+          "text": "Каждый заказ записался два раза: первичный ключ в ClickHouse не запрещает дубли, суммы задвоились",
+          "correct": true,
+          "explain": "Это частая ловушка. Защита — идемпотентная загрузка (удалить партицию и загрузить заново) или ReplacingMergeTree и проверки уникальности."
+        },
+        {
+          "text": "Вторая загрузка отклонилась с ошибкой дубля ключа",
+          "explain": "В ClickHouse такой проверки нет — в отличие от PostgreSQL."
+        },
+        {
+          "text": "Вторая загрузка перезаписала первую",
+          "explain": "Обычный MergeTree ничего не перезаписывает."
+        },
+        {
+          "text": "Ничего: ClickHouse сам убирает дубли сразу",
+          "explain": "Даже ReplacingMergeTree убирает их не сразу, а при фоновом слиянии."
+        }
+      ],
+      "hints": [
+        "Гарантирует ли ORDER BY уникальность?"
+      ]
+    },
+    {
+      "id": "join-side",
+      "title": "Какую таблицу ставить справа",
+      "difficulty": 2,
+      "type": "quiz",
+      "prompt": "Нужно соединить таблицу событий (5 млрд строк) со справочником городов (1 000 строк). Как написать `JOIN` в ClickHouse?",
+      "options": [
+        {
+          "text": "`FROM events JOIN cities …` — маленький справочник справа: он загружается в память, а события идут потоком",
+          "correct": true,
+          "explain": "ClickHouse строит хеш-таблицу из правой части. Если справа окажутся миллиарды строк, памяти не хватит."
+        },
+        {
+          "text": "`FROM cities JOIN events …`",
+          "explain": "Тогда в память попытается загрузиться огромная таблица событий."
+        },
+        {
+          "text": "Порядок не важен",
+          "explain": "В ClickHouse порядок таблиц в JOIN сильно влияет на память и скорость."
+        },
+        {
+          "text": "JOIN в ClickHouse запрещён",
+          "explain": "Разрешён, просто дороже, чем в классических базах. Часто вместо него используют словари (dictionaries)."
+        }
+      ],
+      "hints": [
+        "Какая из двух таблиц поместится в память?"
+      ]
+    }
+  ]
+}
