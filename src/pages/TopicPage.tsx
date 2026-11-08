@@ -3,10 +3,10 @@ import { ArrowLeft, ArrowRight, BookOpenText, ChevronLeft, CirclePlay, ListCheck
 import { allTopics, findModule, findTopic, type Topic } from '../content';
 import { href } from '../router';
 import { useProgress } from '../progress';
-import { topicStats } from '../stats';
+import { stationState, topicStats } from '../stats';
 import { Markdown } from '../components/Markdown';
 import { TaskCard } from '../components/tasks/TaskCard';
-import { ModuleTile } from '../components/ui';
+import { LineBadge, StationStrip, lineClass } from '../components/ui';
 import { plural } from '../sql/compare';
 import { ensurePython } from '../python/engine';
 import { LessonMaterials, LessonVideos, useLessonMedia } from '../components/media/LessonMedia';
@@ -95,14 +95,14 @@ export function TopicPage({ moduleId, topicId }: { moduleId: string; topicId: st
   if (!topic.ready) {
     const hasMedia = media && (media.videos.length || media.theory.length || media.practice.length);
     return (
-      <div className="page topic-page">
+      <div className={`page topic-page ${lineClass(module.id)}`}>
         <nav className="breadcrumbs">
           <a href={href('course', module.id)}>
             <ChevronLeft size={16} aria-hidden /> {module.title}
           </a>
         </nav>
         <div className="page-head topic-head">
-          <ModuleTile moduleId={module.id} size={52} />
+          <LineBadge moduleId={module.id} size="lg" />
           <div>
             <h1>{topic.title}</h1>
             <p className="lead" style={{ marginTop: 6 }}>
@@ -142,18 +142,21 @@ export function TopicPage({ moduleId, topicId }: { moduleId: string; topicId: st
   ];
 
   return (
-    <div className="page topic-page">
+    <div className={`page topic-page ${lineClass(module.id)}`}>
       <nav className="breadcrumbs">
         <a href={href('course', module.id)}>
           <ChevronLeft size={16} aria-hidden /> {module.title}
         </a>
-        <span>· тема {numInModule} из {module.topics.length}</span>
       </nav>
       <div className="page-head topic-head">
-        <ModuleTile moduleId={module.id} size={52} />
+        <LineBadge moduleId={module.id} size="lg" />
         <div>
           <h1>{topic.title}</h1>
           <div className="topic-meta">
+            <StationStrip module={module} current={topic} stateOf={(t) => stationState(t, data)} />
+            <span className="topic-pos">
+              Тема {numInModule} из {module.topics.length}
+            </span>
             <span className={`badge${s.done ? ' badge-success' : ''}`}>
               {s.done ? 'Тема пройдена' : `Решено ${s.solved} из ${s.total} ${plural(s.total, 'задания', 'заданий', 'заданий')}`}
             </span>
@@ -164,7 +167,7 @@ export function TopicPage({ moduleId, topicId }: { moduleId: string; topicId: st
       <SectionNav sections={sections} />
 
       <section id="theory" className="lesson-section">
-        <article className="lesson card">
+        <article className="lesson">
           <Markdown key={topic.key} source={topic.lesson} runnable />
         </article>
         {media && <LessonMaterials items={media.theory} title="Конспекты и материалы курсов" />}

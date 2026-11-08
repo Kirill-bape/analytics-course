@@ -3,14 +3,15 @@ import { Check, ChevronRight, CirclePlay } from 'lucide-react';
 import { modules } from '../content';
 import { href } from '../router';
 import { useProgress } from '../progress';
-import { topicStats } from '../stats';
-import { ModuleTile, ProgressRing } from '../components/ui';
+import { nextStep, stationState, topicStats } from '../stats';
+import { LineBadge, lineClass } from '../components/ui';
 import { plural } from '../sql/compare';
 import { useMedia } from '../media/client';
 
 export function CoursePage({ anchor }: { anchor?: string }) {
   const { data } = useProgress();
   const media = useMedia();
+  const next = nextStep(data);
   // Сколько видео в теме: из основных курсов, а если их нет — из дополнительных
   const videosOf = (key: string) => {
     const list = (media.server && media.catalog?.lessons[key]?.videos) || [];
@@ -28,11 +29,11 @@ export function CoursePage({ anchor }: { anchor?: string }) {
       <div className="page-head">
         <h1>Курс</h1>
         <p className="lead">
-          {modules.length} {plural(modules.length, 'модуль', 'модуля', 'модулей')} и {topicsTotal} {plural(topicsTotal, 'тема', 'темы', 'тем')} — от первого
-          SQL-запроса до проекта в портфолио.
+          {modules.length} {plural(modules.length, 'модуль', 'модуля', 'модулей')} и {topicsTotal} {plural(topicsTotal, 'тема', 'темы', 'тем')}: от первого
+          SQL-запроса до проекта в портфолио. Модуль — линия, тема — станция на ней.
         </p>
       </div>
-      {modules.map((m, mi) => {
+      {modules.map((m) => {
         const readyCount = m.topics.filter((t) => t.ready || videosOf(t.key)).length;
         const st = m.topics.reduce(
           (acc, t) => {
@@ -42,66 +43,61 @@ export function CoursePage({ anchor }: { anchor?: string }) {
           { solved: 0, total: 0 },
         );
         return (
-          <section key={m.id} id={`module-${m.id}`} className={`card module-card${readyCount ? '' : ' soon'}`}>
-            <div className="module-card-head">
-              <ModuleTile moduleId={m.id} size={48} />
+          <section key={m.id} id={`module-${m.id}`} className={`course-line ${lineClass(m.id)}${readyCount ? '' : ' soon'}`}>
+            <header className="course-line-head">
+              <LineBadge moduleId={m.id} size="lg" />
               <div>
-                <div className="eyebrow">Модуль {mi + 1}</div>
                 <h2>{m.title}</h2>
                 <p className="muted">{m.description}</p>
               </div>
               {readyCount ? (
-                <div className="module-card-progress">
-                  <ProgressRing value={st.total ? st.solved / st.total : 0} size={52} stroke={6}>
-                    <span style={{ fontSize: '0.75rem' }}>{st.total ? Math.round((st.solved / st.total) * 100) : 0}%</span>
-                  </ProgressRing>
-                  <span>
-                    {st.solved}/{st.total}
-                  </span>
-                </div>
+                <span className="course-line-count" title="Решено заданий в модуле">
+                  {st.solved} <small>из {st.total}</small>
+                </span>
               ) : (
                 <span className="badge">скоро</span>
               )}
-            </div>
-            <ol className="topic-list">
+            </header>
+            <ol className="stations">
               {m.topics.map((t, ti) => {
                 const s = topicStats(t, data);
-                const part = s.total ? Math.round((s.solved / s.total) * 100) : 0;
+                const state = stationState(t, data);
                 const videos = videosOf(t.key);
                 const open = t.ready || videos > 0;
+                const here = t === next;
                 const content = (
                   <>
-                    <span className="topic-num">{ti + 1}</span>
-                    <span
-                      className={`topic-status${s.done ? ' done' : s.started ? ' started' : ''}`}
-                      style={s.started && !s.done ? ({ '--p': `${Math.max(part, 8)}%` } as React.CSSProperties) : undefined}
-                    >
-                      {s.done && <Check size={14} strokeWidth={3} aria-hidden />}
+                    <span className="station-dot" aria-hidden>
+                      {state === 'done' && <Check size={12} strokeWidth={3.5} />}
                     </span>
-                    <span className="topic-name">{t.title}</span>
+                    <span className="station-num">{ti + 1}</span>
+                    <span className="station-name">
+                      {t.title}
+                      {here && <span className="here-mark">ты здесь</span>}
+                    </span>
                     {videos > 0 && (
-                      <span className="topic-count topic-videos" title={`Видео из курсов: ${videos}`}>
-                        <CirclePlay size={13} aria-hidden /> {videos}
+                      <span className="station-videos" title={`Видео из курсов: ${videos}`}>
+                        <CirclePlay size={14} aria-hidden /> {videos}
                       </span>
                     )}
                     {t.ready ? (
-                      <span className="topic-count">
+                      <span className="station-count" aria-label={`Решено ${s.solved} из ${s.total}`}>
                         {s.solved}/{s.total}
                       </span>
                     ) : (
                       !videos && <span className="badge">скоро</span>
                     )}
-                    {open && <ChevronRight size={18} className="topic-chevron" aria-hidden />}
+                    {open && <ChevronRight size={18} className="station-chevron" aria-hidden />}
                   </>
                 );
                 return (
-                  <li key={t.id}>
+                  <li key={t.id} className={`station ${state}${here ? ' here' : ''}`}>
                     {open ? (
-                      <a className="topic-row" href={href('topic', m.id, t.id)}>
+                      <a className="station-row" href={href('topic', m.id, t.id)}>
                         {content}
                       </a>
                     ) : (
-                      <div className="topic-row disabled">{content}</div>
+                      <div className="station-row disabled">{content}</div>
                     )}
                   </li>
                 );

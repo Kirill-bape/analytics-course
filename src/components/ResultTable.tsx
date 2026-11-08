@@ -7,9 +7,14 @@ export function ResultTable({ result, maxRows = 200, total }: { result: QueryRes
   return (
     <div className="result">
       <div className="result-meta">
-        {n} {plural(n, 'строка', 'строки', 'строк')} · {result.columns.length}{' '}
-        {plural(result.columns.length, 'столбец', 'столбца', 'столбцов')} · {result.ms} мс
-        {n > shown.length && <span className="muted"> — показаны первые {shown.length}</span>}
+        <span>
+          {n} {plural(n, 'строка', 'строки', 'строк')}
+        </span>
+        <span>
+          {result.columns.length} {plural(result.columns.length, 'столбец', 'столбца', 'столбцов')}
+        </span>
+        <span>{result.ms} мс</span>
+        {n > shown.length && <span>показаны первые {shown.length}</span>}
       </div>
       {n === 0 ? (
         <div className="result-empty">Запрос выполнен, но не вернул ни одной строки.</div>

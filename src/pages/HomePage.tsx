@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { ArrowRight, Check, Flame, HardDriveDownload, Rocket, Target, TrendingUp } from 'lucide-react';
-import { modules } from '../content';
+import { Flame, HardDriveDownload } from 'lucide-react';
+import { modules, type Topic } from '../content';
 import { href } from '../router';
 import { SANDBOX, todayKey, useProgress } from '../progress';
-import { coursePercent, nextStep, planStatus, streakInfo, taskTotals, topicStats } from '../stats';
+import { coursePercent, nextStep, planStatus, stationState, streakInfo, taskTotals, topicStats } from '../stats';
 import { plural } from '../sql/compare';
-import { IconTile, ModuleTile, ProgressRing } from '../components/ui';
+import { LineBadge, StationStrip, lineClass } from '../components/ui';
 
 function Heatmap({ activeDays }: { activeDays: string[] }) {
   const active = new Set(activeDays);
@@ -96,6 +96,11 @@ function greeting(fresh: boolean): string {
   return 'Добрый вечер!';
 }
 
+function planLine(plan: ReturnType<typeof planStatus>): string {
+  if (plan.todayGoal > 0) return `По плану на сегодня — ещё ${plan.todayGoal} ${plural(plan.todayGoal, 'задание', 'задания', 'заданий')}.`;
+  return 'План на сегодня выполнен.';
+}
+
 export function HomePage() {
   const { data, loaded } = useProgress();
   const pct = coursePercent(data);
@@ -108,18 +113,19 @@ export function HomePage() {
   const fresh = loaded && totals.solved === 0;
   const dateRaw = new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
   const dateStr = dateRaw.charAt(0).toUpperCase() + dateRaw.slice(1);
+  const stateOf = (t: Topic) => stationState(t, data);
 
   return (
     <div className="page">
       <div className="home-head">
         <div>
-          <div className="eyebrow">
-            {dateStr}
-          </div>
           <h1>{greeting(fresh)}</h1>
+          <p className="lead">
+            {dateStr}. {planLine(plan)}
+          </p>
         </div>
-        <span className="streak-pill" title="Серия дней занятий">
-          <Flame size={18} aria-hidden /> {streak.current}
+        <span className="streak-pill" title={`Серия дней занятий. Лучшая — ${streak.best}`}>
+          <Flame size={18} aria-hidden /> {streak.current} {plural(streak.current, 'день', 'дня', 'дней')}
         </span>
       </div>
 
@@ -145,80 +151,72 @@ export function HomePage() {
         </div>
       )}
 
-      <div className="two-col">
-        <div>
-          {next && nextStats && nextModule && (
-            <div className="card continue">
-              <div className="continue-main">
-                <ProgressRing value={nextStats.total ? nextStats.solved / nextStats.total : 0}>
-                  {nextStats.solved}/{nextStats.total}
-                </ProgressRing>
-                <div className="continue-text">
-                  <span className="continue-eyebrow">
-                    {nextModule.title} · тема {nextModule.topics.indexOf(next) + 1}
-                  </span>
-                  <span className="continue-title">{next.title}</span>
-                  <span className="small muted">
-                    {nextStats.started
-                      ? `Осталось ${nextStats.total - nextStats.solved} ${plural(nextStats.total - nextStats.solved, 'задание', 'задания', 'заданий')}`
-                      : `${nextStats.total} ${plural(nextStats.total, 'задание', 'задания', 'заданий')} · новая тема`}
-                  </span>
-                </div>
-              </div>
-              <a className="btn btn-primary btn-block" href={href('topic', next.moduleId, next.id)}>
-                {nextStats.started ? 'Продолжить' : 'Начать тему'} <ArrowRight size={20} aria-hidden />
-              </a>
-            </div>
-          )}
-
-          <div className="stats-grid">
-            <div className="card stat">
-              <IconTile icon={TrendingUp} tone="indigo" size={34} />
-              <div className="stat-value">{pct.toFixed(pct > 0 && pct < 10 ? 1 : 0)}%</div>
-              <div className="stat-label">Курс пройден</div>
-            </div>
-            <div className="card stat">
-              <IconTile icon={Check} tone="green" size={34} />
-              <div className="stat-value">
-                {totals.solved} <span className="stat-of">/ {totals.total}</span>
-              </div>
-              <div className="stat-label">Заданий решено</div>
-            </div>
-            <div className="card stat">
-              <IconTile icon={Flame} tone="orange" size={34} />
-              <div className="stat-value">
-                {streak.current} <span className="stat-of">{plural(streak.current, 'день', 'дня', 'дней')}</span>
-              </div>
-              <div className="stat-label">{streak.studiedToday ? 'Сегодня засчитано' : `Серия · лучшая ${streak.best}`}</div>
-            </div>
-            <a className={`card stat plan-${plan.state}`} href={href('plan')}>
-              <IconTile icon={plan.state === 'ahead' ? Rocket : Target} tone={plan.state === 'behind' ? 'orange' : 'teal'} size={34} />
-              <div className="stat-value">
-                {plan.state === 'behind' ? `−${plan.behind}` : plan.state === 'ahead' ? `+${plan.ahead}` : <Check size={26} aria-label="По графику" />}
-              </div>
-              <div className="stat-label">
-                {plan.todayGoal > 0 ? `Сегодня по плану: ещё ${plan.todayGoal}` : 'План на сегодня выполнен'}
-              </div>
+      {next && nextStats && nextModule && (
+        <section className={`next ${lineClass(nextModule.id)}`} aria-label="Следующая тема">
+          <a className="next-line" href={href('course', nextModule.id)}>
+            <LineBadge moduleId={nextModule.id} />
+            <span>{nextModule.title}</span>
+            <span className="next-pos">
+              тема {nextModule.topics.indexOf(next) + 1} из {nextModule.topics.length}
+            </span>
+          </a>
+          <h2 className="next-title">{next.title}</h2>
+          <StationStrip module={nextModule} current={next} stateOf={stateOf} />
+          <div className="next-foot">
+            <span className="muted">
+              {nextStats.started
+                ? `Решено ${nextStats.solved} из ${nextStats.total}, осталось ${nextStats.total - nextStats.solved}`
+                : `Новая тема, ${nextStats.total} ${plural(nextStats.total, 'задание', 'задания', 'заданий')}`}
+            </span>
+            <a className="btn btn-primary btn-wide" href={href('topic', next.moduleId, next.id)}>
+              {nextStats.started ? 'Продолжить тему' : 'Начать тему'}
             </a>
           </div>
+        </section>
+      )}
 
-          <div className="card">
-            <h3>Дни занятий</h3>
-            <Heatmap activeDays={data.activeDays} />
-            <p className="muted small" style={{ margin: 0 }}>
-              Один день отдыха в неделю серию не прерывает. Всего дней занятий: {streak.totalDays}.
-            </p>
-          </div>
-        </div>
-
+      <dl className="figures">
         <div>
+          <dt>Курс пройден</dt>
+          <dd>{pct.toFixed(pct > 0 && pct < 10 ? 1 : 0)} %</dd>
+        </div>
+        <div>
+          <dt>Решено заданий</dt>
+          <dd>
+            {totals.solved} <small>из {totals.total}</small>
+          </dd>
+        </div>
+        <div>
+          <dt>Серия</dt>
+          <dd>
+            {streak.current} <small>{streak.studiedToday ? 'сегодня засчитано' : `лучшая ${streak.best}`}</small>
+          </dd>
+        </div>
+        <a className={`plan-${plan.state}`} href={href('plan')}>
+          <dt>План</dt>
+          <dd>
+            {plan.state === 'behind' ? (
+              <>
+                −{plan.behind} <small>{plural(plan.behind, 'задание', 'задания', 'заданий')} отставания</small>
+              </>
+            ) : plan.state === 'ahead' ? (
+              <>
+                +{plan.ahead} <small>{plural(plan.ahead, 'задание', 'задания', 'заданий')} впереди</small>
+              </>
+            ) : (
+              'по графику'
+            )}
+          </dd>
+        </a>
+      </dl>
+
+      <div className="home-cols">
+        <section>
           <div className="section-title">
             <h2>Модули</h2>
-            <a className="small" href={href('course')} style={{ fontWeight: 800 }}>
-              Все {modules.length}
-            </a>
+            <a href={href('course')}>Все темы</a>
           </div>
-          <div className="card module-list">
+          <div className="module-list">
             {modules.map((m) => {
               const ready = m.topics.filter((t) => t.ready);
               const s = m.topics.reduce(
@@ -230,22 +228,28 @@ export function HomePage() {
               );
               const p = s.total ? (s.solved / s.total) * 100 : 0;
               return (
-                <a key={m.id} className="module-row" href={href('course', m.id)}>
-                  <ModuleTile moduleId={m.id} size={42} />
-                  <span className="module-row-body">
-                    <span className="module-row-top">
-                      <span>{m.title}</span>
-                      <span className="pct">{ready.length ? `${p.toFixed(0)}%` : 'скоро'}</span>
-                    </span>
-                    <span className={`progress-bar${p >= 100 ? ' success' : ''}`}>
-                      <span style={{ width: `${p}%` }} />
-                    </span>
+                <a key={m.id} className={`module-row ${lineClass(m.id)}${ready.length ? '' : ' soon'}`} href={href('course', m.id)}>
+                  <LineBadge moduleId={m.id} size="sm" />
+                  <span className="module-row-name">{m.title}</span>
+                  <span className="module-row-track" aria-hidden>
+                    <span style={{ width: `${p}%` }} />
                   </span>
+                  <span className="pct">{ready.length ? `${p.toFixed(0)} %` : 'скоро'}</span>
                 </a>
               );
             })}
           </div>
-        </div>
+        </section>
+
+        <section>
+          <div className="section-title">
+            <h2>Дни занятий</h2>
+          </div>
+          <Heatmap activeDays={data.activeDays} />
+          <p className="muted small">
+            Один день отдыха в неделю серию не прерывает. Всего дней занятий: {streak.totalDays}.
+          </p>
+        </section>
       </div>
     </div>
   );

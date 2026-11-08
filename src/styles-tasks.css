@@ -57,7 +57,7 @@
   align-items: flex-start;
   padding: 12px 14px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-ctl);
   cursor: pointer;
   background: var(--surface);
   transition:
@@ -159,7 +159,7 @@
    ============================================================ */
 .sheet {
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-ctl);
   overflow: hidden;
   background: var(--surface);
 }
@@ -173,7 +173,7 @@
 }
 .sheet-addr {
   font-family: var(--font-mono);
-  font-weight: 700;
+  font-weight: 600;
   min-width: 44px;
   text-align: center;
   font-size: 0.9rem;
@@ -248,7 +248,7 @@
   font-variant-numeric: tabular-nums;
 }
 .sheet-cell.header {
-  font-weight: 700;
+  font-weight: 600;
   background: var(--surface-2);
 }
 .sheet-cell.free {
@@ -331,7 +331,7 @@
   margin-top: 14px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-ctl);
   padding: 10px;
   overflow: hidden;
 }
@@ -490,12 +490,7 @@
 .kkey.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: white;
-}
-@media (prefers-color-scheme: dark) {
-  .kkey.primary {
-    color: #11132a;
-  }
+  color: var(--on-accent);
 }
 
 /* ============================================================
@@ -519,7 +514,7 @@
 }
 .settings-help summary {
   cursor: pointer;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 .settings-help ol {
@@ -563,12 +558,16 @@
 }
 
 /* ============================================================
-   Дизайн «Чистый»: шапка темы, заметки к решению, настройки
+   Шапка темы, заметки к решению, настройки
    ============================================================ */
 .topic-head {
   display: flex;
   align-items: flex-start;
   gap: 16px;
+}
+.topic-head > div {
+  flex: 1;
+  min-width: 0;
 }
 .topic-head h1 {
   margin: 0;
@@ -603,13 +602,13 @@
 }
 .quiz-option,
 .checklist label {
-  border-radius: 16px;
+  border-radius: 10px;
 }
 .sheet {
-  border-radius: 18px;
+  border-radius: 10px;
 }
 .number-input {
-  border-radius: 14px;
+  border-radius: var(--radius-ctl);
   min-height: 46px;
 }
 
@@ -635,7 +634,7 @@
   padding: 14px 16px 6px;
 }
 .player-title {
-  font-weight: 800;
+  font-weight: 650;
   font-size: 1.05rem;
   line-height: 1.3;
 }
@@ -699,7 +698,7 @@
 .media-group-title {
   flex: 1;
   min-width: 0;
-  font-weight: 800;
+  font-weight: 650;
 }
 .chev.up {
   transform: rotate(180deg);
@@ -718,7 +717,7 @@
   width: 100%;
   padding: 10px 8px;
   border: none;
-  border-radius: 14px;
+  border-radius: var(--radius-ctl);
   background: none;
   color: var(--text);
   font: inherit;
@@ -737,7 +736,7 @@
 .video-thumb {
   width: 44px;
   height: 44px;
-  border-radius: 14px;
+  border-radius: var(--radius-ctl);
   background: var(--accent-soft);
   color: var(--accent-text);
   display: flex;
@@ -759,14 +758,29 @@
 }
 .video-title,
 .doc-title {
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.35;
 }
 .video-meta,
 .doc-meta {
   font-size: 0.8rem;
-  font-weight: 600;
   color: var(--text-muted);
+}
+.doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+}
+.doc-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-ctl);
+  background: var(--surface-2);
+  color: var(--text-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 .video-desc {
   font-size: 0.88rem;
@@ -825,12 +839,12 @@
   justify-content: center;
   margin-top: 6px;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-ctl);
   background: none;
   color: var(--text-muted);
   font: inherit;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 button.icon-btn:hover {
@@ -856,14 +870,14 @@ button.icon-btn:hover {
 .phone-connect {
   margin: 12px 0;
   padding: 14px 16px;
-  border-radius: 16px;
+  border-radius: 10px;
   background: var(--accent-soft);
 }
 .phone-connect-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 800;
+  font-weight: 650;
   color: var(--accent-text);
 }
 .phone-connect p {
@@ -877,7 +891,7 @@ button.icon-btn:hover {
   align-items: baseline;
 }
 .phone-connect dt {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.9rem;
 }
 .phone-connect dd {
@@ -889,7 +903,7 @@ button.icon-btn:hover {
 .phone-code {
   font-size: 1.3rem;
   letter-spacing: 0.12em;
-  font-weight: 700;
+  font-weight: 600;
 }
 .saved-list {
   list-style: none;
@@ -915,7 +929,7 @@ button.icon-btn:hover {
   min-width: 0;
 }
 .saved-title {
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.3;
 }
 @media (max-width: 480px) {
@@ -949,7 +963,7 @@ button.icon-btn:hover {
   flex-direction: column;
   gap: 4px;
   font-size: 0.85rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-muted);
 }
 .library-form .number-input {

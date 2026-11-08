@@ -17,6 +17,13 @@ export function topicStats(topic: Topic, data: ProgressData) {
   return { total, solved, done: total > 0 && solved === total, started: solved > 0 };
 }
 
+/** Состояние темы как станции на линии: пройдена, начата, впереди или ещё готовится */
+export function stationState(topic: Topic, data: ProgressData): 'done' | 'started' | 'todo' | 'soon' {
+  if (!topic.ready) return 'soon';
+  const s = topicStats(topic, data);
+  return s.done ? 'done' : s.started ? 'started' : 'todo';
+}
+
 /** Процент по всему курсу: каждая тема весит одинаково, неготовые темы считаются как 0 */
 export function coursePercent(data: ProgressData): number {
   if (!allTopics.length) return 0;

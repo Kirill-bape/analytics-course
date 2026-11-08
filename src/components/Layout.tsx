@@ -32,6 +32,18 @@ function offlineText(o: OfflineState): string | null {
   return null;
 }
 
+/** Знак приложения: отрезок линии с поворотом и тремя станциями, первая пройдена */
+function BrandMark() {
+  return (
+    <svg className="brand-mark" viewBox="0 0 32 32" width="32" height="32" aria-hidden>
+      <path d="M5 25 H13 L21 11 H27" fill="none" stroke="var(--line-sql-basics)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="5" cy="25" r="3.6" className="brand-stop done" />
+      <circle cx="17" cy="18" r="3.6" className="brand-stop" />
+      <circle cx="27" cy="11" r="3.6" className="brand-stop" />
+    </svg>
+  );
+}
+
 function DbStatusLine() {
   const db = useSyncExternalStore(subscribeDb, getDbStatus);
   return (
@@ -58,7 +70,7 @@ function PhoneStatus() {
   if (db.state === 'error') {
     return (
       <span className="chip error">
-        Ошибка базы ·{' '}
+        Ошибка базы:{' '}
         <button className="link" onClick={() => restartDb()}>
           перезапустить
         </button>
@@ -132,11 +144,7 @@ export function Layout({ route, children }: { route: string[]; children: ReactNo
     <div className={`app${typing ? ' typing' : ''}`}>
       <header className="topbar">
         <a className="brand" href={href()}>
-          <span className="brand-logo" aria-hidden>
-            <i style={{ height: 7 }} />
-            <i style={{ height: 11 }} />
-            <i style={{ height: 15 }} />
-          </span>
+          <BrandMark />
           <span className="brand-name">Путь аналитика</span>
         </a>
         <PhoneStatus />
@@ -144,11 +152,7 @@ export function Layout({ route, children }: { route: string[]; children: ReactNo
 
       <nav className="sidebar" aria-label="Разделы">
         <a className="brand" href={href()} title="Путь аналитика">
-          <span className="brand-logo" aria-hidden>
-            <i style={{ height: 8 }} />
-            <i style={{ height: 13 }} />
-            <i style={{ height: 18 }} />
-          </span>
+          <BrandMark />
           <span className="brand-name">Путь аналитика</span>
         </a>
         <div className="nav">

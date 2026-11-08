@@ -1,100 +1,67 @@
-// Общие детали дизайна «Чистый»: значки модулей, круг прогресса, звёзды сложности.
+// Общие детали дизайна «Схема линий»: каждый модуль — линия своего цвета,
+// темы — станции на ней. Цвета линий заданы в styles.css (.line-*).
 
-import type { ReactNode } from 'react';
-import {
-  BrainCircuit,
-  Briefcase,
-  ChartColumn,
-  Code,
-  Database,
-  FlaskConical,
-  Layers,
-  LayoutDashboard,
-  Network,
-  PieChart,
-  Sheet,
-  Sigma,
-  Star,
-  TrendingUp,
-  Trophy,
-  Warehouse,
-  type LucideIcon,
-} from 'lucide-react';
+import type { CSSProperties } from 'react';
+import { modules, type Module, type Topic } from '../content';
 
-/** Значок и цвет каждого модуля курса */
-const MODULE_STYLE: Record<string, { icon: LucideIcon; tone: string }> = {
-  'sql-basics': { icon: Database, tone: 'indigo' },
-  excel: { icon: Sheet, tone: 'green' },
-  'sql-advanced': { icon: Layers, tone: 'violet' },
-  statistics: { icon: Sigma, tone: 'pink' },
-  python: { icon: Code, tone: 'amber' },
-  visualization: { icon: ChartColumn, tone: 'teal' },
-  dashboards: { icon: LayoutDashboard, tone: 'blue' },
-  'ab-tests': { icon: FlaskConical, tone: 'orange' },
-  'final-project': { icon: Trophy, tone: 'gold' },
-  product: { icon: TrendingUp, tone: 'teal' },
-  bi: { icon: PieChart, tone: 'blue' },
-  dwh: { icon: Warehouse, tone: 'violet' },
-  ml: { icon: BrainCircuit, tone: 'pink' },
-  'neural-networks': { icon: Network, tone: 'indigo' },
-  career: { icon: Briefcase, tone: 'gold' },
-};
-
-export function moduleStyle(moduleId: string) {
-  return MODULE_STYLE[moduleId] ?? { icon: Layers, tone: 'indigo' };
+/** Номер модуля по порядку курса (1, 2, 3…) — как номер линии на схеме */
+export function lineNumber(moduleId: string): number {
+  return modules.findIndex((m) => m.id === moduleId) + 1;
 }
 
-/** Квадратная цветная плитка со значком модуля */
-export function ModuleTile({ moduleId, size = 44 }: { moduleId: string; size?: number }) {
-  const { icon: Icon, tone } = moduleStyle(moduleId);
+/** Класс с цветами линии модуля: задаёт --line и акцентные цвета внутри блока */
+export function lineClass(moduleId: string): string {
+  return `line-${moduleId}`;
+}
+
+/** Кружок с номером линии */
+export function LineBadge({ moduleId, size = 'md' }: { moduleId: string; size?: 'sm' | 'md' | 'lg' }) {
   return (
-    <span className={`icon-tile tone-${tone}`} style={{ width: size, height: size, borderRadius: Math.round(size * 0.32) }} aria-hidden>
-      <Icon size={Math.round(size * 0.5)} strokeWidth={1.9} />
+    <span className={`line-badge ${size} ${lineClass(moduleId)}`} aria-hidden>
+      {lineNumber(moduleId)}
     </span>
   );
 }
 
-/** Плитка с любым значком и цветом */
-export function IconTile({ icon: Icon, tone = 'indigo', size = 36 }: { icon: LucideIcon; tone?: string; size?: number }) {
+export type StationState = 'done' | 'started' | 'todo' | 'soon';
+
+/** Короткая схема линии: все темы модуля точками, текущая выделена */
+export function StationStrip({
+  module,
+  current,
+  stateOf,
+}: {
+  module: Module;
+  current?: Topic;
+  stateOf: (t: Topic) => StationState;
+}) {
+  const doneCount = module.topics.filter((t) => stateOf(t) === 'done').length;
+  // Сколько линии «проехано»: до последней решённой темы
+  let lastDone = -1;
+  module.topics.forEach((t, i) => {
+    if (stateOf(t) === 'done') lastDone = i;
+  });
+  const travelled = module.topics.length > 1 ? Math.max(0, lastDone) / (module.topics.length - 1) : 0;
   return (
-    <span className={`icon-tile tone-${tone}`} style={{ width: size, height: size, borderRadius: Math.round(size * 0.3) }} aria-hidden>
-      <Icon size={Math.round(size * 0.52)} strokeWidth={2} />
-    </span>
+    <div
+      className={`strip ${lineClass(module.id)}`}
+      style={{ '--travelled': travelled } as CSSProperties}
+      role="img"
+      aria-label={`Пройдено тем: ${doneCount} из ${module.topics.length}`}
+    >
+      {module.topics.map((t) => (
+        <span key={t.id} className={`strip-stop ${stateOf(t)}${t === current ? ' current' : ''}`} title={t.title} />
+      ))}
+    </div>
   );
 }
 
-/** Круг прогресса с подписью в центре */
-export function ProgressRing({ value, size = 68, stroke = 7, children }: { value: number; size?: number; stroke?: number; children?: ReactNode }) {
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const v = Math.max(0, Math.min(1, value));
-  return (
-    <span className="ring" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" className="ring-track" strokeWidth={stroke} />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          className="ring-value"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={`${c * v} ${c}`}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      </svg>
-      {children !== undefined && <span className="ring-label">{children}</span>}
-    </span>
-  );
-}
-
-/** Сложность задания: 1–3 звезды */
+/** Сложность задания: 1–3 деления */
 export function Difficulty({ level }: { level: number }) {
   return (
     <span className="difficulty" title={`Сложность ${level} из 3`} aria-label={`Сложность ${level} из 3`}>
       {[1, 2, 3].map((i) => (
-        <Star key={i} size={15} strokeWidth={0} className={i <= level ? 'on' : 'off'} fill="currentColor" />
+        <i key={i} className={i <= level ? 'on' : undefined} />
       ))}
     </span>
   );

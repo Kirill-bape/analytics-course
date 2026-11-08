@@ -293,13 +293,15 @@ function DocList({ items }: { items: MediaDoc[] }) {
         return (
           <li key={d.id}>
             <a className="doc-row" href={fileUrl(d.id)} target="_blank" rel="noreferrer">
-              <span className={`icon-tile tone-${d.kind === 'data' ? 'green' : d.kind === 'notebook' || d.kind === 'code' ? 'amber' : 'indigo'}`} style={{ width: 38, height: 38, borderRadius: 12 }} aria-hidden>
+              <span className="doc-icon" aria-hidden>
                 <Icon size={19} />
               </span>
               <span className="doc-text">
                 <span className="doc-title">{d.title}</span>
                 <span className="doc-meta">
-                  {d.course} · {d.ext.toUpperCase()} · {fmtSize(d.size)}
+                  <span>{d.course}</span>
+                  <span>{d.ext.toUpperCase()}</span>
+                  <span>{fmtSize(d.size)}</span>
                 </span>
                 {d.brief && <MarkdownText text={d.brief} className="doc-brief markdown" />}
               </span>

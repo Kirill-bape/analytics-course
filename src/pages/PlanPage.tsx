@@ -4,6 +4,7 @@ import { href } from '../router';
 import { useProgress } from '../progress';
 import { parseDay, planStatus, topicStats } from '../stats';
 import { plural } from '../sql/compare';
+import { lineClass } from '../components/ui';
 
 const fmt = (s: string) => parseDay(s).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 
@@ -73,8 +74,11 @@ export function PlanPage() {
               <div className="week-body card">
                 <div className="week-head">
                   <div>
-                    <div className="eyebrow">
-                      Неделя {w.index + 1} · {fmt(w.week.start)} – {fmt(w.week.end)}
+                    <div className="week-meta">
+                      <span>Неделя {w.index + 1}</span>
+                      <span>
+                        {fmt(w.week.start)} – {fmt(w.week.end)}
+                      </span>
                       {w.state === 'current' && <span className="badge badge-accent">сейчас</span>}
                       {late && <span className="badge badge-warn">не завершена</span>}
                     </div>
@@ -97,7 +101,9 @@ export function PlanPage() {
                       const s = topicStats(t, data);
                       return (
                         <li key={t.key} className={s.done ? 'done' : ''}>
-                          <span className="topic-status small-status">{s.done && <Check size={12} strokeWidth={3} aria-hidden />}</span>
+                          <span className={`station-dot small ${lineClass(t.moduleId)}${s.done ? ' done' : ''}`} aria-hidden>
+                            {s.done && <Check size={10} strokeWidth={3.5} />}
+                          </span>
                           {t.ready ? <a href={href('topic', t.moduleId, t.id)}>{t.title}</a> : <span className="muted">{t.title}</span>}
                           {!t.ready && <span className="badge">скоро</span>}
                         </li>

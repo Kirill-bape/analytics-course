@@ -44,18 +44,18 @@ const highlight = HighlightStyle.define([
 ]);
 
 const theme = EditorView.theme({
-  '&': { backgroundColor: 'var(--code-bg)', color: 'var(--code-fg)', fontSize: '14.5px', borderRadius: '10px' },
-  '&.cm-focused': { outline: '2px solid var(--accent-soft)' },
+  '&': { backgroundColor: 'var(--code-bg)', color: 'var(--code-fg)', fontSize: '14.5px', borderRadius: '8px' },
+  '&.cm-focused': { outline: 'none' },
   '.cm-scroller': { fontFamily: 'var(--font-mono)', lineHeight: '1.6' },
   '.cm-content': { padding: '10px 0', caretColor: 'var(--code-fg)' },
-  '.cm-gutters': { backgroundColor: 'var(--code-bg)', color: 'var(--code-gutter)', border: 'none', borderRadius: '10px 0 0 10px' },
+  '.cm-gutters': { backgroundColor: 'var(--code-bg)', color: 'var(--code-gutter)', border: 'none', borderRadius: '8px 0 0 8px' },
   '.cm-activeLine': { backgroundColor: 'var(--code-active)' },
   '.cm-activeLineGutter': { backgroundColor: 'var(--code-active)' },
   '.cm-selectionBackground, &.cm-focused .cm-selectionBackground, .cm-content ::selection': { backgroundColor: 'var(--code-selection) !important' },
   '.cm-cursor': { borderLeftColor: 'var(--code-fg)' },
   '.cm-placeholder': { color: 'var(--code-gutter)' },
   '.cm-tooltip': { backgroundColor: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '8px' },
-  '.cm-tooltip-autocomplete > ul > li[aria-selected]': { backgroundColor: 'var(--accent)', color: 'white' },
+  '.cm-tooltip-autocomplete > ul > li[aria-selected]': { backgroundColor: 'var(--accent)', color: 'var(--on-accent)' },
   '.cm-matchingBracket': { backgroundColor: 'var(--code-selection)', outline: 'none' },
 });
 
